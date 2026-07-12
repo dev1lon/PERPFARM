@@ -28,3 +28,20 @@ points_programs:
     confidence: confirmed
     last_verified: 2026-07-01
     source: "own trades"
+
+  - venue: hibachi
+    description_md: |
+      **1,000,000 points per weekly epoch**, distributed every Monday 03:00
+      UTC, split across all traders. Your share is driven by trading volume
+      plus other variables (open-interest score, PnL, max drawdown, fees
+      paid, referrals); trading quests can boost points up to +60%, and FX
+      perps earn extra weekly multipliers. The exact per-variable weights are
+      **not published** -- treat per-$ numbers as rough.
+    # 1_000_000 points/week / observed weekly volume (~$88M = 24h volume
+    # $12.5M x 7, summed across all live markets on 2026-07-12). Pro-rata
+    # volume-share approximation of a multi-variable formula.
+    points_per_usd_volume_estimate: 0.011
+    weight_notes: "FX perps (AUD/GBP/EUR/NZD) earn more points + weekly FX multipliers; magnitude unpublished, no pair_weights rows until known."
+    confidence: estimated
+    last_verified: 2026-07-12
+    source: "https://docs.hibachi.xyz/hibachi-rewards/hibachi-points"

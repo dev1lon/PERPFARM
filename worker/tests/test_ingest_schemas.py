@@ -21,7 +21,7 @@ def _load(filename: str, key: str) -> list[dict]:
 
 def test_points_programs_validate():
     rows = [PointsProgramRow(**r) for r in _load("points_programs.yaml", "points_programs")]
-    assert len(rows) == 2
+    assert {r.venue for r in rows} >= {"venue_alpha", "venue_beta", "hibachi"}
     assert all(r.confidence in CONFIDENCE_VALUES for r in rows)
 
 
@@ -32,7 +32,7 @@ def test_pair_weights_validate():
 
 def test_venue_meta_validate():
     rows = [VenueMetaRow(**r) for r in _load("venue_meta.yaml", "venue_meta")]
-    assert len(rows) == 2
+    assert {r.venue for r in rows} >= {"venue_alpha", "venue_beta", "hibachi"}
 
 
 def test_execution_rules_validate():

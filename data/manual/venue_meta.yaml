@@ -25,3 +25,18 @@ venue_meta:
     docs_url: "https://docs.venue-beta.example"
     referral_link: null
     notes_md: "Synthetic fixture venue: taker-only-points archetype."
+
+  - venue: hibachi
+    raised_usd: null # funding rounds exist (cryptorank/messari) but amount not verified -- do not guess
+    investors: null
+    community_supply_pct: null
+    otc_point_price_usd: null # user's manual/OTC knowledge slot -- never computed
+    season_name: "Weekly epochs"
+    season_end_date: null # rolling weekly epochs, no announced end
+    twitter_url: "https://x.com/hibachi_xyz"
+    docs_url: "https://docs.hibachi.xyz"
+    referral_link: null
+    notes_md: >-
+      First real venue wired live (2026-07-12): public data API, 0 bps
+      maker / 4.5 bps taker, hourly funding. 13 perp markets incl. FX/metals
+      (AUD, GBP, EUR, NZD, PAXG, XAG) that close on weekends.

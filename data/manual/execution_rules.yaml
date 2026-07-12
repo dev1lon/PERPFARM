@@ -15,3 +15,14 @@ execution_rules:
     taker_counts_for_points: true
     maker_boost_multiplier: 1.0
     notes: "Only taker fills accrue points (anti-wash-trading rule)."
+
+  - venue: hibachi
+    maker_counts_for_points: true
+    taker_counts_for_points: true
+    maker_boost_multiplier: 1.0
+    notes: >-
+      Points formula is volume-based with extra variables (OI score, PnL,
+      drawdown, fees paid) -- both fill types count toward volume. "Fees
+      paid" being a variable suggests taker flow may earn somewhat more per
+      dollar, but no maker/taker split is published (estimated,
+      docs.hibachi.xyz/hibachi-rewards/hibachi-points, 2026-07-12).

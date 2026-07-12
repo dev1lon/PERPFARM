@@ -33,8 +33,12 @@ class VenueRegistration:
     build: Callable[[Path], VenueAdapter]
 
 
-def _real(slug: str, name: str, cls: type[VenueAdapter]) -> VenueRegistration:
-    return VenueRegistration(slug=slug, name=name, api_status="stub", build=lambda _fixtures_dir: cls())
+def _real(
+    slug: str, name: str, cls: type[VenueAdapter], *, api_status: str = "stub"
+) -> VenueRegistration:
+    return VenueRegistration(
+        slug=slug, name=name, api_status=api_status, build=lambda _fixtures_dir: cls()
+    )
 
 
 def _fixture(slug: str, name: str) -> VenueRegistration:
@@ -56,7 +60,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("txflow", "TxFlow", TxflowAdapter),
     _real("tradexyz", "Tradexyz", TradexyzAdapter),
     _real("hotstuff", "HotStuff", HotStuffAdapter),
-    _real("hibachi", "Hibachi", HibachiAdapter),
+    _real("hibachi", "Hibachi", HibachiAdapter, api_status="live"),
     _real("risex", "RiseX", RiseXAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),

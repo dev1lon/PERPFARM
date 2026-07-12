@@ -24,6 +24,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, select
 
+from perpfarm.adapters.base import VenueAdapter
 from perpfarm.adapters.registry import build_adapter
 from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
 
@@ -46,9 +47,17 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
             .where(markets.c.is_active.is_(True))
         ).all()
 
+    # One adapter per venue for the whole run, not per market: real adapters
+    # cache venue-level API responses (e.g. Hibachi's exchange-info, needed
+    # for orderbook granularity) on the instance, so rebuilding per market
+    # would re-fetch that once per market instead of once per venue.
+    adapters: dict[str, VenueAdapter] = {}
+
     for slug, market_id, symbol in rows:
         try:
-            adapter = build_adapter(slug, fixtures_dir)
+            if slug not in adapters:
+                adapters[slug] = build_adapter(slug, fixtures_dir)
+            adapter = adapters[slug]
             book = adapter.get_orderbook_top(symbol)
             funding = adapter.get_funding(symbol)
             volume = adapter.get_volume(symbol)

@@ -43,6 +43,12 @@ export function perpDexBadgeVars(slug: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
+/** Real brand assets, dropped into web/public/logos/ (see the README there).
+ * A slug listed here renders its image; anything else gets the colored
+ * monogram placeholder. Kept as an explicit map (not a runtime file probe)
+ * so both server and client components resolve it identically. */
+const LOGO_FILES: Record<string, string> = {};
+
 export function PerpDexLogo({
   slug,
   name,
@@ -52,6 +58,23 @@ export function PerpDexLogo({
   name: string;
   size?: number;
 }) {
+  const logoFile = LOGO_FILES[slug];
+  if (logoFile) {
+    // Plain <img>, not next/image: tiny static icons served straight from
+    // /public -- optimization buys nothing at 32-40px and chokes on SVGs.
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={`/logos/${logoFile}`}
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        className="shrink-0 rounded-full object-contain"
+      />
+    );
+  }
+
   const letter = name.trim().charAt(0).toUpperCase() || "?";
   return (
     <span
