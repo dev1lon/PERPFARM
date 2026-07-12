@@ -44,8 +44,12 @@ services:
         fromDatabase:
           name: perpfarm-db
           property: connectionString
-      - key: NODE_ENV
-        value: production
+    # NODE_ENV is deliberately NOT set to "production" here: `npm install`
+    # respects NODE_ENV and skips devDependencies when it's "production",
+    # which breaks the build (`@tailwindcss/postcss` and other build-time
+    # tools live in devDependencies). `next build`/`next start` already
+    # produce a production build without it -- see
+    # https://render.com/docs/troubleshooting-deploys if this resurfaces.
 
   # Recomputes route_scores. worker/perpfarm/jobs/nightly.py reads already-
   # populated snapshot/manual tables -- it does not fetch from venue APIs.
