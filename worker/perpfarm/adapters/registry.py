@@ -13,10 +13,13 @@ from typing import Callable
 from perpfarm.adapters.base import VenueAdapter
 from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
+from perpfarm.adapters.hibachi import HibachiAdapter
+from perpfarm.adapters.hotstuff import HotStuffAdapter
 from perpfarm.adapters.lighter import LighterAdapter
 from perpfarm.adapters.nado import NadoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
 from perpfarm.adapters.paradex import ParadexAdapter
+from perpfarm.adapters.risex import RiseXAdapter
 from perpfarm.adapters.tradexyz import TradexyzAdapter
 from perpfarm.adapters.txflow import TxflowAdapter
 from perpfarm.adapters.variational import VariationalAdapter
@@ -52,6 +55,9 @@ REGISTRY: list[VenueRegistration] = [
     _real("nado", "Nado", NadoAdapter),
     _real("txflow", "TxFlow", TxflowAdapter),
     _real("tradexyz", "Tradexyz", TradexyzAdapter),
+    _real("hotstuff", "HotStuff", HotStuffAdapter),
+    _real("hibachi", "Hibachi", HibachiAdapter),
+    _real("risex", "RiseX", RiseXAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
