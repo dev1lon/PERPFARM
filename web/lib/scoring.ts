@@ -245,16 +245,20 @@ export function recomputeRoute(
     }
   }
 
+  // Keep-first-on-tie, matching Python's stable `min()` -- `b` only replaces
+  // `a` when strictly better. With the reversed comparison a full tie on
+  // (costPerPoint, totalCost) would pick the LAST combo while Python picks
+  // the FIRST, and the recommended order_type would diverge between engines.
   const viable = combos.filter((c) => c.costPerPoint !== null);
   const best =
     viable.length > 0
       ? viable.reduce((a, b) =>
-          (a.costPerPoint as number) < (b.costPerPoint as number) ||
-          ((a.costPerPoint as number) === (b.costPerPoint as number) && a.totalCost < b.totalCost)
-            ? a
-            : b
+          (b.costPerPoint as number) < (a.costPerPoint as number) ||
+          ((b.costPerPoint as number) === (a.costPerPoint as number) && b.totalCost < a.totalCost)
+            ? b
+            : a
         )
-      : combos.reduce((a, b) => (a.totalCost < b.totalCost ? a : b));
+      : combos.reduce((a, b) => (b.totalCost < a.totalCost ? b : a));
 
   const altLongType: OrderType = best.longType === "maker" ? "taker" : "maker";
   const altShortType: OrderType = best.shortType === "maker" ? "taker" : "maker";

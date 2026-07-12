@@ -49,10 +49,14 @@ def _venues_for_symbol(conn, symbol_canonical: str):
 
 
 def _latest_fee(conn, venue_id: int, as_of: date) -> tuple[float | None, float | None]:
+    # created_at breaks ties between rows sharing an effective_from -- the
+    # fee-watch job can legitimately record two changes on the same day, and
+    # without it which row wins would be arbitrary (and could disagree with
+    # fee_watch's own created_at-ordered notion of "latest").
     stmt = (
         select(fee_schedules.c.maker_bps, fee_schedules.c.taker_bps)
         .where(fee_schedules.c.venue_id == venue_id, fee_schedules.c.effective_from <= as_of)
-        .order_by(fee_schedules.c.effective_from.desc())
+        .order_by(fee_schedules.c.effective_from.desc(), fee_schedules.c.created_at.desc())
         .limit(1)
     )
     row = conn.execute(stmt).first()

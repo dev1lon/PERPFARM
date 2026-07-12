@@ -278,7 +278,7 @@ export async function getVenues(): Promise<VenueSummary[]> {
      LEFT JOIN LATERAL (
        SELECT maker_bps, taker_bps FROM fee_schedules
        WHERE venue_id = v.id AND effective_from <= CURRENT_DATE
-       ORDER BY effective_from DESC LIMIT 1
+       ORDER BY effective_from DESC, created_at DESC LIMIT 1
      ) fs ON true
      LEFT JOIN points_programs pp ON pp.venue_id = v.id
      LEFT JOIN LATERAL (
@@ -329,7 +329,7 @@ export async function getVenueDetail(slug: string): Promise<VenueDetail | null> 
       getPool().query<DbRow>("SELECT * FROM execution_rules WHERE venue_id = $1", [venueId]),
       getPool().query<DbRow>(
         `SELECT maker_bps, taker_bps, effective_from, source_url FROM fee_schedules
-         WHERE venue_id = $1 ORDER BY effective_from DESC LIMIT 20`,
+         WHERE venue_id = $1 ORDER BY effective_from DESC, created_at DESC LIMIT 20`,
         [venueId]
       ),
       getPool().query<DbRow>(

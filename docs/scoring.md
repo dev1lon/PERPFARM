@@ -159,10 +159,13 @@ cost_per_point(combo) = total_cost(combo) / total_points(combo)   if total_point
 ```
 
 Pick the viable combo with the lowest `cost_per_point`; ties break on lower
-`total_cost`. If no combo earns any points at all, `cost_per_point_usd` is
-`null` (route is data-complete but economically can't farm this pair on
-either venue right now) and the cheapest combo by `total_cost` is reported
-for display.
+`total_cost`. A tie on **both** breaks deterministically to the first combo
+in iteration order — `(maker,maker)`, `(maker,taker)`, `(taker,maker)`,
+`(taker,taker)` — and both engines must implement keep-first-on-tie (the
+`full_tie_prefers_first_combo` parity scenario pins this). If no combo earns
+any points at all, `cost_per_point_usd` is `null` (route is data-complete
+but economically can't farm this pair on either venue right now) and the
+cheapest combo by `total_cost` is reported for display.
 
 **This is a joint optimization, not two independent per-leg choices.**
 A leg that earns zero points either way should still take whichever order

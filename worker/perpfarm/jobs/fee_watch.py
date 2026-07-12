@@ -27,8 +27,10 @@ from perpfarm.schema import alerts, fee_schedules, venues
 
 def fee_hash(maker_bps: float, taker_bps: float) -> str:
     """Stable fingerprint of a fee schedule, used to detect changes without
-    storing/diffing a full raw page snapshot."""
-    return sha256(f"{maker_bps}:{taker_bps}".encode()).hexdigest()
+    storing/diffing a full raw page snapshot. Inputs are normalized through
+    float() first: an adapter switching between int and float for the same
+    value (JSON `5` vs `5.0`) must not read as a fee change."""
+    return sha256(f"{float(maker_bps)}:{float(taker_bps)}".encode()).hexdigest()
 
 
 @dataclass(frozen=True)

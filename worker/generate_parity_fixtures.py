@@ -136,6 +136,52 @@ SCENARIOS = [
         "params": {"notional_usd": 10_000.0, "hold_hours": 24.0},
     },
     {
+        # All four maker/taker combos tie exactly on (cost_per_point,
+        # total_cost) -- fees equal, zero spread/impact/funding, both fill
+        # types earn identical points. Locks in the deterministic
+        # tie-breaking rule: the FIRST combo in iteration order (maker/maker)
+        # must win in both engines. Guards against the "last wins" reduce
+        # bug the TS side originally had.
+        "name": "full_tie_prefers_first_combo",
+        "long_leg": {
+            "venue_slug": "tied",
+            "maker_bps": 2.0,
+            "taker_bps": 2.0,
+            "spread_bps": 0.0,
+            "impact_bps_10k": 0.0,
+            "impact_bps_50k": 0.0,
+            "impact_bps_100k": 0.0,
+            "depth_usd_10k": 100_000.0,
+            "depth_usd_50k": 100_000.0,
+            "depth_usd_100k": 100_000.0,
+            "funding_rate_annualized_7d_mean": 0.0,
+            "points_per_usd_volume_estimate": 1.0,
+            "pair_weight_multiplier": 1.0,
+            "maker_counts_for_points": True,
+            "taker_counts_for_points": True,
+            "maker_boost_multiplier": 1.0,
+        },
+        "short_leg": {
+            "venue_slug": "also_tied",
+            "maker_bps": 2.0,
+            "taker_bps": 2.0,
+            "spread_bps": 0.0,
+            "impact_bps_10k": 0.0,
+            "impact_bps_50k": 0.0,
+            "impact_bps_100k": 0.0,
+            "depth_usd_10k": 100_000.0,
+            "depth_usd_50k": 100_000.0,
+            "depth_usd_100k": 100_000.0,
+            "funding_rate_annualized_7d_mean": 0.0,
+            "points_per_usd_volume_estimate": 1.0,
+            "pair_weight_multiplier": 1.0,
+            "maker_counts_for_points": True,
+            "taker_counts_for_points": True,
+            "maker_boost_multiplier": 1.0,
+        },
+        "params": {"notional_usd": 10_000.0, "hold_hours": 24.0},
+    },
+    {
         "name": "fill_risk_thin_maker_book",
         "long_leg": {
             "venue_slug": "thin",

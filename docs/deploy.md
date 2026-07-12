@@ -46,7 +46,19 @@ Then, once (first deploy only, or whenever a new venue is added to
 ```bash
 perpfarm bootstrap-venues
 perpfarm ingest-manual
+perpfarm sync-markets venue_alpha    # once per venue with a working adapter
+perpfarm sync-markets venue_beta
+perpfarm job fee-watch               # seeds fee_schedules -- nightly reads fees ONLY from here
+perpfarm job sync-snapshots          # seeds book/funding/volume snapshots
+perpfarm job nightly                 # now every input exists; routes score complete
 ```
+
+Order matters for the last three: `nightly` reads fees from
+`fee_schedules` (populated only by `fee-watch`) and spread/funding from the
+snapshot tables (populated only by `sync-snapshots`). Run `nightly` first
+and every route lands `is_complete: false` -- the site renders venues but
+shows "no data yet" everywhere. After first setup the crons keep all three
+fresh on their own.
 
 `perpfarm sync-markets <slug>` (per-venue, manual) still needs a run per
 venue whenever its market list changes -- it's deliberately not scheduled,

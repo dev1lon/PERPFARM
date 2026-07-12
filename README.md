@@ -62,9 +62,11 @@ python -m alembic -c worker/alembic.ini upgrade head   # or: cd worker && alembi
 perpfarm bootstrap-venues      # upserts `venues` from the adapter registry
 perpfarm ingest-manual         # validates + upserts data/manual/*.yaml
 perpfarm sync-markets venue_alpha   # populates `markets` from a FixtureAdapter
-perpfarm job sync-snapshots    # populates book/funding/volume snapshots -- run before nightly
-perpfarm job nightly           # recomputes route_scores for all eligible routes
 perpfarm job fee-watch         # diffs fee schedules, writes fee_schedules/alerts rows
+perpfarm job sync-snapshots    # populates book/funding/volume snapshots
+perpfarm job nightly           # recomputes route_scores -- needs fee-watch AND
+                               # sync-snapshots to have run at least once, or
+                               # every route scores as incomplete
 ```
 
 No DB needed to see the scoring engine work end-to-end:
