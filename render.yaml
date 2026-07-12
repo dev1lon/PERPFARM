@@ -37,19 +37,24 @@ services:
     rootDir: web
     plan: starter
     region: oregon
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: perpfarm-db
           property: connectionString
-    # NODE_ENV is deliberately NOT set to "production" here: `npm install`
-    # respects NODE_ENV and skips devDependencies when it's "production",
-    # which breaks the build (`@tailwindcss/postcss` and other build-time
-    # tools live in devDependencies). `next build`/`next start` already
-    # produce a production build without it -- see
-    # https://render.com/docs/troubleshooting-deploys if this resurfaces.
+    # `--include=dev` is load-bearing, not decorative: Render's Node build
+    # environment installs in a production-like mode by default (confirmed
+    # empirically -- a plain `npm install` here installed 83 packages vs.
+    # 445 for the same package.json/lockfile installed locally), which
+    # silently drops devDependencies (`@tailwindcss/postcss`, `typescript`,
+    # ...) that `next build` needs. Removing NODE_ENV=production from
+    # envVars (an earlier fix attempt) was NOT sufficient by itself --
+    # whatever forces this isn't controllable via that env var alone, so
+    # force-include devDependencies explicitly instead of relying on absence
+    # of NODE_ENV. See https://docs.npmjs.com/cli/v11/commands/npm-install
+    # if this needs revisiting.
 
   # Recomputes route_scores. worker/perpfarm/jobs/nightly.py reads already-
   # populated snapshot/manual tables -- it does not fetch from venue APIs.
