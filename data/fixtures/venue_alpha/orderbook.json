@@ -1,0 +1,24 @@
+{
+  "BTC-PERP": {
+    "best_bid": 64000.0,
+    "best_ask": 64006.0,
+    "spread_bps": 0.94,
+    "impact_bps_10k": 0.5,
+    "impact_bps_50k": 1.2,
+    "impact_bps_100k": 2.5,
+    "depth_usd_10k": 10000,
+    "depth_usd_50k": 50000,
+    "depth_usd_100k": 100000
+  },
+  "kPEPE-PERP": {
+    "best_bid": 0.0000123,
+    "best_ask": 0.0000125,
+    "spread_bps": 16.1,
+    "impact_bps_10k": 25.0,
+    "impact_bps_50k": 60.0,
+    "impact_bps_100k": 140.0,
+    "depth_usd_10k": 9000,
+    "depth_usd_50k": 22000,
+    "depth_usd_100k": 28000
+  }
+}

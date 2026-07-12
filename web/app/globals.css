@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Raw tokens -- both theme sets always exist as CSS custom properties;
+   [data-theme] on <html> selects which one is active. Set synchronously by
+   the inline script in app/layout.tsx before first paint (no flash). */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #070b15;
+  --surface-1: #0d1424;
+  --surface-2: #141c30;
+  --surface-hover: #1a2338; /* dark theme: hover steps LIGHTER */
+  --border: rgba(255, 255, 255, 0.06);
+  --text-primary: #f2f5fa;
+  --text-muted: #99a1b5; /* >=4.5:1 on --surface-1 in both themes, see floor requirement */
+  --accent: #4b7df5;
+  --accent-hover: #6690f7;
+  --positive: #2fd181;
+  --negative: #f05c5c;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface-1: #f7f8fa;
+  --surface-2: #eef0f4;
+  --surface-hover: #e4e7ed; /* light theme: hover steps DARKER */
+  --border: rgba(15, 20, 30, 0.08);
+  --text-primary: #16181d;
+  --text-muted: #5b6270; /* >=4.5:1 on --surface-1 */
+  --accent: #3b6ce0;
+  --accent-hover: #2f5cc7;
+  --positive: #16a05e;
+  --negative: #d94040;
+}
+
+@theme inline {
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --color-bg: var(--bg);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-mono-num,
+.font-mono-num * {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+* {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* The one shared interactive transition -- colors/opacity only, 160ms ease.
+   Apply to anything with a hover/focus state instead of writing bespoke
+   transition rules per component. */
+.pf-transition {
+  transition-property: background-color, border-color, color, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+/* Skeleton loading state: slow opacity pulse, no shimmer sweep. */
+@keyframes pf-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pf-skeleton {
+  animation: pf-skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+/* The one attention animation in the whole app: a brief accent flash on a
+   value that just got recomputed (notional/hold/strategy change). Trigger
+   by remounting the element (changing its `key`) so the animation restarts. */
+@keyframes pf-value-pulse {
+  0% {
+    color: var(--accent);
+  }
+  100% {
+    color: inherit;
+  }
+}
+.pf-value-pulse {
+  animation: pf-value-pulse 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-transition,
+  .pf-skeleton,
+  .pf-value-pulse {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Visible focus ring everywhere, both themes. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,0 +1,30 @@
+# Manual points-program data, ingested by `perpfarm ingest-manual`.
+#
+# venue_alpha / venue_beta are SYNTHETIC fixture venues used for dev and for
+# scoring-engine tests (Phase 2) -- they are not real exchanges, so their
+# numbers are illustrative, not placeholders for real unverified data.
+# When adding a REAL venue here, confidence must reflect actual verification
+# per CLAUDE.md: never write "confirmed" without a checked source.
+
+points_programs:
+  - venue: venue_alpha
+    description_md: |
+      Points accrue on **maker volume only**. 1 point per $1 of maker
+      notional, doubled during the first 14 days a pair is listed (see
+      pair_weights.yaml). Taker fills earn zero points.
+    points_per_usd_volume_estimate: 1.0
+    weight_notes: "2x boost for pairs listed <14 days (see pair_weights.yaml)"
+    confidence: confirmed
+    last_verified: 2026-07-01
+    source: "own trades"
+
+  - venue: venue_beta
+    description_md: |
+      Points accrue on **taker volume only** (anti-wash-trading rule: maker
+      fills from the same wallet pair are excluded). 0.8 points per $1 of
+      taker notional.
+    points_per_usd_volume_estimate: 0.8
+    weight_notes: null
+    confidence: confirmed
+    last_verified: 2026-07-01
+    source: "own trades"

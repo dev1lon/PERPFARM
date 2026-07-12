@@ -1,0 +1,9 @@
+# Native-ticker -> canonical-symbol overrides, applied by
+# `perpfarm sync-markets` for tickers an adapter can't normalize on its own
+# (e.g. a venue listing 'kPEPE-PERP' should map to canonical 'PEPE' so it
+# matches other venues' 'PEPE-PERP'). Not written to any DB table.
+
+overrides:
+  - venue: venue_alpha
+    symbol: kPEPE-PERP
+    symbol_canonical: PEPE

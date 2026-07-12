@@ -1,0 +1,12 @@
+{
+  "BTC-PERP": {
+    "funding_rate_raw": 0.000012,
+    "interval_hours": 1,
+    "funding_rate_annualized": 0.10512
+  },
+  "PEPE-PERP": {
+    "funding_rate_raw": 0.00003,
+    "interval_hours": 1,
+    "funding_rate_annualized": 0.2628
+  }
+}

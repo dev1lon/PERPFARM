@@ -1,0 +1,17 @@
+# See points_programs.yaml for the note on venue_alpha/venue_beta being
+# synthetic fixture venues. These two rows are the "maker-rebate vs
+# taker-only-points" contrast the scoring engine's unit tests (Phase 2) rely
+# on to exercise the maker/taker recommendation logic.
+
+execution_rules:
+  - venue: venue_alpha
+    maker_counts_for_points: true
+    taker_counts_for_points: false
+    maker_boost_multiplier: 1.0
+    notes: "Only maker fills accrue points; venue also pays a maker rebate (see fee_schedules)."
+
+  - venue: venue_beta
+    maker_counts_for_points: false
+    taker_counts_for_points: true
+    maker_boost_multiplier: 1.0
+    notes: "Only taker fills accrue points (anti-wash-trading rule)."

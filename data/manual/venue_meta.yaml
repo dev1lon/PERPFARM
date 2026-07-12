@@ -1,0 +1,27 @@
+# See points_programs.yaml for the note on venue_alpha/venue_beta being
+# synthetic fixture venues.
+
+venue_meta:
+  - venue: venue_alpha
+    raised_usd: 20000000
+    investors: "Fixture Capital, Example Ventures"
+    community_supply_pct: 15
+    otc_point_price_usd: null
+    season_name: "Season 1"
+    season_end_date: 2026-09-01
+    twitter_url: "https://twitter.com/venue_alpha_fixture"
+    docs_url: "https://docs.venue-alpha.example"
+    referral_link: null
+    notes_md: "Synthetic fixture venue: maker-rebate, maker-earns-points archetype."
+
+  - venue: venue_beta
+    raised_usd: 8000000
+    investors: "Fixture Seed Fund"
+    community_supply_pct: 20
+    otc_point_price_usd: null
+    season_name: "Season 1"
+    season_end_date: 2026-08-15
+    twitter_url: "https://twitter.com/venue_beta_fixture"
+    docs_url: "https://docs.venue-beta.example"
+    referral_link: null
+    notes_md: "Synthetic fixture venue: taker-only-points archetype."

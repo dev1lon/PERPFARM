@@ -1,0 +1,14 @@
+[
+  {
+    "symbol": "BTC-PERP",
+    "symbol_canonical": "BTC",
+    "base_asset": "BTC",
+    "is_active": true
+  },
+  {
+    "symbol": "PEPE-PERP",
+    "symbol_canonical": "PEPE",
+    "base_asset": "PEPE",
+    "is_active": true
+  }
+]

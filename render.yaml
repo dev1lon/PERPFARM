@@ -1,0 +1,83 @@
+# Render Blueprint (Infrastructure as Code) for perpfarm.
+#
+# TODO(verify): this follows Render's Blueprint YAML schema as of this
+# writing, but that schema evolves -- confirm field names (`runtime` vs the
+# older `env`, the `schedule`/`envVars`/`fromDatabase` shapes, and the
+# `PYTHON_VERSION` pinning convention below) against Render's current
+# Blueprint reference (https://render.com/docs/blueprint-spec) before
+# deploying. Deploy via the Render dashboard "New > Blueprint" pointing at
+# this repo, then fix up anything the dashboard's validator flags.
+#
+# `plan: starter` / `region: oregon` are placeholders -- pick what fits your
+# account. Cron schedules below are defaults, not verified requirements --
+# adjust cadence to taste.
+#
+# Migrations are NOT run automatically by any service here (running
+# `alembic upgrade head` from two services' build steps at once against the
+# same DB is a race). Run it manually once per deploy that changes the
+# schema, from a Render shell on any of the Python services:
+#   python -m alembic -c worker/alembic.ini upgrade head
+
+databases:
+  - name: perpfarm-db
+    databaseName: perpfarm
+    plan: starter
+    region: oregon
+
+services:
+  - type: web
+    name: perpfarm-web
+    runtime: node
+    rootDir: web
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: perpfarm-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+
+  # Recomputes route_scores. worker/perpfarm/jobs/nightly.py reads already-
+  # populated snapshot/manual tables -- it does not fetch from venue APIs.
+  - type: cron
+    name: perpfarm-nightly
+    runtime: python
+    rootDir: worker
+    plan: starter
+    region: oregon
+    schedule: "0 6 * * *" # 06:00 UTC daily
+    buildCommand: pip install -e .
+    startCommand: perpfarm job nightly
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: perpfarm-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+  # Fee-page diff watcher (worker/perpfarm/jobs/fee_watch.py). Skips venues
+  # whose adapter still raises NotImplementedError -- see docs/deploy.md.
+  # Writes `alerts` rows on a detected change but does not deliver them
+  # anywhere yet; no notification channel is wired up (Telegram explicitly
+  # out of scope).
+  - type: cron
+    name: perpfarm-fee-watch
+    runtime: python
+    rootDir: worker
+    plan: starter
+    region: oregon
+    schedule: "0 */6 * * *" # every 6 hours
+    buildCommand: pip install -e .
+    startCommand: perpfarm job fee-watch
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: perpfarm-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.9"

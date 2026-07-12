@@ -1,0 +1,226 @@
+[
+  {
+    "name": "maker_rebate_vs_taker_only_points",
+    "long_leg": {
+      "venue_slug": "venue_alpha",
+      "maker_bps": 0.0,
+      "taker_bps": 5.0,
+      "spread_bps": 2.0,
+      "impact_bps_10k": 1.0,
+      "impact_bps_50k": 2.0,
+      "impact_bps_100k": 4.0,
+      "depth_usd_10k": 10000.0,
+      "depth_usd_50k": 50000.0,
+      "depth_usd_100k": 100000.0,
+      "funding_rate_annualized_7d_mean": 0.05,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": false,
+      "maker_boost_multiplier": 1.0
+    },
+    "short_leg": {
+      "venue_slug": "venue_beta",
+      "maker_bps": 5.0,
+      "taker_bps": 0.5,
+      "spread_bps": 1.0,
+      "impact_bps_10k": 0.5,
+      "impact_bps_50k": 1.0,
+      "impact_bps_100k": 2.0,
+      "depth_usd_10k": 10000.0,
+      "depth_usd_50k": 50000.0,
+      "depth_usd_100k": 100000.0,
+      "funding_rate_annualized_7d_mean": 0.02,
+      "points_per_usd_volume_estimate": 2.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": false,
+      "taker_counts_for_points": true,
+      "maker_boost_multiplier": 1.0
+    },
+    "params": {
+      "notional_usd": 10000.0,
+      "hold_hours": 24.0
+    },
+    "expected": {
+      "cost_per_point_usd": 6.36986301369863e-05,
+      "points_per_1m_volume": 1500000.0,
+      "weekly_cost_usd": 26.753424657534246,
+      "funding_cost_usd": 0.8219178082191781,
+      "total_points": 60000.0,
+      "long_order_type": "maker",
+      "short_order_type": "taker",
+      "risks": {
+        "fill_risk": false,
+        "beyond_measured_depth": false
+      }
+    }
+  },
+  {
+    "name": "impact_interpolation_midpoint",
+    "long_leg": {
+      "venue_slug": "leg",
+      "maker_bps": 1.0,
+      "taker_bps": 3.0,
+      "spread_bps": 2.0,
+      "impact_bps_10k": 1.0,
+      "impact_bps_50k": 5.0,
+      "impact_bps_100k": 9.0,
+      "depth_usd_10k": 10000.0,
+      "depth_usd_50k": 50000.0,
+      "depth_usd_100k": 100000.0,
+      "funding_rate_annualized_7d_mean": 0.0,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": true,
+      "maker_boost_multiplier": 1.0
+    },
+    "short_leg": {
+      "venue_slug": "other",
+      "maker_bps": 1.0,
+      "taker_bps": 3.0,
+      "spread_bps": 2.0,
+      "impact_bps_10k": 1.0,
+      "impact_bps_50k": 2.0,
+      "impact_bps_100k": 4.0,
+      "depth_usd_10k": 10000.0,
+      "depth_usd_50k": 50000.0,
+      "depth_usd_100k": 100000.0,
+      "funding_rate_annualized_7d_mean": 0.0,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": true,
+      "maker_boost_multiplier": 1.0
+    },
+    "params": {
+      "notional_usd": 30000.0,
+      "hold_hours": 24.0
+    },
+    "expected": {
+      "cost_per_point_usd": 0.0001,
+      "points_per_1m_volume": 1000000.0,
+      "weekly_cost_usd": 84.0,
+      "funding_cost_usd": 0.0,
+      "total_points": 120000.0,
+      "long_order_type": "maker",
+      "short_order_type": "maker",
+      "risks": {
+        "fill_risk": true,
+        "beyond_measured_depth": false
+      }
+    }
+  },
+  {
+    "name": "same_venue_damped_impact",
+    "long_leg": {
+      "venue_slug": "venue_alpha",
+      "maker_bps": -2.0,
+      "taker_bps": 5.0,
+      "spread_bps": 16.1,
+      "impact_bps_10k": 5.0,
+      "impact_bps_50k": 12.0,
+      "impact_bps_100k": 28.0,
+      "depth_usd_10k": 9000.0,
+      "depth_usd_50k": 22000.0,
+      "depth_usd_100k": 28000.0,
+      "funding_rate_annualized_7d_mean": -0.05475,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 2.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": false,
+      "maker_boost_multiplier": 1.0
+    },
+    "short_leg": {
+      "venue_slug": "venue_alpha",
+      "maker_bps": -2.0,
+      "taker_bps": 5.0,
+      "spread_bps": 16.1,
+      "impact_bps_10k": 5.0,
+      "impact_bps_50k": 12.0,
+      "impact_bps_100k": 28.0,
+      "depth_usd_10k": 9000.0,
+      "depth_usd_50k": 22000.0,
+      "depth_usd_100k": 28000.0,
+      "funding_rate_annualized_7d_mean": -0.05475,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 2.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": false,
+      "maker_boost_multiplier": 1.0
+    },
+    "params": {
+      "notional_usd": 10000.0,
+      "hold_hours": 24.0
+    },
+    "expected": {
+      "cost_per_point_usd": -0.0001,
+      "points_per_1m_volume": 2000000.0,
+      "weekly_cost_usd": -56.0,
+      "funding_cost_usd": 0.0,
+      "total_points": 80000.0,
+      "long_order_type": "maker",
+      "short_order_type": "maker",
+      "risks": {
+        "fill_risk": true,
+        "beyond_measured_depth": false
+      }
+    }
+  },
+  {
+    "name": "fill_risk_thin_maker_book",
+    "long_leg": {
+      "venue_slug": "thin",
+      "maker_bps": -5.0,
+      "taker_bps": 3.0,
+      "spread_bps": 2.0,
+      "impact_bps_10k": 1.0,
+      "impact_bps_50k": 2.0,
+      "impact_bps_100k": 4.0,
+      "depth_usd_10k": 1000.0,
+      "depth_usd_50k": 1000.0,
+      "depth_usd_100k": 1000.0,
+      "funding_rate_annualized_7d_mean": 0.0,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": true,
+      "maker_boost_multiplier": 1.0
+    },
+    "short_leg": {
+      "venue_slug": "other",
+      "maker_bps": 1.0,
+      "taker_bps": 3.0,
+      "spread_bps": 2.0,
+      "impact_bps_10k": 1.0,
+      "impact_bps_50k": 2.0,
+      "impact_bps_100k": 4.0,
+      "depth_usd_10k": 10000.0,
+      "depth_usd_50k": 50000.0,
+      "depth_usd_100k": 100000.0,
+      "funding_rate_annualized_7d_mean": 0.0,
+      "points_per_usd_volume_estimate": 1.0,
+      "pair_weight_multiplier": 1.0,
+      "maker_counts_for_points": true,
+      "taker_counts_for_points": true,
+      "maker_boost_multiplier": 1.0
+    },
+    "params": {
+      "notional_usd": 10000.0,
+      "hold_hours": 24.0
+    },
+    "expected": {
+      "cost_per_point_usd": -0.0002,
+      "points_per_1m_volume": 1000000.0,
+      "weekly_cost_usd": -56.0,
+      "funding_cost_usd": 0.0,
+      "total_points": 40000.0,
+      "long_order_type": "maker",
+      "short_order_type": "maker",
+      "risks": {
+        "fill_risk": true,
+        "beyond_measured_depth": false
+      }
+    }
+  }
+]

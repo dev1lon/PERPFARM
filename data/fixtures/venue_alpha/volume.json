@@ -1,0 +1,10 @@
+{
+  "BTC-PERP": {
+    "volume_24h_usd": 500000000,
+    "open_interest_usd": 120000000
+  },
+  "kPEPE-PERP": {
+    "volume_24h_usd": 800000,
+    "open_interest_usd": 150000
+  }
+}
