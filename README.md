@@ -140,6 +140,16 @@ tooling needs NTFS-style symlinks/junction points that exFAT doesn't support.
 production builds on exFAT. Render's build environment (Linux, ext4) is not
 affected.
 
+**Why `npm run build` is `next build --webpack`:** Turbopack (Next 16's
+default bundler) fails to resolve `@tailwindcss/postcss` from
+`postcss.config.mjs` when built on Render -- `Error: Cannot find module
+'@tailwindcss/postcss'`, even with a clean install and no build cache. The
+package is genuinely installed and correctly listed in `package-lock.json`;
+this looks like a Turbopack module-resolution issue in its PostCSS
+transform, not a missing dependency. `--webpack` sidesteps it (matches the
+`next dev --webpack` path already used for local verification throughout
+this project). Revisit forcing webpack once a Next.js release fixes this.
+
 ## Scoring engine
 
 Pure functions in `worker/perpfarm/scoring/`; the full spec (inputs,
