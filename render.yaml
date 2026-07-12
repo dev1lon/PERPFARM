@@ -21,8 +21,9 @@
 # Migrations are NOT run automatically by any service here (running
 # `alembic upgrade head` from two services' build steps at once against the
 # same DB is a race). Run it manually once per deploy that changes the
-# schema, from a Render shell on any of the Python services:
-#   python -m alembic -c worker/alembic.ini upgrade head
+# schema, from a Render Shell tab on any of the Python services below --
+# the shell opens directly inside rootDir (worker/), so the path is bare:
+#   python -m alembic upgrade head
 
 databases:
   - name: perpfarm-db
@@ -89,6 +90,29 @@ services:
     schedule: "0 */6 * * *" # every 6 hours
     buildCommand: pip install -e .
     startCommand: perpfarm job fee-watch
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: perpfarm-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+  # Market-data snapshot sync (worker/perpfarm/jobs/sync_snapshots.py) --
+  # writes book_snapshots/funding_snapshots/volume_snapshots per active
+  # market. Load-bearing: nightly.py's spread_bps/funding inputs come only
+  # from these tables, and nothing else populates them (sync-markets only
+  # maintains the market *list*). Runs hourly, more often than nightly,
+  # since nightly.py medians/means over a rolling 24h/7d window.
+  - type: cron
+    name: perpfarm-sync-snapshots
+    runtime: python
+    rootDir: worker
+    plan: starter
+    region: oregon
+    schedule: "0 * * * *" # hourly
+    buildCommand: pip install -e .
+    startCommand: perpfarm job sync-snapshots
     envVars:
       - key: DATABASE_URL
         fromDatabase:

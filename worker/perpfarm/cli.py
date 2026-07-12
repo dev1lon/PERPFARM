@@ -8,6 +8,7 @@ from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.fee_watch import run_fee_watch
 from perpfarm.jobs.nightly import run_nightly
+from perpfarm.jobs.sync_snapshots import run_sync_snapshots
 from perpfarm.scoring.engine import score_route
 from perpfarm.scoring.fixture_loader import load_common_routes
 from perpfarm.scoring.types import ScoringParams
@@ -149,14 +150,14 @@ def print_routes_cmd(fixtures_dir: Path, data_dir: Path, notional: float, hold_h
 
 
 @cli.command("job")
-@click.argument("name", type=click.Choice(["nightly", "fee-watch"]))
+@click.argument("name", type=click.Choice(["nightly", "fee-watch", "sync-snapshots"]))
 @click.option("--as-of", type=click.DateTime(formats=["%Y-%m-%d"]), default=None)
 @click.option(
     "--fixtures-dir",
     type=click.Path(path_type=Path, exists=True, file_okay=False),
     default=DEFAULT_FIXTURES_DIR,
     show_default=True,
-    help="Used by fee-watch to build fixture-venue adapters; ignored by nightly.",
+    help="Used by fee-watch/sync-snapshots to build fixture-venue adapters; ignored by nightly.",
 )
 def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
     """Run a scheduled job (production, DB-backed)."""
@@ -175,6 +176,15 @@ def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
             click.echo(f"  error: {slug}: {msg}", err=True)
         if summary.errors:
             raise click.ClickException(f"{len(summary.errors)} venue(s) failed")
+    elif name == "sync-snapshots":
+        summary = run_sync_snapshots(engine, fixtures_dir=fixtures_dir)
+        click.echo(
+            f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
+        )
+        for market, msg in summary.errors:
+            click.echo(f"  error: {market}: {msg}", err=True)
+        if summary.errors:
+            raise click.ClickException(f"{len(summary.errors)} market(s) failed")
 
 
 if __name__ == "__main__":

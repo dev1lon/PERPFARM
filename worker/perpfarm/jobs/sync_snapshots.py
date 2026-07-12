@@ -1,0 +1,102 @@
+"""Market-data snapshot sync: writes book/funding/volume snapshots per active market.
+
+Populates the three DB-only observation tables (`book_snapshots`,
+`funding_snapshots`, `volume_snapshots`) that `jobs/nightly.py` reads
+medians/means from. Nothing else in this codebase writes to them --
+`sync-markets` only maintains the market *list* (which symbols exist), not
+price/funding/depth data. Without this job, `spread_bps` is always NULL for
+every route in the DB-backed path, so `is_complete` is always false.
+
+Meant to run more often than nightly -- nightly.py's `_BOOK_WINDOW`/
+`_FUNDING_WINDOW` (24h/7d rolling windows) assume more than one sample a day,
+or the "median"/"mean" they compute is just a single stale point.
+
+Each market's fetch (network/API calls, can raise `NotImplementedError` for
+an unwired adapter, or any other exception for a transient failure) is
+isolated from its DB write, and each write is its own small transaction --
+deliberately not one transaction for the whole run, so one bad market can't
+poison writes already committed for others.
+"""
+
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+from sqlalchemy import Engine, select
+
+from perpfarm.adapters.registry import build_adapter
+from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
+
+
+@dataclass
+class SnapshotSyncSummary:
+    written: int = 0
+    skipped: int = 0
+    errors: list[tuple[str, str]] = field(default_factory=list)
+
+
+def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSummary:
+    ts = datetime.now(timezone.utc)
+    summary = SnapshotSyncSummary()
+
+    with engine.connect() as read_conn:
+        rows = read_conn.execute(
+            select(venues.c.slug, markets.c.id, markets.c.symbol)
+            .select_from(markets.join(venues, markets.c.venue_id == venues.c.id))
+            .where(markets.c.is_active.is_(True))
+        ).all()
+
+    for slug, market_id, symbol in rows:
+        try:
+            adapter = build_adapter(slug, fixtures_dir)
+            book = adapter.get_orderbook_top(symbol)
+            funding = adapter.get_funding(symbol)
+            volume = adapter.get_volume(symbol)
+        except NotImplementedError:
+            summary.skipped += 1
+            continue
+        except Exception as exc:  # noqa: BLE001 -- one market must not sink the batch
+            summary.errors.append((f"{slug}:{symbol}", str(exc)))
+            continue
+
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    book_snapshots.insert().values(
+                        market_id=market_id,
+                        ts=ts,
+                        best_bid=book.best_bid,
+                        best_ask=book.best_ask,
+                        spread_bps=book.spread_bps,
+                        impact_bps_10k=book.impact_bps_10k,
+                        impact_bps_50k=book.impact_bps_50k,
+                        impact_bps_100k=book.impact_bps_100k,
+                        depth_usd_10k=book.depth_usd_10k,
+                        depth_usd_50k=book.depth_usd_50k,
+                        depth_usd_100k=book.depth_usd_100k,
+                    )
+                )
+                conn.execute(
+                    funding_snapshots.insert().values(
+                        market_id=market_id,
+                        ts=ts,
+                        funding_rate_raw=funding.funding_rate_raw,
+                        interval_hours=funding.interval_hours,
+                        funding_rate_annualized=funding.funding_rate_annualized,
+                    )
+                )
+                conn.execute(
+                    volume_snapshots.insert().values(
+                        market_id=market_id,
+                        ts=ts,
+                        volume_24h_usd=volume.volume_24h_usd,
+                        open_interest_usd=volume.open_interest_usd,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001 -- same isolation as the fetch phase
+            summary.errors.append((f"{slug}:{symbol}", str(exc)))
+            continue
+
+        summary.written += 1
+
+    return summary

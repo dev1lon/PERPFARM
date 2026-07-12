@@ -6,7 +6,7 @@ import type { Recipe, RecipesResponse, Strategy, VenueSummary } from "@/lib/type
 
 const STRATEGIES: { id: Strategy; label: string; description: string }[] = [
   { id: "cheapest", label: "Cheapest", description: "Lowest cost per point" },
-  { id: "max_points", label: "Max points", description: "Highest points per $1M volume" },
+  { id: "max_points", label: "Max points", description: "More points, higher cost" },
   { id: "balanced", label: "Balanced", description: "Cost and points, weighted evenly" },
 ];
 
