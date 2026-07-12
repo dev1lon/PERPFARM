@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "perpfarm",
+  title: "PERPFARM",
   description: "Cost-per-point optimizer for tokenless perp DEXes",
 };
 
