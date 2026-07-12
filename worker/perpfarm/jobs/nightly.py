@@ -6,9 +6,6 @@ pair of distinct venues listing that symbol when it's listed on >=2 venues
 (long/short are not interchangeable -- fees and funding can differ by
 direction).
 
-Not run against a live Postgres during development (none was available in
-this environment) -- the queries are written to match worker/perpfarm/schema.py
-exactly, but verify against a real DB before relying on this in production.
 """
 
 from datetime import date, datetime, timedelta, timezone
@@ -129,6 +126,14 @@ def _latest_points_distribution(conn, venue_id: int):
     return conn.execute(stmt).first()
 
 
+def _f(value) -> float | None:
+    """DB `Numeric` columns come back as `decimal.Decimal` (psycopg3), but
+    the scoring engine's dataclasses/arithmetic are typed and written for
+    plain `float` -- `Decimal * float` raises `TypeError`. Convert once at
+    the DB boundary rather than at every arithmetic site downstream."""
+    return float(value) if value is not None else None
+
+
 def _build_leg(
     conn,
     venue_id: int,
@@ -160,32 +165,33 @@ def _build_leg(
     # SELF_MATCH_IMPACT_FACTOR / docs/scoring.md.
     damping = SELF_MATCH_IMPACT_FACTOR if is_self_match else 1.0
 
-    def _damped(value: float | None) -> float | None:
+    def _damped(value) -> float | None:
+        value = _f(value)
         return value * damping if value is not None else None
 
     return LegInputs(
         venue_slug=venue_slug,
-        maker_bps=maker_bps,
-        taker_bps=taker_bps,
-        spread_bps=book["spread_bps"],
+        maker_bps=_f(maker_bps),
+        taker_bps=_f(taker_bps),
+        spread_bps=_f(book["spread_bps"]),
         impact_bps_10k=_damped(book["impact_bps_10k"]),
         impact_bps_50k=_damped(book["impact_bps_50k"]),
         impact_bps_100k=_damped(book["impact_bps_100k"]),
-        depth_usd_10k=book["depth_usd_10k"],
-        depth_usd_50k=book["depth_usd_50k"],
-        depth_usd_100k=book["depth_usd_100k"],
-        funding_rate_annualized_7d_mean=funding_rate,
+        depth_usd_10k=_f(book["depth_usd_10k"]),
+        depth_usd_50k=_f(book["depth_usd_50k"]),
+        depth_usd_100k=_f(book["depth_usd_100k"]),
+        funding_rate_annualized_7d_mean=_f(funding_rate),
         points_per_usd_volume_estimate=(
-            points_row.points_per_usd_volume_estimate if points_row else None
+            _f(points_row.points_per_usd_volume_estimate) if points_row else None
         ),
-        pair_weight_multiplier=weight_row.weight_multiplier if weight_row else 1.0,
+        pair_weight_multiplier=_f(weight_row.weight_multiplier) if weight_row else 1.0,
         maker_counts_for_points=rule_row.maker_counts_for_points if rule_row else None,
         taker_counts_for_points=rule_row.taker_counts_for_points if rule_row else None,
-        maker_boost_multiplier=rule_row.maker_boost_multiplier if rule_row else 1.0,
+        maker_boost_multiplier=_f(rule_row.maker_boost_multiplier) if rule_row else 1.0,
         manual_confidence=weakest_confidence(confidences) if confidences else None,
         manual_last_verified=min(verified_dates) if verified_dates else None,
-        points_distributed_week=dist_row.points_distributed_week if dist_row else None,
-        total_points_outstanding=dist_row.total_points_outstanding if dist_row else None,
+        points_distributed_week=_f(dist_row.points_distributed_week) if dist_row else None,
+        total_points_outstanding=_f(dist_row.total_points_outstanding) if dist_row else None,
     )
 
 

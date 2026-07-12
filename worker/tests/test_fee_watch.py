@@ -1,3 +1,5 @@
+import json
+
 from perpfarm.jobs.fee_watch import FeeChange, FeeWatchSummary, build_alert_payload, fee_hash
 
 
@@ -35,6 +37,23 @@ def test_build_alert_payload_shape():
         "current": {"maker_bps": -1.0, "taker_bps": 6.0},
         "source_url": "https://example.com/fees",
     }
+
+
+def test_build_alert_payload_is_json_serializable():
+    """payload_json is a JSONB column -- run_fee_watch must hand FeeChange
+    plain floats, not decimal.Decimal (Postgres Numeric columns come back as
+    Decimal, which json.dumps rejects). This only guards the payload shape;
+    the DB-boundary float() conversion itself lives in run_fee_watch, which
+    isn't unit-tested (no live Postgres in this environment)."""
+    change = FeeChange(
+        venue_slug="venue_alpha",
+        previous_maker_bps=-2.0,
+        previous_taker_bps=5.0,
+        current_maker_bps=-1.0,
+        current_taker_bps=6.0,
+        source_url=None,
+    )
+    json.dumps(build_alert_payload(change))
 
 
 def test_fee_watch_summary_defaults_to_all_zero():

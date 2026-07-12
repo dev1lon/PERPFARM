@@ -7,14 +7,10 @@ observation also writes an `alerts` row (kind='fee_change') so a future
 notifier can pick it up -- this job only detects and records, it does not
 deliver notifications (no delivery channel is wired up yet).
 
-Adapters that raise NotImplementedError (all 8 real venues, as of this
+Adapters that raise NotImplementedError (all real venues, as of this
 writing -- see the TODO(verify) markers in perpfarm/adapters/*.py) are
 skipped, not treated as errors: they simply haven't been wired up to a real
 API yet, which is expected, not a fee-watch failure.
-
-Not run against a live Postgres during development (none was available in
-this environment) -- the queries are written to match worker/perpfarm/schema.py
-exactly, but verify against a real DB before relying on this in production.
 """
 
 from dataclasses import dataclass, field
@@ -133,8 +129,11 @@ def run_fee_watch(
             if previous is not None:
                 change = FeeChange(
                     venue_slug=reg.slug,
-                    previous_maker_bps=previous.maker_bps,
-                    previous_taker_bps=previous.taker_bps,
+                    # previous.*_bps come back from Postgres as decimal.Decimal
+                    # (Numeric columns) -- not JSON-serializable as-is, and
+                    # payload_json below is a JSONB column.
+                    previous_maker_bps=float(previous.maker_bps),
+                    previous_taker_bps=float(previous.taker_bps),
                     current_maker_bps=fee.maker_bps,
                     current_taker_bps=fee.taker_bps,
                     source_url=fee.source_url,
