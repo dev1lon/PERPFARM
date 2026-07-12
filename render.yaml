@@ -8,9 +8,15 @@
 # deploying. Deploy via the Render dashboard "New > Blueprint" pointing at
 # this repo, then fix up anything the dashboard's validator flags.
 #
-# `plan: starter` / `region: oregon` are placeholders -- pick what fits your
-# account. Cron schedules below are defaults, not verified requirements --
-# adjust cadence to taste.
+# `region: oregon` and the service `plan: starter` values are placeholders --
+# pick what fits your account. The database plan is NOT "starter" -- Render
+# retired legacy Postgres instance types for new databases (Oct 2024); valid
+# values now are free/basic-256mb/basic-1gb/basic-4gb/pro-*/accelerated-*
+# (verified against https://render.com/docs/blueprint-spec). `basic-256mb`
+# below is the smallest paid tier; swap to `free` if you want the free tier
+# (time-limited/auto-expiring -- check current Render docs for the exact
+# terms before relying on it). Cron schedules below are defaults, not
+# verified requirements -- adjust cadence to taste.
 #
 # Migrations are NOT run automatically by any service here (running
 # `alembic upgrade head` from two services' build steps at once against the
@@ -21,7 +27,7 @@
 databases:
   - name: perpfarm-db
     databaseName: perpfarm
-    plan: starter
+    plan: basic-256mb
     region: oregon
 
 services:
