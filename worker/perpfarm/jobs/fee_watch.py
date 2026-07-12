@@ -89,7 +89,10 @@ def run_fee_watch(
     summary = FeeWatchSummary()
 
     with engine.begin() as conn:
-        venue_ids = dict(conn.execute(select(venues.c.slug, venues.c.id)))
+        # NOT dict(conn.execute(...)): CursorResult has a .keys() method, so
+        # dict() takes the mapping path and dies with "'CursorResult' object
+        # is not subscriptable" instead of iterating the rows.
+        venue_ids = {slug: venue_id for slug, venue_id in conn.execute(select(venues.c.slug, venues.c.id))}
 
         for reg in REGISTRY:
             venue_id = venue_ids.get(reg.slug)
