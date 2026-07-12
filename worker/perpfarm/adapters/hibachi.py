@@ -12,13 +12,11 @@ written. Public market data needs no API key.
     GET /market/data/open-interest?symbol=  -- totalQuantity (base units)
     GET /market/data/funding-rates?symbol=  -- history (not used here; see below)
 
-Funding interval: **1 hour**, established empirically -- consecutive
+Funding interval: **1 hour**. Confirmed by the official docs
+(docs.hibachi.xyz/hibachi-docs/trading/funding: "On Hibachi, funding
+payments are made every hour") and cross-checked live -- consecutive
 `fundingTimestamp`s in /market/data/funding-rates are exactly 3600s apart
-(checked 2026-07-12), and the live `nextFundingTimestamp` fell on an hour
-boundary inconsistent with the docs page's "every 8 hours at 00/08/16 UTC"
-claim (docs.hibachi.xyz/hibachi-docs/trading/funding appears stale; two 2026
-third-party reviews also say hourly). `estimatedFundingRate` is the
-per-interval (1h) rate.
+(2026-07-12). `estimatedFundingRate` is the per-interval (1h) rate.
 """
 
 import time
