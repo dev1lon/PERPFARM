@@ -127,3 +127,33 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Per-entity logo-placeholder badge + card tint, used where we don't have a
+   real brand logo yet (components/PerpDexLogo.tsx sets --pf-badge-light/
+   --pf-badge-dark inline per slug, from the dataviz skill's validated
+   categorical palette). Two custom properties, not one, because the color
+   itself must swap with the theme -- picking the right one is a plain CSS
+   selector, not something inline style can do on its own. */
+.pf-logo-badge {
+  background: var(--pf-badge-dark);
+}
+:root[data-theme="light"] .pf-logo-badge {
+  background: var(--pf-badge-light);
+}
+/* .pf-card-tint sets its own hover rule (rather than pairing with Tailwind's
+   hover:bg-* utility) because Tailwind v4 emits utilities inside @layer
+   utilities, and unlayered rules always beat layered ones regardless of
+   source order or specificity -- a plain `hover:bg-surface-hover` on the
+   same element would never win against this. */
+.pf-card-tint {
+  background: color-mix(in srgb, var(--pf-badge-dark) 7%, var(--surface-1));
+}
+.pf-card-tint:hover {
+  background: color-mix(in srgb, var(--pf-badge-dark) 14%, var(--surface-hover));
+}
+:root[data-theme="light"] .pf-card-tint {
+  background: color-mix(in srgb, var(--pf-badge-light) 6%, var(--surface-1));
+}
+:root[data-theme="light"] .pf-card-tint:hover {
+  background: color-mix(in srgb, var(--pf-badge-light) 12%, var(--surface-hover));
+}

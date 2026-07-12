@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { PerpDexLogo, perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -49,9 +50,13 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className="pf-transition flex flex-col gap-1 rounded-lg border border-border bg-surface-1 px-5 py-4 hover:bg-surface-hover sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                className="pf-transition pf-card-tint flex flex-col gap-1 rounded-lg border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                style={perpDexBadgeVars(v.slug)}
               >
-                <span className="font-medium text-text-primary">{v.name}</span>
+                <span className="flex items-center gap-3">
+                  <PerpDexLogo slug={v.slug} name={v.name} />
+                  <span className="font-medium text-text-primary">{v.name}</span>
+                </span>
                 <span className="flex items-center gap-3 text-sm">
                   <span className="text-text-muted">
                     {days !== null ? `season ends in ${days}d` : "season n/a"}
