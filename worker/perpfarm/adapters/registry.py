@@ -52,8 +52,8 @@ REGISTRY: list[VenueRegistration] = [
     _real("nado", "Nado", NadoAdapter),
     _real("txflow", "TxFlow", TxflowAdapter),
     _real("tradexyz", "Tradexyz", TradexyzAdapter),
-    _fixture("venue_alpha", "Venue Alpha (fixture)"),
-    _fixture("venue_beta", "Venue Beta (fixture)"),
+    _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
+    _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
 
 _BY_SLUG = {reg.slug: reg for reg in REGISTRY}

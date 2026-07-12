@@ -15,7 +15,7 @@ export default function MethodologyPage() {
         <p className="leading-relaxed text-text-muted">
           We add up everything a delta-neutral position pays: trading fees on both legs, the spread
           you cross, price impact at your size, and the 7-day average funding difference between the
-          two venues. That total is divided by the points the same volume earns. The number is
+          two perp-dexes. That total is divided by the points the same volume earns. The number is
           recomputed nightly.
         </p>
       </section>
@@ -23,8 +23,8 @@ export default function MethodologyPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-text-primary">Where the data comes from</h2>
         <p className="leading-relaxed text-text-muted">
-          Prices, books, and funding come from venue APIs, refreshed hourly. Fee schedules are read
-          from venue fee pages daily. Point weights come from public announcements, community
+          Prices, books, and funding come from perp-dex APIs, refreshed hourly. Fee schedules are read
+          from perp-dex fee pages daily. Point weights come from public announcements, community
           research, and our own test trades.
         </p>
       </section>
@@ -32,8 +32,8 @@ export default function MethodologyPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-text-primary">What can go wrong</h2>
         <p className="leading-relaxed text-text-muted">
-          Venues change point weights between seasons, sometimes without notice. Books go thin and
-          real slippage exceeds the estimate. Two accounts on the same venue are modeled as if they
+          Perp-dexes change point weights between seasons, sometimes without notice. Books go thin and
+          real slippage exceeds the estimate. Two accounts on the same perp-dex are modeled as if they
           mostly fill against each other, which is an approximation, not a measurement. Treat every
           number here as an estimate, not a guarantee.
         </p>

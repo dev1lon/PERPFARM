@@ -10,7 +10,7 @@ export default async function HomePage() {
   try {
     venues = await getVenues();
   } catch (err) {
-    loadError = err instanceof Error ? err.message : "failed to load venues";
+    loadError = err instanceof Error ? err.message : "failed to load perp-dexes";
     venues = [];
   }
 
@@ -20,10 +20,10 @@ export default async function HomePage() {
         <h1 className="text-3xl font-semibold text-text-primary">
           Farm perp points, pay less for them
         </h1>
-        <p className="text-text-muted">Every tokenless venue, ranked by real cost per point.</p>
+        <p className="text-text-muted">Every tokenless perp-dex, ranked by real cost per point.</p>
         {usingFixtures && (
           <p className="mt-2 inline-block rounded-md border border-dashed border-border px-2 py-1 text-xs text-text-muted">
-            No DATABASE_URL set -- showing the synthetic fixture venues for dev/demo.
+            No DATABASE_URL set -- showing the synthetic fixture perp-dexes for dev/demo.
           </p>
         )}
       </div>

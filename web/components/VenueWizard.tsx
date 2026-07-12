@@ -94,7 +94,7 @@ function HedgeSelect({
       >
         <span>
           <span className="text-text-muted">Hedge with: </span>
-          {selected?.name ?? "Select a venue"}
+          {selected?.name ?? "Select a perp-dex"}
         </span>
         <span className="text-text-muted" aria-hidden>
           ▾
@@ -112,7 +112,7 @@ function HedgeSelect({
               setActiveIndex(0);
             }}
             onKeyDown={onListKeyDown}
-            placeholder="Search venues"
+            placeholder="Search perp-dexes"
             className="w-full border-b border-border bg-transparent px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
           />
           <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
@@ -131,7 +131,7 @@ function HedgeSelect({
                 >
                   {o.slug === "self" && (
                     <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
-                      same venue
+                      same perp-dex
                     </span>
                   )}
                   {o.name}
@@ -272,7 +272,7 @@ function RecipeCard({
           )}
           {recipe.risks.washRisk && (
             <p className="text-negative">
-              Two accounts on the same venue -- modeled as mostly filling each other, an
+              Two accounts on the same perp-dex -- modeled as mostly filling each other, an
               approximation, not a measurement.
             </p>
           )}

@@ -25,20 +25,20 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search venues or pairs"
+        placeholder="Search perp-dexes or pairs"
         className="pf-transition w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent"
       />
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
           <p className="text-sm text-text-muted">
-            Nothing found. We track {venues.length} venue{venues.length === 1 ? "" : "s"}.
+            Nothing found. We track {venues.length} perp-dex{venues.length === 1 ? "" : "es"}.
           </p>
           <a
-            href="mailto:hello@perpfarm.example?subject=Venue%20suggestion"
+            href="mailto:hello@perpfarm.example?subject=Perp-dex%20suggestion"
             className="pf-transition text-sm text-accent hover:text-accent-hover"
           >
-            Suggest a venue
+            Suggest a perp-dex
           </a>
         </div>
       ) : (

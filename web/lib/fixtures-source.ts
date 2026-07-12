@@ -30,8 +30,8 @@ const MANUAL_DIR = path.join(DATA_DIR, "manual");
 
 const FIXTURE_VENUE_SLUGS = ["venue_alpha", "venue_beta"] as const;
 const VENUE_NAMES: Record<string, string> = {
-  venue_alpha: "Venue Alpha (fixture)",
-  venue_beta: "Venue Beta (fixture)",
+  venue_alpha: "Perp-dex Alpha (fixture)",
+  venue_beta: "Perp-dex Beta (fixture)",
 };
 
 const DEFAULT_PARAMS = { notionalUsd: 10_000, holdHours: 24 };
