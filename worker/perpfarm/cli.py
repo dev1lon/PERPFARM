@@ -6,6 +6,7 @@ from perpfarm.db import make_engine
 from perpfarm.ingest.manual import IngestError, ingest_manual
 from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
+from perpfarm.jobs.catalog import refresh_catalog
 from perpfarm.jobs.fee_watch import run_fee_watch
 from perpfarm.jobs.nightly import run_nightly
 from perpfarm.jobs.sync_snapshots import run_sync_snapshots
@@ -149,6 +150,48 @@ def print_routes_cmd(fixtures_dir: Path, data_dir: Path, notional: float, hold_h
         click.echo(f"{len(incomplete)} route(s) incomplete -- see data_freshness.incomplete_reasons")
 
 
+def _do_refresh_catalog(engine, fixtures_dir: Path, data_dir: Path) -> None:
+    """Shared by the `refresh-catalog` command and the auto-refresh at the
+    start of the nightly job. Echoes a summary; raises ClickException if any
+    venue's market sync failed."""
+    summary = refresh_catalog(engine, fixtures_dir=fixtures_dir, data_dir=data_dir)
+    click.echo(
+        f"refresh-catalog: {summary.venues} venue(s), {summary.manual_rows} manual row(s), "
+        f"{summary.markets_synced} market(s) synced, {summary.markets_skipped} venue(s) not wired up"
+    )
+    for slug, msg in summary.errors:
+        click.echo(f"  error: {slug}: {msg}", err=True)
+    if summary.errors:
+        raise click.ClickException(f"{len(summary.errors)} venue(s) failed to sync markets")
+
+
+@cli.command("refresh-catalog")
+@click.option(
+    "--fixtures-dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=DEFAULT_FIXTURES_DIR,
+    show_default=True,
+)
+@click.option(
+    "--data-dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=DEFAULT_DATA_DIR,
+    show_default=True,
+)
+def refresh_catalog_cmd(fixtures_dir: Path, data_dir: Path) -> None:
+    """Register venues + ingest manual data + sync all market lists (one shot).
+
+    Idempotent. Everything the nightly job needs to know a venue exists;
+    nightly runs this automatically, so a manual run is only for seeing the
+    result immediately after adding a venue.
+    """
+    engine = make_engine()
+    try:
+        _do_refresh_catalog(engine, fixtures_dir, data_dir)
+    except IngestError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 @cli.command("job")
 @click.argument("name", type=click.Choice(["nightly", "fee-watch", "sync-snapshots"]))
 @click.option("--as-of", type=click.DateTime(formats=["%Y-%m-%d"]), default=None)
@@ -157,13 +200,32 @@ def print_routes_cmd(fixtures_dir: Path, data_dir: Path, notional: float, hold_h
     type=click.Path(path_type=Path, exists=True, file_okay=False),
     default=DEFAULT_FIXTURES_DIR,
     show_default=True,
-    help="Used by fee-watch/sync-snapshots to build fixture-venue adapters; ignored by nightly.",
+    help="Used by fee-watch/sync-snapshots/nightly-refresh to build fixture-venue adapters.",
 )
-def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
+@click.option(
+    "--data-dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=DEFAULT_DATA_DIR,
+    show_default=True,
+    help="Manual-YAML dir; used by nightly's auto catalog refresh.",
+)
+@click.option(
+    "--skip-refresh",
+    is_flag=True,
+    help="Skip nightly's auto catalog refresh (assume the catalog is already current).",
+)
+def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: bool) -> None:
     """Run a scheduled job (production, DB-backed)."""
     engine = make_engine()
     as_of_date = as_of.date() if as_of else None
     if name == "nightly":
+        # Auto-register any venue/market/manual-data change since the last
+        # run, so adding a venue needs no per-venue shell step -- just deploy.
+        if not skip_refresh:
+            try:
+                _do_refresh_catalog(engine, fixtures_dir, data_dir)
+            except IngestError as exc:
+                raise click.ClickException(str(exc)) from exc
         count = run_nightly(engine, as_of=as_of_date)
         click.echo(f"nightly: wrote {count} route_scores row(s)")
     elif name == "fee-watch":

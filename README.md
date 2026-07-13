@@ -61,12 +61,14 @@ export DATABASE_URL=postgresql+psycopg://user:pass@host:5432/perpfarm
 python -m alembic -c worker/alembic.ini upgrade head   # or: cd worker && alembic upgrade head
 perpfarm bootstrap-venues      # upserts `venues` from the adapter registry
 perpfarm ingest-manual         # validates + upserts data/manual/*.yaml
-perpfarm sync-markets venue_alpha   # populates `markets` from a FixtureAdapter
+perpfarm refresh-catalog       # bootstrap-venues + ingest-manual + sync every market list
 perpfarm job fee-watch         # diffs fee schedules, writes fee_schedules/alerts rows
 perpfarm job sync-snapshots    # populates book/funding/volume snapshots
 perpfarm job nightly           # recomputes route_scores -- needs fee-watch AND
                                # sync-snapshots to have run at least once, or
-                               # every route scores as incomplete
+                               # every route scores as incomplete. Auto-runs
+                               # refresh-catalog first (adding a venue = deploy,
+                               # no manual catalog step).
 ```
 
 No DB needed to see the scoring engine work end-to-end:

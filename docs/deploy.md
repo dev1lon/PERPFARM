@@ -40,25 +40,36 @@ the first deploy, and after any deploy that changes
 python -m alembic upgrade head
 ```
 
-Then, once (first deploy only, or whenever a new venue is added to
-`perpfarm/adapters/registry.py`):
+Then seed the data (first deploy only -- after this the crons keep
+everything current on their own):
 
 ```bash
-perpfarm bootstrap-venues
-perpfarm ingest-manual
-perpfarm sync-markets venue_alpha    # once per venue with a working adapter
-perpfarm sync-markets venue_beta
-perpfarm job fee-watch               # seeds fee_schedules -- nightly reads fees ONLY from here
-perpfarm job sync-snapshots          # seeds book/funding/volume snapshots
-perpfarm job nightly                 # now every input exists; routes score complete
+perpfarm refresh-catalog     # register venues + ingest manual YAML + sync every market list
+perpfarm job fee-watch       # seed fee_schedules -- nightly reads fees ONLY from here
+perpfarm job sync-snapshots  # seed book/funding/volume snapshots
+perpfarm job nightly         # now every input exists; routes score complete
 ```
 
-Order matters for the last three: `nightly` reads fees from
-`fee_schedules` (populated only by `fee-watch`) and spread/funding from the
-snapshot tables (populated only by `sync-snapshots`). Run `nightly` first
-and every route lands `is_complete: false` -- the site renders venues but
-shows "no data yet" everywhere. After first setup the crons keep all three
-fresh on their own.
+Order matters: `nightly` reads fees from `fee_schedules` (populated only by
+`fee-watch`) and spread/funding from the snapshot tables (populated only by
+`sync-snapshots`). Run `nightly` first and every route lands
+`is_complete: false` -- the site renders venues but shows "no data yet"
+everywhere.
+
+### Adding a venue later needs no shell at all
+
+`nightly` runs `refresh-catalog` automatically at the start of every run, so
+after the first setup, adding a venue is just: write its adapter, register it
+in `adapters/registry.py`, add its `data/manual/*.yaml` rows, and deploy. The
+next nightly run registers it, ingests its manual data, syncs its market
+list, and scores it -- no `bootstrap-venues`/`ingest-manual`/`sync-markets`
+by hand. (Trigger a nightly run from the dashboard, or just wait for the
+scheduled one.) The one exception is a **schema change**: a new Alembic
+migration still needs a manual `python -m alembic upgrade head`, because
+Render's multi-service model can't run migrations race-free on its own.
+
+`perpfarm refresh-catalog` is also available as a standalone command if you
+want to see the result immediately instead of waiting for nightly.
 
 `perpfarm sync-markets <slug>` (per-venue, manual) still needs a run per
 venue whenever its market list changes -- it's deliberately not scheduled,
