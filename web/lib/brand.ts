@@ -19,8 +19,12 @@ export interface BrandAssets {
    *  it replaces both the logo badge and the plain-text name on the home
    *  card. Falls back to PerpName text if the file fails to load. */
   wordmark?: string;
-  /** Wide hero background, shown behind the header on the /<slug> page. */
-  background?: string;
+  /** Warm radial-glow background for the /<slug> page, in the perp's own
+   *  brand colors (like the reference Hibachi calculator site) -- a dark
+   *  page with a soft glow behind the header, rendered in pure CSS, no
+   *  image. `core` is the bright center hue; optional `halo` is a fainter,
+   *  wider second hue for depth (e.g. the purple end of a flame gradient). */
+  glow?: { core: string; halo?: string };
 }
 
 export const BRAND: Record<string, BrandAssets> = {
@@ -29,7 +33,8 @@ export const BRAND: Record<string, BrandAssets> = {
     // white flame + "HIBACHI" lockup -- includes the mark, so no separate
     // logo badge is shown next to it
     wordmark: "logos/hibachi/watermark.png",
-    background: "logos/hibachi/background.png",
+    // flame palette: orange core, purple halo (from the brand's gradient)
+    glow: { core: "#fb6a3c", halo: "#5b1e9e" },
   },
 };
 

@@ -21,20 +21,33 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
-  const background = brandAssets(venueSlug).background;
+  const glow = brandAssets(venueSlug).glow;
+
+  // Warm radial glow behind the header, in the perp's brand colors (like the
+  // reference Hibachi calc site) -- a bright core at top-center plus an
+  // optional wider, fainter halo, both fading into the page background.
+  const glowStyle = glow
+    ? {
+        backgroundImage: [
+          `radial-gradient(80% 46% at 50% 0%, color-mix(in srgb, ${glow.core} 32%, transparent), transparent 62%)`,
+          ...(glow.halo
+            ? [
+                `radial-gradient(130% 80% at 50% -8%, color-mix(in srgb, ${glow.halo} 14%, transparent), transparent 72%)`,
+              ]
+            : []),
+        ].join(", "),
+      }
+    : undefined;
 
   return (
     <div className="relative">
-      {background && (
-        // Full-bleed hero band behind the header. The gradient scrim keeps
-        // the header text legible over an arbitrary image in both themes and
-        // fades the image into the page background at the bottom.
+      {glow && (
+        // Fixed so the glow anchors to the top of the viewport and doesn't
+        // scroll away; pointer-events-none so it never intercepts clicks.
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-cover bg-center"
-          style={{
-            backgroundImage: `linear-gradient(to bottom, color-mix(in srgb, var(--bg) 55%, transparent), var(--bg)), url(/${background})`,
-          }}
+          className="pointer-events-none fixed inset-x-0 top-0 h-[70vh]"
+          style={glowStyle}
         />
       )}
       <div className="relative mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
