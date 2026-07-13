@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PerpDexLogo, perpDexBadgeVars } from "@/components/PerpDexLogo";
+import { brandAssets } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -55,7 +56,16 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
               >
                 <span className="flex items-center gap-3">
                   <PerpDexLogo slug={v.slug} name={v.name} />
-                  <span className="font-medium text-text-primary">{v.name}</span>
+                  {brandAssets(v.slug).wordmark ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- static wordmark from /public
+                    <img
+                      src={`/${brandAssets(v.slug).wordmark}`}
+                      alt={v.name}
+                      className="h-5 w-auto max-w-[160px] object-contain object-left"
+                    />
+                  ) : (
+                    <span className="font-medium text-text-primary">{v.name}</span>
+                  )}
                 </span>
                 <span className="flex items-center gap-3 text-sm">
                   <span className="text-text-muted">

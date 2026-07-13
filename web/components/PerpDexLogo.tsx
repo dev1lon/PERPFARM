@@ -1,9 +1,12 @@
-/** Placeholder logo badge, used until real brand assets are supplied per
- * venue. Color is a deterministic hash of the slug (not list position) so a
- * given venue keeps its color across re-sorts/filters -- see the dataviz
- * skill's "color follows the entity, never its rank" rule. Hues are the
- * validated categorical palette (references/palette.md), one array per
- * theme since the palette itself is theme-stepped, not just re-tinted. */
+/** Perp logo badge: the real logo image when one is registered in
+ * lib/brand.ts, else a colored monogram placeholder. The placeholder color
+ * is a deterministic hash of the slug (not list position) so a given venue
+ * keeps its color across re-sorts/filters -- see the dataviz skill's "color
+ * follows the entity, never its rank" rule. Hues are the validated
+ * categorical palette (references/palette.md), one array per theme since the
+ * palette itself is theme-stepped, not just re-tinted. */
+
+import { brandAssets } from "@/lib/brand";
 
 const CATEGORICAL_LIGHT = [
   "#2a78d6",
@@ -43,12 +46,6 @@ export function perpDexBadgeVars(slug: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-/** Real brand assets, dropped into web/public/logos/ (see the README there).
- * A slug listed here renders its image; anything else gets the colored
- * monogram placeholder. Kept as an explicit map (not a runtime file probe)
- * so both server and client components resolve it identically. */
-const LOGO_FILES: Record<string, string> = {};
-
 export function PerpDexLogo({
   slug,
   name,
@@ -58,14 +55,14 @@ export function PerpDexLogo({
   name: string;
   size?: number;
 }) {
-  const logoFile = LOGO_FILES[slug];
-  if (logoFile) {
+  const logo = brandAssets(slug).logo;
+  if (logo) {
     // Plain <img>, not next/image: tiny static icons served straight from
     // /public -- optimization buys nothing at 32-40px and chokes on SVGs.
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/logos/${logoFile}`}
+        src={`/${logo}`}
         alt=""
         aria-hidden
         width={size}

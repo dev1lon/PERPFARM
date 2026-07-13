@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
+import { brandAssets } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { MarkdownLite } from "@/lib/markdown-lite";
@@ -19,10 +20,24 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
+  const background = brandAssets(venueSlug).background;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
-      <div className="flex flex-col gap-4">
+    <div className="relative">
+      {background && (
+        // Full-bleed hero band behind the header. The gradient scrim keeps
+        // the header text legible over an arbitrary image in both themes and
+        // fades the image into the page background at the bottom.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-cover bg-center"
+          style={{
+            backgroundImage: `linear-gradient(to bottom, color-mix(in srgb, var(--bg) 55%, transparent), var(--bg)), url(/${background})`,
+          }}
+        />
+      )}
+      <div className="relative mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
+        <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <PerpDexLogo slug={venueSlug} name={venue.name} size={40} />
@@ -109,7 +124,8 @@ export default async function VenuePage({
         )}
       </div>
 
-      <VenueWizard venueSlug={venueSlug} otherVenues={otherVenues} />
+        <VenueWizard venueSlug={venueSlug} otherVenues={otherVenues} />
+      </div>
     </div>
   );
 }
