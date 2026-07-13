@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PerpDexLogo, perpDexBadgeVars } from "@/components/PerpDexLogo";
-import { PerpName } from "@/components/PerpName";
+import { PerpWordmark } from "@/components/PerpWordmark";
+import { brandAssets } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -55,8 +56,15 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 style={perpDexBadgeVars(v.slug)}
               >
                 <span className="flex items-center gap-3">
-                  <PerpDexLogo slug={v.slug} name={v.name} />
-                  <PerpName name={v.name} className="text-base" />
+                  {/* Wordmark stands alone (no logo before it); only perps
+                      without a wordmark show the logo badge + text name. */}
+                  {!brandAssets(v.slug).wordmark && <PerpDexLogo slug={v.slug} name={v.name} />}
+                  <PerpWordmark
+                    slug={v.slug}
+                    name={v.name}
+                    imgClassName="h-6 w-auto max-w-[180px] object-contain object-left"
+                    nameClassName="text-base"
+                  />
                 </span>
                 <span className="flex items-center gap-3 text-sm">
                   <span className="text-text-muted">

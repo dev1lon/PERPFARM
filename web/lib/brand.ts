@@ -11,18 +11,24 @@
  */
 
 export interface BrandAssets {
-  /** Square icon, shown on the badge (home card + perp page header). */
+  /** Square icon. Shown on the badge only when there's no `wordmark` -- when
+   *  a wordmark exists it stands alone (the "remove the logo before the
+   *  text" rule). */
   logo?: string;
+  /** The perp's name as a brand image in its own unique font. When present,
+   *  it replaces both the logo badge and the plain-text name on the home
+   *  card. Falls back to PerpName text if the file fails to load. */
+  wordmark?: string;
   /** Wide hero background, shown behind the header on the /<slug> page. */
   background?: string;
 }
 
-// The perp NAME is not an asset here -- it's rendered as live text by
-// components/PerpName.tsx (bold uppercase wordmark style), the same for every
-// perp. Only the logo mark and hero background are per-perp images.
 export const BRAND: Record<string, BrandAssets> = {
   hibachi: {
     logo: "logos/hibachi/logo.png",
+    // white flame + "HIBACHI" lockup -- includes the mark, so no separate
+    // logo badge is shown next to it
+    wordmark: "logos/hibachi/watermark.png",
     background: "logos/hibachi/background.png",
   },
 };
