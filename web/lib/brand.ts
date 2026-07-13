@@ -22,9 +22,9 @@ export interface BrandAssets {
   /** Warm radial-glow background for the /<slug> page, in the perp's own
    *  brand colors (like the reference Hibachi calculator site) -- a dark
    *  page with a soft glow behind the header, rendered in pure CSS, no
-   *  image. `core` is the bright center hue; optional `halo` is a fainter,
-   *  wider second hue for depth (e.g. the purple end of a flame gradient). */
-  glow?: { core: string; halo?: string };
+   *  image. Hex colors from the perp's palette, bright CORE first and
+   *  fainter/wider OUTER last; each becomes one radial layer (up to 4). */
+  glow?: string[];
 }
 
 export const BRAND: Record<string, BrandAssets> = {
@@ -33,8 +33,8 @@ export const BRAND: Record<string, BrandAssets> = {
     // white flame + "HIBACHI" lockup -- includes the mark, so no separate
     // logo badge is shown next to it
     wordmark: "logos/hibachi/watermark.png",
-    // flame palette: orange core, purple halo (from the brand's gradient)
-    glow: { core: "#fb6a3c", halo: "#5b1e9e" },
+    // exact brand palette (flame gradient): orange core -> pink -> purple
+    glow: ["#FB743F", "#E40E6B", "#4E08BF"],
   },
 };
 

@@ -24,24 +24,30 @@ export default async function VenuePage({
   const glow = brandAssets(venueSlug).glow;
 
   // Warm radial glow behind the header, in the perp's brand colors (like the
-  // reference Hibachi calc site) -- a bright core at top-center plus an
-  // optional wider, fainter halo, both fading into the page background.
-  const glowStyle = glow
+  // reference Hibachi calc site). Each color becomes one radial layer, bright
+  // core first (painted on top) to faint/wide outer last -- so a multi-hue
+  // palette reads as a flame-like gradient fading into the page background.
+  const GLOW_LAYERS = [
+    { size: "72% 44% at 50% 0%", alpha: 34 },
+    { size: "104% 62% at 50% -4%", alpha: 18 },
+    { size: "140% 86% at 50% -12%", alpha: 11 },
+    { size: "172% 100% at 50% -20%", alpha: 7 },
+  ];
+  const glowStyle = glow?.length
     ? {
-        backgroundImage: [
-          `radial-gradient(80% 46% at 50% 0%, color-mix(in srgb, ${glow.core} 32%, transparent), transparent 62%)`,
-          ...(glow.halo
-            ? [
-                `radial-gradient(130% 80% at 50% -8%, color-mix(in srgb, ${glow.halo} 14%, transparent), transparent 72%)`,
-              ]
-            : []),
-        ].join(", "),
+        backgroundImage: glow
+          .slice(0, GLOW_LAYERS.length)
+          .map(
+            (color, i) =>
+              `radial-gradient(${GLOW_LAYERS[i].size}, color-mix(in srgb, ${color} ${GLOW_LAYERS[i].alpha}%, transparent), transparent 66%)`
+          )
+          .join(", "),
       }
     : undefined;
 
   return (
     <div className="relative">
-      {glow && (
+      {glowStyle && (
         // Fixed so the glow anchors to the top of the viewport and doesn't
         // scroll away; pointer-events-none so it never intercepts clicks.
         <div

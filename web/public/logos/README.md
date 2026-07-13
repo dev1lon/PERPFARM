@@ -23,8 +23,9 @@ One folder per perp, named by its venue slug. Inside, up to two files:
 
 The perp-page **background** is not an image file -- it's a CSS radial glow in
 the perp's brand colors (like the reference Hibachi calc site), configured as
-`glow: { core, halo }` in `web/lib/brand.ts` (hex colors from the perp's
-palette), not dropped in this folder.
+`glow: ["#core", "#mid", "#outer"]` in `web/lib/brand.ts` -- an array of exact
+hex colors from the perp's palette, bright core first to faint outer last (up
+to 4). Not dropped in this folder.
 
 After adding files, register the folder in `web/lib/brand.ts` (one entry per
 slug, only the fields that exist).
