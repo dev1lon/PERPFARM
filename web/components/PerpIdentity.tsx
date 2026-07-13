@@ -24,16 +24,27 @@ export function PerpIdentity({
   namePx: number;
   nameClassName?: string;
 }) {
-  const { mark, nameImage } = brandAssets(slug);
+  const { mark, nameImage, markScale } = brandAssets(slug);
+  // Fixed column (width + height) so every row lines up and stays an even
+  // height regardless of per-perp mark scaling; 1.4 is the max supported scale.
+  const colW = Math.round(markPx * 1.7);
+  const colH = Math.round(markPx * 1.4);
+  const markH = Math.round(markPx * (markScale ?? 1));
   return (
     <span className="flex items-center gap-3">
       <span
         className="flex shrink-0 items-center justify-center"
-        style={{ width: markPx * 1.5, height: markPx }}
+        style={{ width: colW, height: colH }}
       >
         {mark ? (
           // eslint-disable-next-line @next/next/no-img-element -- static mark from /public
-          <img src={`/${mark}`} alt="" aria-hidden className="max-h-full w-auto" style={{ height: markPx }} />
+          <img
+            src={`/${mark}`}
+            alt=""
+            aria-hidden
+            className="max-h-full max-w-full w-auto"
+            style={{ height: markH }}
+          />
         ) : (
           <PerpDexLogo slug={slug} name={name} size={markPx} />
         )}

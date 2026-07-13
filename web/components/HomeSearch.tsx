@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandAssets } from "@/lib/brand";
+import { cardBrandBg } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -64,14 +64,10 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
-            // A normal surface card (same lightness + even border as every
-            // other card, so there's no dark right edge reading as a seam)
-            // with the brand hue as a soft glow on the left behind the logo,
-            // fading to plain surface by the middle.
-            const glow0 = brandAssets(v.slug).glow?.[0];
-            const cardBg = glow0
-              ? `linear-gradient(to right, color-mix(in srgb, ${glow0} 22%, var(--surface-1)), var(--surface-1) 55%)`
-              : undefined;
+            // Branded perps: brand glow on the left over the perp's own warm/
+            // navy base (no cool tint bleeding into a warm brand, right edge
+            // blends into the page); others keep the monogram-color tint.
+            const cardBg = cardBrandBg(v.slug);
             return (
               <Link
                 key={v.slug}

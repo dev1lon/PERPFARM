@@ -12,9 +12,14 @@
 
 export interface BrandAssets {
   /** The perp's flame/logo MARK, split out of its wordmark and trimmed.
-   *  Rendered at a fixed HEIGHT so every perp's mark is the same size and on
-   *  the same line. Falls back to the colored monogram when absent. */
+   *  Rendered in a fixed-size column so every perp's mark shares one line and
+   *  names all start at the same x. Falls back to the colored monogram. */
   mark?: string;
+  /** Optional per-perp size multiplier for the mark, to visually match marks
+   *  of different aspect ratios (a narrow tall flame looks smaller than a wide
+   *  one at the same height). Default 1; capped by the column so rows stay an
+   *  even height. */
+  markScale?: number;
   /** The perp's NAME as a brand image (its unique font), split out of its
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
    *  the same size. Falls back to PerpName text when absent. */
@@ -40,6 +45,8 @@ export const BRAND: Record<string, BrandAssets> = {
   },
   hibachi: {
     mark: "logos/hibachi/mark.png",
+    // narrow tall flame -> scale up so it reads as big as wider marks
+    markScale: 1.4,
     nameImage: "logos/hibachi/name.png",
     // brand's warm "left" swatch (orange -> red), darkened into the page bg
     glow: ["#FB743F", "#FE344A"],
@@ -69,4 +76,18 @@ export function darkBrandGradient(
     (c, i) => `color-mix(in srgb, ${c} ${Math.max(24 - i * 8, 8)}%, ${base})`
   );
   return `linear-gradient(${direction}, ${stops.join(", ")}, ${end ?? base})`;
+}
+
+/** Home-card background for a branded perp: the brand hue as a glow on the
+ * LEFT (behind the logo) over the perp's OWN dark base -- warm for Hibachi,
+ * navy for Variational -- so no cool/blue tint creeps into a warm brand, and
+ * the base (a near-black close to the page) keeps the right edge from reading
+ * as a lighter panel. Uniform base from the middle rightward (no band).
+ * Returns undefined for perps with no brand colors. */
+export function cardBrandBg(slug: string): string | undefined {
+  const { glow, glowBase } = brandAssets(slug);
+  const g0 = glow?.[0];
+  if (!g0) return undefined;
+  const base = glowBase ?? DEFAULT_DARK;
+  return `linear-gradient(to right, color-mix(in srgb, ${g0} 28%, ${base}), ${base} 52%)`;
 }
