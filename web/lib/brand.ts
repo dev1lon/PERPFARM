@@ -32,10 +32,8 @@ export interface BrandAssets {
 
 export const BRAND: Record<string, BrandAssets> = {
   variational: {
-    // NOTE: vari/watermark.png is the BLACK-text version (for light
-    // backgrounds); its "Variational" text is invisible on our dark site, so
-    // it's intentionally not wired as a `wordmark` yet -- the monogram + text
-    // fallback is used until a white/on-dark wordmark is provided.
+    // blue flame + white "Variational" lockup (on-dark version)
+    wordmark: "logos/vari/watermark.png",
     // brand palette: Blue -> Navy, on the brand's Black base
     glow: ["#4C9AF8", "#1C5BD9"],
     glowBase: "#010612",
