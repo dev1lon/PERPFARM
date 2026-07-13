@@ -22,10 +22,11 @@ export default async function VenuePage({
   const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   // Full-page DARK brand background (shared recipe with the home card, see
-  // darkBrandGradient): the perp's warm palette hues mixed into a near-black,
-  // top -> bottom, so the page reads as a dark, warm-tinted surface (like the
-  // reference Hibachi card) -- keeps white text/dark cards readable.
-  const pageBg = darkBrandGradient(brandAssets(venueSlug).glow);
+  // darkBrandGradient): the perp's palette hues mixed into its near-black
+  // base, top -> bottom, so the page reads as a dark, brand-tinted surface
+  // (like the reference Hibachi card) -- keeps white text/dark cards readable.
+  const { glow, glowBase } = brandAssets(venueSlug);
+  const pageBg = darkBrandGradient(glow, { base: glowBase });
   const glowStyle = pageBg ? { backgroundImage: pageBg } : undefined;
 
   return (

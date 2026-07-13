@@ -8,19 +8,35 @@ import { brandAssets, darkBrandGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
+// Perps pinned to the top of the list, in this order; everything else follows
+// alphabetically.
+const PINNED_ORDER = ["variational", "hibachi"];
+
 export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
   const [query, setQuery] = useState("");
 
+  const ordered = useMemo(() => {
+    const rank = (slug: string) => {
+      const i = PINNED_ORDER.indexOf(slug);
+      return i === -1 ? Number.POSITIVE_INFINITY : i;
+    };
+    return [...venues].sort((a, b) => {
+      const ra = rank(a.slug);
+      const rb = rank(b.slug);
+      return ra !== rb ? ra - rb : a.name.localeCompare(b.name);
+    });
+  }, [venues]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return venues;
-    return venues.filter(
+    if (!q) return ordered;
+    return ordered.filter(
       (v) =>
         v.name.toLowerCase().includes(q) ||
         v.slug.toLowerCase().includes(q) ||
         v.pairs.some((p) => p.toLowerCase().includes(q))
     );
-  }, [venues, query]);
+  }, [ordered, query]);
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
@@ -48,16 +64,22 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
-            // Perps with brand colors get the same dark warm brand gradient
-            // as their page (warm at the logo side, fading dark to the right);
-            // others keep the generic monogram-color tint.
-            const cardBg = darkBrandGradient(brandAssets(v.slug).glow, "to right");
+            // Perps with brand colors get the same dark brand gradient as
+            // their page (brand hue at the logo side, fading toward the page
+            // background on the right so the card's right edge blends into the
+            // page -- no seam); others keep the generic monogram-color tint.
+            const { glow, glowBase } = brandAssets(v.slug);
+            const cardBg = darkBrandGradient(glow, {
+              direction: "to right",
+              base: glowBase,
+              end: "var(--bg)",
+            });
             return (
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className={`pf-transition flex flex-col gap-1 rounded-lg px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                  cardBg ? "hover:brightness-110" : "pf-card-tint border border-border"
+                className={`pf-transition flex flex-col gap-1 rounded-lg border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                  cardBg ? "hover:brightness-110" : "pf-card-tint"
                 }`}
                 style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
               >
