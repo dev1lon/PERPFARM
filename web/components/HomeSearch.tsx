@@ -56,8 +56,8 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className={`pf-transition flex flex-col gap-1 rounded-lg border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                  cardBg ? "border-border hover:border-white/20" : "pf-card-tint border-border"
+                className={`pf-transition flex flex-col gap-1 rounded-lg px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                  cardBg ? "hover:brightness-110" : "pf-card-tint border border-border"
                 }`}
                 style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
               >
