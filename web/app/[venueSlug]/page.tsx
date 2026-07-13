@@ -23,15 +23,16 @@ export default async function VenuePage({
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   const glow = brandAssets(venueSlug).glow;
 
-  // Warm radial glow behind the header, in the perp's brand colors (like the
-  // reference Hibachi calc site). Each color becomes one radial layer, bright
-  // core first (painted on top) to faint/wide outer last -- so a multi-hue
-  // palette reads as a flame-like gradient fading into the page background.
+  // Full-page flame background in the perp's brand colors. Each color becomes
+  // one radial layer, distributed top -> bottom (bright core up top, fainter
+  // hues spread down the page) so the whole page reads as a brand-tinted
+  // gradient, not a glow concentrated under the header. Bright core is first
+  // so it paints on top.
   const GLOW_LAYERS = [
-    { size: "72% 44% at 50% 0%", alpha: 34 },
-    { size: "104% 62% at 50% -4%", alpha: 18 },
-    { size: "140% 86% at 50% -12%", alpha: 11 },
-    { size: "172% 100% at 50% -20%", alpha: 7 },
+    { size: "95% 42% at 50% 0%", alpha: 32 },
+    { size: "120% 58% at 50% 32%", alpha: 18 },
+    { size: "155% 85% at 50% 72%", alpha: 14 },
+    { size: "195% 115% at 50% 108%", alpha: 10 },
   ];
   const glowStyle = glow?.length
     ? {
@@ -46,15 +47,12 @@ export default async function VenuePage({
     : undefined;
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen">
       {glowStyle && (
-        // Fixed so the glow anchors to the top of the viewport and doesn't
-        // scroll away; pointer-events-none so it never intercepts clicks.
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-x-0 top-0 h-[70vh]"
-          style={glowStyle}
-        />
+        // Covers the whole page (not just the top) so the brand gradient is
+        // the page background; pointer-events-none so it never intercepts
+        // clicks. Sits behind the content, which is `relative` above it.
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={glowStyle} />
       )}
       <div className="relative mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-4">
