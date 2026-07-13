@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandAssets, darkBrandGradient } from "@/lib/brand";
+import { brandAssets } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -64,16 +64,14 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
-            // Perps with brand colors get the same dark brand gradient as
-            // their page (brand hue at the logo side, fading toward the page
-            // background on the right so the card's right edge blends into the
-            // page -- no seam); others keep the generic monogram-color tint.
-            // Base the card tint on the page background so its right edge
-            // fades into the page with no seam; the brand hue sits on the left.
-            const cardBg = darkBrandGradient(brandAssets(v.slug).glow, {
-              direction: "to right",
-              base: "var(--bg)",
-            });
+            // A normal surface card (same lightness + even border as every
+            // other card, so there's no dark right edge reading as a seam)
+            // with the brand hue as a soft glow on the left behind the logo,
+            // fading to plain surface by the middle.
+            const glow0 = brandAssets(v.slug).glow?.[0];
+            const cardBg = glow0
+              ? `linear-gradient(to right, color-mix(in srgb, ${glow0} 22%, var(--surface-1)), var(--surface-1) 55%)`
+              : undefined;
             return (
               <Link
                 key={v.slug}
