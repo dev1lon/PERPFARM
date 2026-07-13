@@ -22,10 +22,11 @@ One folder per perp, named by its venue slug. Inside, up to two files:
   redrawn approximation.
 
 The perp-page **background** is not an image file -- it's a full-page CSS
-vertical gradient through the perp's brand palette (matching the brand's
-ready-made gradient swatch), configured as `glow: ["#top", ..., "#bottom"]`
-in `web/lib/brand.ts` -- exact hex colors, top color first to bottom last.
-Not dropped in this folder.
+gradient generated from the perp's warm brand hues mixed into a near-black,
+so it reads as a DARK, warm-tinted surface (like the reference Hibachi card).
+Configured as `glow: ["#top", ..., "#bottom"]` in `web/lib/brand.ts` -- warm
+hex colors from the perp's palette, top first to bottom last. Not dropped in
+this folder.
 
 After adding files, register the folder in `web/lib/brand.ts` (one entry per
 slug, only the fields that exist).

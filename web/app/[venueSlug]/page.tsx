@@ -23,14 +23,19 @@ export default async function VenuePage({
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   const glow = brandAssets(venueSlug).glow;
 
-  // Full-page brand gradient background: a smooth vertical (top -> bottom)
-  // gradient through the perp's palette colors, as listed -- e.g. Hibachi's
-  // flame gradient (yellow -> pink -> purple), matching the brand's ready-made
-  // gradient swatch. A solid gradient (not a translucent glow); the page's
-  // dark cards sit on top of it.
+  // Full-page DARK brand background: the perp's warm palette colors mixed
+  // heavily into a warm near-black, top -> bottom, so the page reads as a
+  // dark, warm-tinted surface (like the reference Hibachi card) rather than a
+  // vivid gradient -- keeps white text/dark cards readable while carrying the
+  // brand hue. Each stop fades from warmest (top) toward near-black (bottom).
+  const DARK = "#0b0706";
   const glowStyle =
-    glow && glow.length > 1
-      ? { backgroundImage: `linear-gradient(to bottom, ${glow.join(", ")})` }
+    glow && glow.length
+      ? {
+          backgroundImage: `linear-gradient(to bottom, ${glow
+            .map((c, i) => `color-mix(in srgb, ${c} ${Math.max(24 - i * 8, 8)}%, ${DARK})`)
+            .join(", ")}, ${DARK})`,
+        }
       : undefined;
 
   return (

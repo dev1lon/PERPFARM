@@ -19,9 +19,10 @@ export interface BrandAssets {
    *  it replaces both the logo badge and the plain-text name on the home
    *  card. Falls back to PerpName text if the file fails to load. */
   wordmark?: string;
-  /** Full-page background for the /<slug> page: a vertical gradient through
-   *  the perp's brand palette, TOP color first to BOTTOM color last (matches
-   *  the brand's ready-made gradient swatches). Needs 2+ hex colors. */
+  /** Full-page background hues for the /<slug> page, TOP first to BOTTOM
+   *  last. These warm brand colors are mixed heavily into a near-black to
+   *  produce a DARK, warm-tinted page background (not a vivid gradient) --
+   *  see the render in app/[venueSlug]/page.tsx. */
   glow?: string[];
 }
 
@@ -31,8 +32,8 @@ export const BRAND: Record<string, BrandAssets> = {
     // white flame + "HIBACHI" lockup -- includes the mark, so no separate
     // logo badge is shown next to it
     wordmark: "logos/hibachi/watermark.png",
-    // brand's flame gradient swatch, top -> bottom
-    glow: ["#FFE600", "#FE344A", "#E40E6B", "#B10C92", "#4E08BF"],
+    // brand's warm "left" swatch (orange -> red), darkened into the page bg
+    glow: ["#FB743F", "#FE344A"],
   },
 };
 
