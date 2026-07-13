@@ -13,17 +13,16 @@
 export interface BrandAssets {
   /** Square icon, shown on the badge (home card + perp page header). */
   logo?: string;
-  /** The perp's name rendered as an image, shown on the home card in place
-   *  of the plain-text name. */
-  wordmark?: string;
   /** Wide hero background, shown behind the header on the /<slug> page. */
   background?: string;
 }
 
+// The perp NAME is not an asset here -- it's rendered as live text by
+// components/PerpName.tsx (bold uppercase wordmark style), the same for every
+// perp. Only the logo mark and hero background are per-perp images.
 export const BRAND: Record<string, BrandAssets> = {
   hibachi: {
     logo: "logos/hibachi/logo.png",
-    wordmark: "logos/hibachi/wordmark.jpg",
     background: "logos/hibachi/background.png",
   },
 };

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
+import { PerpName } from "@/components/PerpName";
 import { brandAssets } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
@@ -41,7 +42,9 @@ export default async function VenuePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <PerpDexLogo slug={venueSlug} name={venue.name} size={40} />
-            <h1 className="text-2xl font-semibold text-text-primary">{venue.name}</h1>
+            <h1>
+              <PerpName name={venue.name} className="text-2xl" />
+            </h1>
           </div>
           {seasonDays !== null && (
             <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right">
