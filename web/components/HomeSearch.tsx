@@ -64,16 +64,16 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
-            // Branded perps: brand glow on the left over the perp's own warm/
-            // navy base (no cool tint bleeding into a warm brand, right edge
-            // blends into the page); others keep the monogram-color tint.
+            // Branded perps get the SAME dark brand gradient as their page and
+            // render BORDERLESS -- an immersive slice of the page, so no border
+            // line reads as a seam. Others keep the bordered monogram-tint card.
             const cardBg = cardBrandBg(v.slug);
             return (
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className={`pf-transition flex flex-col gap-1 rounded-lg border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                  cardBg ? "hover:brightness-110" : "pf-card-tint"
+                className={`pf-transition flex flex-col gap-1 rounded-lg px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                  cardBg ? "hover:brightness-110" : "pf-card-tint border border-border"
                 }`}
                 style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
               >

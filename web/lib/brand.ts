@@ -78,16 +78,12 @@ export function darkBrandGradient(
   return `linear-gradient(${direction}, ${stops.join(", ")}, ${end ?? base})`;
 }
 
-/** Home-card background for a branded perp: the brand hue as a glow on the
- * LEFT (behind the logo) over the perp's OWN dark base -- warm for Hibachi,
- * navy for Variational -- so no cool/blue tint creeps into a warm brand, and
- * the base (a near-black close to the page) keeps the right edge from reading
- * as a lighter panel. Uniform base from the middle rightward (no band).
- * Returns undefined for perps with no brand colors. */
+/** Home-card background for a branded perp: the SAME dark brand gradient as
+ * that perp's /<slug> page (warm for Hibachi, navy for Variational), so the
+ * card reads as an immersive slice of the page rather than a tinted panel.
+ * The card is rendered borderless (see HomeSearch) so this gradient's edges
+ * blend into the page with no seam line. Undefined for perps with no glow. */
 export function cardBrandBg(slug: string): string | undefined {
   const { glow, glowBase } = brandAssets(slug);
-  const g0 = glow?.[0];
-  if (!g0) return undefined;
-  const base = glowBase ?? DEFAULT_DARK;
-  return `linear-gradient(to right, color-mix(in srgb, ${g0} 28%, ${base}), ${base} 52%)`;
+  return darkBrandGradient(glow, { base: glowBase });
 }
