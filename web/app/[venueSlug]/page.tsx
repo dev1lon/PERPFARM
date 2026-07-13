@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
-import { PerpDexLogo } from "@/components/PerpDexLogo";
-import { PerpWordmark } from "@/components/PerpWordmark";
+import { PerpIdentity } from "@/components/PerpIdentity";
 import { brandAssets, darkBrandGradient } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
@@ -40,19 +39,9 @@ export default async function VenuePage({
       <div className="relative mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {!brandAssets(venueSlug).wordmark && (
-              <PerpDexLogo slug={venueSlug} name={venue.name} size={40} />
-            )}
-            <h1>
-              <PerpWordmark
-                slug={venueSlug}
-                name={venue.name}
-                imgClassName="h-8 w-auto max-w-[260px] object-contain object-left"
-                nameClassName="text-2xl"
-              />
-            </h1>
-          </div>
+          <h1>
+            <PerpIdentity slug={venueSlug} name={venue.name} markPx={38} namePx={22} nameClassName="text-2xl" />
+          </h1>
           {seasonDays !== null && (
             <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right">
               <div className="text-[10px] uppercase tracking-wide text-text-muted">

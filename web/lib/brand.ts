@@ -11,14 +11,14 @@
  */
 
 export interface BrandAssets {
-  /** Square icon. Shown on the badge only when there's no `wordmark` -- when
-   *  a wordmark exists it stands alone (the "remove the logo before the
-   *  text" rule). */
-  logo?: string;
-  /** The perp's name as a brand image in its own unique font. When present,
-   *  it replaces both the logo badge and the plain-text name on the home
-   *  card. Falls back to PerpName text if the file fails to load. */
-  wordmark?: string;
+  /** The perp's flame/logo MARK, split out of its wordmark and trimmed.
+   *  Rendered at a fixed HEIGHT so every perp's mark is the same size and on
+   *  the same line. Falls back to the colored monogram when absent. */
+  mark?: string;
+  /** The perp's NAME as a brand image (its unique font), split out of its
+   *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
+   *  the same size. Falls back to PerpName text when absent. */
+  nameImage?: string;
   /** Full-page background hues for the /<slug> page, TOP first to BOTTOM
    *  last. These brand colors are mixed heavily into a near-black (`glowBase`)
    *  to produce a DARK, brand-tinted page background (not a vivid gradient) --
@@ -32,17 +32,15 @@ export interface BrandAssets {
 
 export const BRAND: Record<string, BrandAssets> = {
   variational: {
-    // blue flame + white "Variational" lockup (on-dark version)
-    wordmark: "logos/vari/watermark.png",
+    mark: "logos/vari/mark.png",
+    nameImage: "logos/vari/name.png",
     // brand palette: Blue -> Navy, on the brand's Black base
     glow: ["#4C9AF8", "#1C5BD9"],
     glowBase: "#010612",
   },
   hibachi: {
-    logo: "logos/hibachi/logo.png",
-    // white flame + "HIBACHI" lockup -- includes the mark, so no separate
-    // logo badge is shown next to it
-    wordmark: "logos/hibachi/watermark.png",
+    mark: "logos/hibachi/mark.png",
+    nameImage: "logos/hibachi/name.png",
     // brand's warm "left" swatch (orange -> red), darkened into the page bg
     glow: ["#FB743F", "#FE344A"],
   },

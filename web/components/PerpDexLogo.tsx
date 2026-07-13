@@ -1,11 +1,8 @@
-/** Perp logo badge: the real logo image when one is registered in
- * lib/brand.ts, else a colored monogram placeholder. The placeholder color
- * is a deterministic hash of the slug (not list position) so a given venue
- * keeps its color across re-sorts/filters -- see the dataviz skill's "color
- * follows the entity, never its rank" rule. Hues are the validated
+/** Colored monogram badge, the fallback mark for a perp with no brand image.
+ * The color is a deterministic hash of the slug (not list position) so a given
+ * venue keeps its color across re-sorts/filters -- see the dataviz skill's
+ * "color follows the entity, never its rank" rule. Hues are the validated
  * categorical palette (references/palette.md), stepped for the dark surface. */
-
-import { brandAssets } from "@/lib/brand";
 
 const CATEGORICAL = [
   "#3987e5",
@@ -39,23 +36,6 @@ export function PerpDexLogo({
   name: string;
   size?: number;
 }) {
-  const logo = brandAssets(slug).logo;
-  if (logo) {
-    // Plain <img>, not next/image: tiny static icons served straight from
-    // /public -- optimization buys nothing at 32-40px and chokes on SVGs.
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={`/${logo}`}
-        alt=""
-        aria-hidden
-        width={size}
-        height={size}
-        className="shrink-0 rounded-full object-contain"
-      />
-    );
-  }
-
   const letter = name.trim().charAt(0).toUpperCase() || "?";
   return (
     <span

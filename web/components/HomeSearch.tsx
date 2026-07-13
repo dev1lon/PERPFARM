@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PerpDexLogo, perpDexBadgeVars } from "@/components/PerpDexLogo";
-import { PerpWordmark } from "@/components/PerpWordmark";
+import { perpDexBadgeVars } from "@/components/PerpDexLogo";
+import { PerpIdentity } from "@/components/PerpIdentity";
 import { brandAssets, darkBrandGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
@@ -68,11 +68,11 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
             // their page (brand hue at the logo side, fading toward the page
             // background on the right so the card's right edge blends into the
             // page -- no seam); others keep the generic monogram-color tint.
-            const { glow, glowBase } = brandAssets(v.slug);
-            const cardBg = darkBrandGradient(glow, {
+            // Base the card tint on the page background so its right edge
+            // fades into the page with no seam; the brand hue sits on the left.
+            const cardBg = darkBrandGradient(brandAssets(v.slug).glow, {
               direction: "to right",
-              base: glowBase,
-              end: "var(--bg)",
+              base: "var(--bg)",
             });
             return (
               <Link
@@ -83,17 +83,13 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 }`}
                 style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
               >
-                <span className="flex items-center gap-3">
-                  {/* Wordmark stands alone (no logo before it); only perps
-                      without a wordmark show the logo badge + text name. */}
-                  {!brandAssets(v.slug).wordmark && <PerpDexLogo slug={v.slug} name={v.name} />}
-                  <PerpWordmark
-                    slug={v.slug}
-                    name={v.name}
-                    imgClassName="h-6 w-auto max-w-[180px] object-contain object-left"
-                    nameClassName="text-base"
-                  />
-                </span>
+                <PerpIdentity
+                  slug={v.slug}
+                  name={v.name}
+                  markPx={24}
+                  namePx={15}
+                  nameClassName="text-base"
+                />
                 <span className="flex items-center gap-3 text-sm">
                   <span className="text-text-muted">
                     {days !== null ? `season ends in ${days}d` : "season n/a"}
