@@ -19,11 +19,9 @@ export interface BrandAssets {
    *  it replaces both the logo badge and the plain-text name on the home
    *  card. Falls back to PerpName text if the file fails to load. */
   wordmark?: string;
-  /** Warm radial-glow background for the /<slug> page, in the perp's own
-   *  brand colors (like the reference Hibachi calculator site) -- a dark
-   *  page with a soft glow behind the header, rendered in pure CSS, no
-   *  image. Hex colors from the perp's palette, bright CORE first and
-   *  fainter/wider OUTER last; each becomes one radial layer (up to 4). */
+  /** Full-page background for the /<slug> page: a vertical gradient through
+   *  the perp's brand palette, TOP color first to BOTTOM color last (matches
+   *  the brand's ready-made gradient swatches). Needs 2+ hex colors. */
   glow?: string[];
 }
 
@@ -33,8 +31,8 @@ export const BRAND: Record<string, BrandAssets> = {
     // white flame + "HIBACHI" lockup -- includes the mark, so no separate
     // logo badge is shown next to it
     wordmark: "logos/hibachi/watermark.png",
-    // exact brand palette (flame gradient): orange core -> pink -> purple
-    glow: ["#FB743F", "#E40E6B", "#4E08BF"],
+    // brand's flame gradient swatch, top -> bottom
+    glow: ["#FFE600", "#FE344A", "#E40E6B", "#B10C92", "#4E08BF"],
   },
 };
 

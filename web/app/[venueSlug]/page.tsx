@@ -23,28 +23,15 @@ export default async function VenuePage({
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   const glow = brandAssets(venueSlug).glow;
 
-  // Full-page flame background in the perp's brand colors. Each color becomes
-  // one radial layer, distributed top -> bottom (bright core up top, fainter
-  // hues spread down the page) so the whole page reads as a brand-tinted
-  // gradient, not a glow concentrated under the header. Bright core is first
-  // so it paints on top.
-  const GLOW_LAYERS = [
-    { size: "95% 42% at 50% 0%", alpha: 32 },
-    { size: "120% 58% at 50% 32%", alpha: 18 },
-    { size: "155% 85% at 50% 72%", alpha: 14 },
-    { size: "195% 115% at 50% 108%", alpha: 10 },
-  ];
-  const glowStyle = glow?.length
-    ? {
-        backgroundImage: glow
-          .slice(0, GLOW_LAYERS.length)
-          .map(
-            (color, i) =>
-              `radial-gradient(${GLOW_LAYERS[i].size}, color-mix(in srgb, ${color} ${GLOW_LAYERS[i].alpha}%, transparent), transparent 66%)`
-          )
-          .join(", "),
-      }
-    : undefined;
+  // Full-page brand gradient background: a smooth vertical (top -> bottom)
+  // gradient through the perp's palette colors, as listed -- e.g. Hibachi's
+  // flame gradient (yellow -> pink -> purple), matching the brand's ready-made
+  // gradient swatch. A solid gradient (not a translucent glow); the page's
+  // dark cards sit on top of it.
+  const glowStyle =
+    glow && glow.length > 1
+      ? { backgroundImage: `linear-gradient(to bottom, ${glow.join(", ")})` }
+      : undefined;
 
   return (
     <div className="relative min-h-screen">

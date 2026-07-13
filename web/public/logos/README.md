@@ -21,11 +21,11 @@ One folder per perp, named by its venue slug. Inside, up to two files:
 - Use the project's OFFICIAL brand asset (site / press kit / docs), never a
   redrawn approximation.
 
-The perp-page **background** is not an image file -- it's a CSS radial glow in
-the perp's brand colors (like the reference Hibachi calc site), configured as
-`glow: ["#core", "#mid", "#outer"]` in `web/lib/brand.ts` -- an array of exact
-hex colors from the perp's palette, bright core first to faint outer last (up
-to 4). Not dropped in this folder.
+The perp-page **background** is not an image file -- it's a full-page CSS
+vertical gradient through the perp's brand palette (matching the brand's
+ready-made gradient swatch), configured as `glow: ["#top", ..., "#bottom"]`
+in `web/lib/brand.ts` -- exact hex colors, top color first to bottom last.
+Not dropped in this folder.
 
 After adding files, register the folder in `web/lib/brand.ts` (one entry per
 slug, only the fields that exist).
