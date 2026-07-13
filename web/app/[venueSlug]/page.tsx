@@ -3,7 +3,7 @@ import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
 import { PerpWordmark } from "@/components/PerpWordmark";
-import { brandAssets } from "@/lib/brand";
+import { brandAssets, darkBrandGradient } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { MarkdownLite } from "@/lib/markdown-lite";
@@ -21,22 +21,12 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
-  const glow = brandAssets(venueSlug).glow;
-
-  // Full-page DARK brand background: the perp's warm palette colors mixed
-  // heavily into a warm near-black, top -> bottom, so the page reads as a
-  // dark, warm-tinted surface (like the reference Hibachi card) rather than a
-  // vivid gradient -- keeps white text/dark cards readable while carrying the
-  // brand hue. Each stop fades from warmest (top) toward near-black (bottom).
-  const DARK = "#0b0706";
-  const glowStyle =
-    glow && glow.length
-      ? {
-          backgroundImage: `linear-gradient(to bottom, ${glow
-            .map((c, i) => `color-mix(in srgb, ${c} ${Math.max(24 - i * 8, 8)}%, ${DARK})`)
-            .join(", ")}, ${DARK})`,
-        }
-      : undefined;
+  // Full-page DARK brand background (shared recipe with the home card, see
+  // darkBrandGradient): the perp's warm palette hues mixed into a near-black,
+  // top -> bottom, so the page reads as a dark, warm-tinted surface (like the
+  // reference Hibachi card) -- keeps white text/dark cards readable.
+  const pageBg = darkBrandGradient(brandAssets(venueSlug).glow);
+  const glowStyle = pageBg ? { backgroundImage: pageBg } : undefined;
 
   return (
     <div className="relative min-h-screen">

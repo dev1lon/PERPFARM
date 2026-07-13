@@ -40,3 +40,22 @@ export const BRAND: Record<string, BrandAssets> = {
 export function brandAssets(slug: string): BrandAssets {
   return BRAND[slug] ?? {};
 }
+
+/** Warm near-black the brand hues are mixed into for the dark page/card
+ * background. */
+const DARK_BG = "#0b0706";
+
+/** Builds the dark, warm-tinted brand gradient shared by the perp page
+ * background (`to bottom`) and the home card (`to right`): each brand hue is
+ * mixed heavily into a near-black, warmest stop first, ending fully dark.
+ * Returns undefined when the perp has no `glow`. */
+export function darkBrandGradient(
+  colors: string[] | undefined,
+  direction = "to bottom"
+): string | undefined {
+  if (!colors?.length) return undefined;
+  const stops = colors.map(
+    (c, i) => `color-mix(in srgb, ${c} ${Math.max(24 - i * 8, 8)}%, ${DARK_BG})`
+  );
+  return `linear-gradient(${direction}, ${stops.join(", ")}, ${DARK_BG})`;
+}

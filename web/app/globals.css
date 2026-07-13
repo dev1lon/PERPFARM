@@ -1,37 +1,19 @@
 @import "tailwindcss";
 
-/* Raw tokens -- both theme sets always exist as CSS custom properties;
-   [data-theme] on <html> selects which one is active. Set synchronously by
-   the inline script in app/layout.tsx before first paint (no flash). */
-:root,
-:root[data-theme="dark"] {
+/* Single dark theme (no light mode / theme switching). */
+:root {
   color-scheme: dark;
   --bg: #070b15;
   --surface-1: #0d1424;
   --surface-2: #141c30;
-  --surface-hover: #1a2338; /* dark theme: hover steps LIGHTER */
+  --surface-hover: #1a2338; /* hover steps LIGHTER */
   --border: rgba(255, 255, 255, 0.06);
   --text-primary: #f2f5fa;
-  --text-muted: #99a1b5; /* >=4.5:1 on --surface-1 in both themes, see floor requirement */
+  --text-muted: #99a1b5; /* >=4.5:1 on --surface-1 */
   --accent: #4b7df5;
   --accent-hover: #6690f7;
   --positive: #2fd181;
   --negative: #f05c5c;
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #ffffff;
-  --surface-1: #f7f8fa;
-  --surface-2: #eef0f4;
-  --surface-hover: #e4e7ed; /* light theme: hover steps DARKER */
-  --border: rgba(15, 20, 30, 0.08);
-  --text-primary: #16181d;
-  --text-muted: #5b6270; /* >=4.5:1 on --surface-1 */
-  --accent: #3b6ce0;
-  --accent-hover: #2f5cc7;
-  --positive: #16a05e;
-  --negative: #d94040;
 }
 
 @theme inline {
@@ -122,23 +104,17 @@ body {
   }
 }
 
-/* Visible focus ring everywhere, both themes. */
+/* Visible focus ring everywhere. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Per-entity logo-placeholder badge + card tint, used where we don't have a
-   real brand logo yet (components/PerpDexLogo.tsx sets --pf-badge-light/
-   --pf-badge-dark inline per slug, from the dataviz skill's validated
-   categorical palette). Two custom properties, not one, because the color
-   itself must swap with the theme -- picking the right one is a plain CSS
-   selector, not something inline style can do on its own. */
+/* Per-entity logo-placeholder badge + card tint, used for perps without a
+   real brand logo (components/PerpDexLogo.tsx sets --pf-badge per slug, from
+   the dataviz skill's validated categorical palette). */
 .pf-logo-badge {
-  background: var(--pf-badge-dark);
-}
-:root[data-theme="light"] .pf-logo-badge {
-  background: var(--pf-badge-light);
+  background: var(--pf-badge);
 }
 /* .pf-card-tint sets its own hover rule (rather than pairing with Tailwind's
    hover:bg-* utility) because Tailwind v4 emits utilities inside @layer
@@ -146,14 +122,8 @@ body {
    source order or specificity -- a plain `hover:bg-surface-hover` on the
    same element would never win against this. */
 .pf-card-tint {
-  background: color-mix(in srgb, var(--pf-badge-dark) 7%, var(--surface-1));
+  background: color-mix(in srgb, var(--pf-badge) 7%, var(--surface-1));
 }
 .pf-card-tint:hover {
-  background: color-mix(in srgb, var(--pf-badge-dark) 14%, var(--surface-hover));
-}
-:root[data-theme="light"] .pf-card-tint {
-  background: color-mix(in srgb, var(--pf-badge-light) 6%, var(--surface-1));
-}
-:root[data-theme="light"] .pf-card-tint:hover {
-  background: color-mix(in srgb, var(--pf-badge-light) 12%, var(--surface-hover));
+  background: color-mix(in srgb, var(--pf-badge) 14%, var(--surface-hover));
 }

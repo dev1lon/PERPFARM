@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PerpDexLogo, perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpWordmark } from "@/components/PerpWordmark";
-import { brandAssets } from "@/lib/brand";
+import { brandAssets, darkBrandGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -48,12 +48,18 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
+            // Perps with brand colors get the same dark warm brand gradient
+            // as their page (warm at the logo side, fading dark to the right);
+            // others keep the generic monogram-color tint.
+            const cardBg = darkBrandGradient(brandAssets(v.slug).glow, "to right");
             return (
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className="pf-transition pf-card-tint flex flex-col gap-1 rounded-lg border border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-                style={perpDexBadgeVars(v.slug)}
+                className={`pf-transition flex flex-col gap-1 rounded-lg border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                  cardBg ? "border-border hover:border-white/20" : "pf-card-tint border-border"
+                }`}
+                style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
               >
                 <span className="flex items-center gap-3">
                   {/* Wordmark stands alone (no logo before it); only perps
