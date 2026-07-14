@@ -35,9 +35,12 @@ export interface BrandAssets {
   glowBase?: string;
   /** An actual brand background IMAGE (path under /public) used as the page +
    *  card background (center/cover), instead of the `glow` color gradient --
-   *  for perps that ship a designed background rather than a flat palette.
-   *  Takes precedence over `glow`. */
+   *  for perps that ship a designed background rather than a flat palette. */
   backgroundImage?: string;
+  /** A raw CSS `background` value (e.g. a hand-tuned radial-gradient matching
+   *  the brand's designed background) -- crisp at any size, no image
+   *  compression. Highest precedence. */
+  backgroundCss?: string;
 }
 
 export const BRAND: Record<string, BrandAssets> = {
@@ -73,9 +76,11 @@ export const BRAND: Record<string, BrandAssets> = {
   extended: {
     mark: "logos/extended/mark.png",
     nameImage: "logos/extended/name.png",
-    // the brand's actual designed background (black -> dark-green with a
-    // corner glow), compressed to webp (11.8MB png -> 7KB)
-    backgroundImage: "logos/extended/background.webp",
+    // brand's designed background reproduced as a crisp CSS gradient (colors
+    // sampled from the source PNG: near-black with a dark-green glow in the
+    // bottom-right corner) -- no raster, so no compression blocking.
+    backgroundCss:
+      "radial-gradient(135% 125% at 100% 100%, #0a6044 0%, #03301f 26%, #02130d 50%, #010101 78%)",
   },
   "01exchange": {
     mark: "logos/01/mark.png",
@@ -126,7 +131,8 @@ export function cardBrandBg(slug: string): string | undefined {
  * brand color gradient. Same value for both surfaces, so the card reads as a
  * slice of the page. Undefined for perps with no brand background at all. */
 export function brandBg(slug: string): string | undefined {
-  const { backgroundImage } = brandAssets(slug);
+  const { backgroundCss, backgroundImage } = brandAssets(slug);
+  if (backgroundCss) return backgroundCss;
   if (backgroundImage) return `url(/${backgroundImage}) center / cover no-repeat`;
   return cardBrandBg(slug);
 }
