@@ -26,6 +26,21 @@ venue_meta:
     referral_link: null
     notes_md: "Synthetic fixture venue: taker-only-points archetype."
 
+  - venue: variational
+    raised_usd: 50000000 # $50M Series A led by Dragonfly (Bain Capital Crypto, Coinbase Ventures)
+    investors: "Dragonfly Capital, Bain Capital Crypto, Coinbase Ventures"
+    community_supply_pct: null
+    otc_point_price_usd: null # user's manual/OTC knowledge slot -- never computed
+    season_name: null
+    season_end_date: null
+    twitter_url: "https://x.com/variational_io"
+    docs_url: "https://docs.variational.io"
+    referral_link: null
+    notes_md: >-
+      Omni: RFQ perp DEX with 0% trading fees on Arbitrum, cross-margined
+      crypto + TradFi markets. Points/rewards program exists; mechanics not
+      wired to a live adapter yet.
+
   - venue: hibachi
     raised_usd: null # funding rounds exist (cryptorank/messari) but amount not verified -- do not guess
     investors: null

@@ -51,6 +51,34 @@ export const BRAND: Record<string, BrandAssets> = {
     // brand's warm "left" swatch (orange -> red), darkened into the page bg
     glow: ["#FB743F", "#FE344A"],
   },
+  pacifica: {
+    mark: "logos/pacifica/mark.png",
+    nameImage: "logos/pacifica/name.png",
+    // cyan mark color, on a dark teal base
+    glow: ["#61D7EF"],
+    glowBase: "#06171c",
+  },
+  txflow: {
+    mark: "logos/txflow/mark.png",
+    nameImage: "logos/txflow/name.png",
+    // green mark color, on a dark green base
+    glow: ["#7CFF6B"],
+    glowBase: "#0a160c",
+  },
+  extended: {
+    mark: "logos/extended/mark.png",
+    nameImage: "logos/extended/name.png",
+    // teal-green sampled from the brand's background image
+    glow: ["#0F9A67"],
+    glowBase: "#01150E",
+  },
+  "01exchange": {
+    mark: "logos/01/mark.png",
+    nameImage: "logos/01/name.png",
+    // navy from the brand guidelines (#070C18 base), lighter navy glow
+    glow: ["#22366a"],
+    glowBase: "#070C18",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {
