@@ -73,9 +73,9 @@ export const BRAND: Record<string, BrandAssets> = {
   extended: {
     mark: "logos/extended/mark.png",
     nameImage: "logos/extended/name.png",
-    // teal-green sampled from the brand's background image
-    glow: ["#0F9A67"],
-    glowBase: "#01150E",
+    // the brand's actual designed background (black -> dark-green with a
+    // corner glow), compressed to webp (11.8MB png -> 7KB)
+    backgroundImage: "logos/extended/background.webp",
   },
   "01exchange": {
     mark: "logos/01/mark.png",
