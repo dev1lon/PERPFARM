@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { cardBrandBg } from "@/lib/brand";
+import { brandBg } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -67,7 +67,7 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
             // Branded perps get the SAME dark brand gradient as their page and
             // render BORDERLESS -- an immersive slice of the page, so no border
             // line reads as a seam. Others keep the bordered monogram-tint card.
-            const cardBg = cardBrandBg(v.slug);
+            const cardBg = brandBg(v.slug);
             return (
               <Link
                 key={v.slug}
@@ -75,7 +75,7 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 className={`pf-transition flex flex-col gap-1 rounded-lg px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
                   cardBg ? "hover:brightness-110" : "pf-card-tint border border-border"
                 }`}
-                style={cardBg ? { backgroundImage: cardBg } : perpDexBadgeVars(v.slug)}
+                style={cardBg ? { background: cardBg } : perpDexBadgeVars(v.slug)}
               >
                 <PerpIdentity
                   slug={v.slug}

@@ -33,6 +33,11 @@ export interface BrandAssets {
    *  near-black). Set to the perp's own dark base for a matching tone --
    *  e.g. Variational's navy-black rather than Hibachi's warm black. */
   glowBase?: string;
+  /** An actual brand background IMAGE (path under /public) used as the page +
+   *  card background (center/cover), instead of the `glow` color gradient --
+   *  for perps that ship a designed background rather than a flat palette.
+   *  Takes precedence over `glow`. */
+  backgroundImage?: string;
 }
 
 export const BRAND: Record<string, BrandAssets> = {
@@ -54,9 +59,9 @@ export const BRAND: Record<string, BrandAssets> = {
   pacifica: {
     mark: "logos/pacifica/mark.png",
     nameImage: "logos/pacifica/name.png",
-    // cyan mark color, on a dark teal base
-    glow: ["#61D7EF"],
-    glowBase: "#06171c",
+    // exact flat background color sampled 1:1 from the brand's dark-bg asset
+    glow: ["#0E1724"],
+    glowBase: "#0E1724",
   },
   txflow: {
     mark: "logos/txflow/mark.png",
@@ -114,4 +119,14 @@ export function darkBrandGradient(
 export function cardBrandBg(slug: string): string | undefined {
   const { glow, glowBase } = brandAssets(slug);
   return darkBrandGradient(glow, { base: glowBase });
+}
+
+/** The `background` shorthand for a perp's page + home card: the brand
+ * background IMAGE (center/cover) when the perp ships one, else the dark
+ * brand color gradient. Same value for both surfaces, so the card reads as a
+ * slice of the page. Undefined for perps with no brand background at all. */
+export function brandBg(slug: string): string | undefined {
+  const { backgroundImage } = brandAssets(slug);
+  if (backgroundImage) return `url(/${backgroundImage}) center / cover no-repeat`;
+  return cardBrandBg(slug);
 }

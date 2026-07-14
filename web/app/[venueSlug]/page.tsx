@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandAssets, darkBrandGradient } from "@/lib/brand";
+import { brandBg } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { MarkdownLite } from "@/lib/markdown-lite";
@@ -20,21 +20,20 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
-  // Full-page DARK brand background (shared recipe with the home card, see
-  // darkBrandGradient): the perp's palette hues mixed into its near-black
-  // base, top -> bottom, so the page reads as a dark, brand-tinted surface
-  // (like the reference Hibachi card) -- keeps white text/dark cards readable.
-  const { glow, glowBase } = brandAssets(venueSlug);
-  const pageBg = darkBrandGradient(glow, { base: glowBase });
-  const glowStyle = pageBg ? { backgroundImage: pageBg } : undefined;
+  // Full-page brand background: the perp's designed background image, or its
+  // dark brand color gradient -- covers the whole page so the card on the home
+  // list reads as a slice of it. Kept behind the content (which is `relative`).
+  const pageBg = brandBg(venueSlug);
 
   return (
     <div className="relative min-h-screen">
-      {glowStyle && (
-        // Covers the whole page (not just the top) so the brand gradient is
-        // the page background; pointer-events-none so it never intercepts
-        // clicks. Sits behind the content, which is `relative` above it.
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={glowStyle} />
+      {pageBg && (
+        // pointer-events-none so it never intercepts clicks; behind content.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: pageBg }}
+        />
       )}
       <div className="relative mx-auto flex max-w-2xl flex-col gap-10 px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-4">
