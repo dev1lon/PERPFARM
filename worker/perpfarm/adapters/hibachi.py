@@ -27,6 +27,7 @@ from perpfarm.adapters.base import (
     FeeData,
     FundingData,
     MarketInfo,
+    MarketUnavailable,
     OrderbookTop,
     VenueAdapter,
     VolumeData,
@@ -94,8 +95,10 @@ def _impact_from_book(
     return out
 
 
-def _parse_levels(side: dict) -> list[tuple[float, float]]:
-    return [(float(lv["price"]), float(lv["quantity"])) for lv in side.get("levels", [])]
+def _parse_levels(side: dict | None) -> list[tuple[float, float]]:
+    # A closed market (weekend FX/metals) can return a null side, not {} --
+    # treat it as no levels rather than crashing on None.get(...).
+    return [(float(lv["price"]), float(lv["quantity"])) for lv in (side or {}).get("levels", [])]
 
 
 class HibachiAdapter(VenueAdapter):
@@ -147,7 +150,11 @@ class HibachiAdapter(VenueAdapter):
 
     def get_funding(self, symbol: str) -> FundingData:
         prices = self._get_json("/market/data/prices", params={"symbol": symbol})
-        raw = float(prices["fundingRateEstimation"]["estimatedFundingRate"])
+        estimation = prices.get("fundingRateEstimation")
+        if not estimation:
+            # closed market (weekend FX/metals): no funding estimate -> skip
+            raise MarketUnavailable(f"hibachi: no funding estimation for {symbol} (market closed?)")
+        raw = float(estimation["estimatedFundingRate"])
         return FundingData(
             funding_rate_raw=raw,
             interval_hours=FUNDING_INTERVAL_HOURS,
@@ -163,10 +170,11 @@ class HibachiAdapter(VenueAdapter):
             "/market/data/orderbook",
             params={"symbol": symbol, "depth": _ORDERBOOK_DEPTH, "granularity": granularity},
         )
-        asks = sorted(_parse_levels(book["ask"]), key=lambda pq: pq[0])
-        bids = sorted(_parse_levels(book["bid"]), key=lambda pq: -pq[0])
+        asks = sorted(_parse_levels(book.get("ask")), key=lambda pq: pq[0])
+        bids = sorted(_parse_levels(book.get("bid")), key=lambda pq: -pq[0])
         if not asks or not bids:
-            raise RuntimeError(f"hibachi: empty orderbook side for {symbol}")
+            # closed market (weekend FX/metals) returns null/empty sides -> skip
+            raise MarketUnavailable(f"hibachi: empty orderbook for {symbol} (market closed?)")
 
         best_ask = asks[0][0]
         best_bid = bids[0][0]

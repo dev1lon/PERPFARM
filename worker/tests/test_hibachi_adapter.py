@@ -54,3 +54,11 @@ def test_impact_from_book_empty_side_yields_none():
 def test_parse_levels_reads_price_quantity_strings():
     side = {"levels": [{"price": "64132.5", "quantity": "0.0389000000"}]}
     assert _parse_levels(side) == [(64132.5, 0.0389)]
+
+
+def test_parse_levels_handles_null_side():
+    # A closed FX/metals market (weekend) returns a null side, not {} -- must
+    # yield no levels instead of crashing on None.get(...). Regression for the
+    # sync-snapshots "'NoneType' object has no attribute 'get'" failure.
+    assert _parse_levels(None) == []
+    assert _parse_levels({}) == []

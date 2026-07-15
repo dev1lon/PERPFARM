@@ -24,7 +24,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, select
 
-from perpfarm.adapters.base import VenueAdapter
+from perpfarm.adapters.base import MarketUnavailable, VenueAdapter
 from perpfarm.adapters.registry import build_adapter
 from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
 
@@ -61,7 +61,9 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
             book = adapter.get_orderbook_top(symbol)
             funding = adapter.get_funding(symbol)
             volume = adapter.get_volume(symbol)
-        except NotImplementedError:
+        except (NotImplementedError, MarketUnavailable):
+            # unwired adapter, or a market that's temporarily closed (weekend
+            # FX/metals): expected, skip -- don't fail the whole run.
             summary.skipped += 1
             continue
         except Exception as exc:  # noqa: BLE001 -- one market must not sink the batch

@@ -10,6 +10,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
+class MarketUnavailable(Exception):
+    """A listed market is temporarily not quotable -- e.g. an FX/metals market
+    that closes on weekends returns a null orderbook / funding estimate. This
+    is expected and transient (not a bug and not "unwired"), so snapshot jobs
+    should SKIP it rather than record a hard error that fails the whole run."""
+
+
 @dataclass(frozen=True)
 class MarketInfo:
     symbol: str  # native ticker as reported by the venue, e.g. "kPEPE-PERP"
