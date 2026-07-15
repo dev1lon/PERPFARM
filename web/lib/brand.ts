@@ -117,6 +117,8 @@ export const BRAND: Record<string, BrandAssets> = {
   perpl: {
     mark: "logos/perpl/mark.png",
     nameImage: "logos/perpl/name.png",
+    // "p" descender shrinks the cap height at equal image height -> bump
+    nameScale: 1.45,
     // flat light lavender; the wordmark is kept in its dark brand colours
     // (black "Perpl" + purple icon) so it reads on the light background.
     backgroundCss: "#E1E1FF",
