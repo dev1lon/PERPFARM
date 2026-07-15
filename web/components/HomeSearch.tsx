@@ -64,18 +64,24 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
-            // Branded perps get the SAME dark brand gradient as their page and
-            // render BORDERLESS -- an immersive slice of the page, so no border
-            // line reads as a seam. Others keep the bordered monogram-tint card.
             const cardBg = brandBg(v.slug);
             // Brands that ship a near-white background need dark metrics text.
             const lightBg = cardBg !== undefined && brandBgTone(v.slug) === "light";
+            // A thin, neat border on every card (all four sides -- a full frame,
+            // not the one-edge line that used to read as a seam). Tuned to the
+            // card tone: subtle light hairline on dark cards, subtle dark on the
+            // light (lavender) card, and the theme border on monogram cards.
+            const borderColor = cardBg
+              ? lightBg
+                ? "border-black/10"
+                : "border-white/10"
+              : "border-border";
             return (
               <Link
                 key={v.slug}
                 href={`/${v.slug}`}
-                className={`pf-transition flex flex-col gap-1 rounded-lg px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                  cardBg ? "hover:brightness-110" : "pf-card-tint border border-border"
+                className={`pf-transition flex flex-col gap-1 rounded-lg border ${borderColor} px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+                  cardBg ? "hover:brightness-110" : "pf-card-tint"
                 }`}
                 style={cardBg ? { background: cardBg } : perpDexBadgeVars(v.slug)}
               >
