@@ -16,10 +16,8 @@ from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
 from perpfarm.adapters.hibachi import HibachiAdapter
 from perpfarm.adapters.hotstuff import HotStuffAdapter
-from perpfarm.adapters.lighter import LighterAdapter
 from perpfarm.adapters.nado import NadoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
-from perpfarm.adapters.paradex import ParadexAdapter
 from perpfarm.adapters.perpl import PerplAdapter
 from perpfarm.adapters.polymarket import PolymarketAdapter
 from perpfarm.adapters.reya import ReyaAdapter
@@ -56,9 +54,7 @@ def _fixture(slug: str, name: str) -> VenueRegistration:
 
 REGISTRY: list[VenueRegistration] = [
     _real("variational", "Variational", VariationalAdapter),
-    _real("lighter", "Lighter", LighterAdapter),
     _real("extended", "Extended", ExtendedAdapter),
-    _real("paradex", "Paradex", ParadexAdapter),
     _real("pacifica", "Pacifica", PacificaAdapter),
     _real("nado", "Nado", NadoAdapter),
     _real("txflow", "TxFlow", TxflowAdapter),

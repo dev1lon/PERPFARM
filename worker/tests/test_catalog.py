@@ -21,7 +21,7 @@ def test_summary_defaults_to_all_zero():
 
 
 def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path):
-    # All 10 stub venues raise NotImplementedError from get_markets(); hibachi
+    # Every stub venue raises NotImplementedError from get_markets(); hibachi
     # is live (network) and the two fixtures need real files -- so point
     # fixtures_dir at an empty dir: fixture venues then fail to build (recorded
     # as errors), stubs are skipped, and the engine is never touched.
@@ -32,7 +32,8 @@ def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path):
         data_dir=tmp_path,
         summary=summary,
     )
-    # 10 stub real-venue adapters (variational, lighter, extended, paradex,
-    # pacifica, nado, txflow, tradexyz, hotstuff, risex) skip cleanly.
+    # 12 stub real-venue adapters (variational, extended, pacifica, nado,
+    # txflow, tradexyz, hotstuff, risex, 01exchange, perpl, polymarket, reya)
+    # skip cleanly.
     assert summary.markets_skipped >= 10
     assert summary.markets_synced == 0

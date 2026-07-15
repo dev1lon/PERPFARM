@@ -7,13 +7,13 @@ from perpfarm.adapters.registry import REGISTRY, build_adapter, get_registration
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "data" / "fixtures"
 
 
-def test_registry_has_seventeen_unique_venues():
-    assert len(REGISTRY) == 17
-    assert len({r.slug for r in REGISTRY}) == 17
+def test_registry_has_fifteen_unique_venues():
+    assert len(REGISTRY) == 15
+    assert len({r.slug for r in REGISTRY}) == 15
 
 
 def test_real_adapter_stub_raises_not_implemented():
-    adapter = build_adapter("lighter", FIXTURES_DIR)
+    adapter = build_adapter("extended", FIXTURES_DIR)
     with pytest.raises(NotImplementedError):
         adapter.get_markets()
 

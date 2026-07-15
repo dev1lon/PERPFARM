@@ -126,8 +126,12 @@ export const BRAND: Record<string, BrandAssets> = {
     backgroundImage: "logos/reya/background.jpg",
   },
   tradexyz: {
-    // the brand's square [XYZ] app-icon tile, inserted as-is (not extracted)
-    mark: "logos/tradexyz/logo.jpg",
+    // the "[XYZ]" symbol on a tile whose background is exactly the card colour
+    // (#232F43), so the tile edges vanish and only the symbol reads; padded to
+    // aspect ~1.2 so it fills the mark column at markScale 1.4 without the
+    // fixed-height/max-width distortion a wide raw logo would suffer.
+    mark: "logos/tradexyz/mark.png",
+    markScale: 1.4,
     nameImage: "logos/tradexyz/name.png",
     // flat navy sampled 1:1 from the brand's wordmark background
     backgroundCss: "#232F43",

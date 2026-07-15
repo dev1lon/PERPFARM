@@ -12,11 +12,30 @@ import type { RouteDetail, RouteScoreRow, VenueDetail, VenueSummary } from "./ty
 
 export const usingFixtures = !process.env.DATABASE_URL;
 
+/**
+ * Venues excluded from the public site everywhere: the two synthetic demo
+ * venues (kept only as dev/test fixtures, never meant for the live catalog)
+ * and real venues we no longer list. Filtered here at the single data entry
+ * point so it applies to both the DB and fixture paths and covers rows that
+ * may already be seeded in a deployed database -- no destructive DB delete.
+ */
+const HIDDEN_VENUE_SLUGS = new Set(["venue_alpha", "venue_beta", "paradex", "lighter"]);
+
+function isHidden(slug: string): boolean {
+  return HIDDEN_VENUE_SLUGS.has(slug);
+}
+
+function visibleRoutes(routes: RouteScoreRow[]): RouteScoreRow[] {
+  return routes.filter((r) => !isHidden(r.longVenueSlug) && !isHidden(r.shortVenueSlug));
+}
+
 export async function getLatestRouteScores(
   filters: db.RouteFilters = {}
 ): Promise<RouteScoreRow[]> {
-  if (usingFixtures) return fixtures.fixtureRoutes();
-  return db.getLatestRouteScores(filters);
+  const routes = usingFixtures
+    ? fixtures.fixtureRoutes()
+    : await db.getLatestRouteScores(filters);
+  return visibleRoutes(routes);
 }
 
 export async function getRouteDetail(
@@ -24,16 +43,18 @@ export async function getRouteDetail(
   longSlug: string,
   shortSlug: string
 ): Promise<RouteDetail | null> {
+  if (isHidden(longSlug) || isHidden(shortSlug)) return null;
   if (usingFixtures) return fixtures.fixtureRouteDetail(symbolCanonical, longSlug, shortSlug);
   return db.getRouteDetail(symbolCanonical, longSlug, shortSlug);
 }
 
 export async function getVenues(): Promise<VenueSummary[]> {
-  if (usingFixtures) return fixtures.fixtureVenues();
-  return db.getVenues();
+  const venues = usingFixtures ? fixtures.fixtureVenues() : await db.getVenues();
+  return venues.filter((v) => !isHidden(v.slug));
 }
 
 export async function getVenueDetail(slug: string): Promise<VenueDetail | null> {
+  if (isHidden(slug)) return null;
   if (usingFixtures) return fixtures.fixtureVenueDetail(slug);
   return db.getVenueDetail(slug);
 }
@@ -42,8 +63,11 @@ export async function getRoutesForVenuePair(
   venueSlug: string,
   hedgeSlug: string
 ): Promise<RouteScoreRow[]> {
-  if (usingFixtures) return fixtures.fixtureRoutesForVenuePair(venueSlug, hedgeSlug);
-  return db.getRoutesForVenuePair(venueSlug, hedgeSlug);
+  if (isHidden(venueSlug) || isHidden(hedgeSlug)) return [];
+  const routes = usingFixtures
+    ? fixtures.fixtureRoutesForVenuePair(venueSlug, hedgeSlug)
+    : await db.getRoutesForVenuePair(venueSlug, hedgeSlug);
+  return visibleRoutes(routes);
 }
 
 export type { RouteSort, RouteFilters } from "./db";
