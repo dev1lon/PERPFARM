@@ -34,7 +34,7 @@ venue_meta:
     season_name: null
     season_end_date: null
     twitter_url: "https://x.com/variational_io"
-    docs_url: "https://docs.variational.io"
+    docs_url: "https://docs.variational.io/omni/"
     referral_link: null
     notes_md: >-
       Omni: RFQ perp DEX with 0% trading fees on Arbitrum, cross-margined
@@ -49,9 +49,54 @@ venue_meta:
     season_name: "Weekly epochs"
     season_end_date: null # rolling weekly epochs, no announced end
     twitter_url: "https://x.com/hibachi_xyz"
-    docs_url: "https://docs.hibachi.xyz"
+    docs_url: "https://docs.hibachi.xyz/"
     referral_link: null
     notes_md: >-
       First real venue wired live (2026-07-12): public data API, 0 bps
       maker / 4.5 bps taker, hourly funding. 13 perp markets incl. FX/metals
       (AUD, GBP, EUR, NZD, PAXG, XAG) that close on weekends.
+
+  # Social/docs links only (other fields unknown -> null via VenueMetaRow defaults).
+  - venue: "01exchange"
+    twitter_url: "https://x.com/01Exchange"
+    docs_url: "https://docs.01.xyz/"
+
+  - venue: extended
+    twitter_url: "https://x.com/extendedapp"
+    docs_url: "https://docs.extended.exchange/"
+
+  - venue: hotstuff
+    twitter_url: "https://x.com/tradehotstuff"
+    docs_url: "https://docs.hotstuff.trade/"
+
+  - venue: nado
+    twitter_url: "https://x.com/nadoHQ"
+    docs_url: "https://docs.nado.xyz/"
+
+  - venue: pacifica
+    twitter_url: "https://x.com/pacifica_fi"
+    docs_url: "https://docs.pacifica.fi/"
+
+  - venue: perpl
+    twitter_url: "https://x.com/perpltrade"
+    docs_url: "https://docs.perpl.xyz/"
+
+  - venue: polymarket
+    twitter_url: "https://x.com/Polymarket"
+    docs_url: "https://docs.polymarket.us/api/introduction"
+
+  - venue: reya
+    twitter_url: "https://x.com/reya_xyz"
+    docs_url: "https://docs.reya.xyz/"
+
+  - venue: risex
+    twitter_url: "https://x.com/risechain"
+    docs_url: "https://docs.risechain.com/"
+
+  - venue: tradexyz
+    twitter_url: "https://x.com/tradexyz"
+    docs_url: "https://docs.trade.xyz/"
+
+  - venue: txflow
+    twitter_url: "https://x.com/TxFlow_L1"
+    docs_url: "https://docs.txflow.com/"
