@@ -111,18 +111,16 @@ export const BRAND: Record<string, BrandAssets> = {
     nameImage: "logos/polymarket/name.png",
     // the "y" descender shrinks the cap height at equal image height -> bump
     nameScale: 1.3,
-    // flat "Poly Blue" exactly, per the brand swatch
-    backgroundCss: "#2E5CFF",
+    // flat black, per request
+    backgroundCss: "#000000",
   },
   perpl: {
     mark: "logos/perpl/mark.png",
     nameImage: "logos/perpl/name.png",
     // "p" descender shrinks the cap height at equal image height -> bump
     nameScale: 1.45,
-    // flat light lavender; the wordmark is kept in its dark brand colours
-    // (black "Perpl" + purple icon) so it reads on the light background.
-    backgroundCss: "#E1E1FF",
-    bgTone: "light",
+    // flat dark purple; wordmark recoloured white to read on it
+    backgroundCss: "#1E1A2B",
   },
   nado: {
     mark: "logos/nado/mark.png",
