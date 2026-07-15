@@ -24,6 +24,11 @@ export interface BrandAssets {
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
    *  the same size. Falls back to PerpName text when absent. */
   nameImage?: string;
+  /** Set when `nameImage` is the COMPLETE lockup (icon + text together) rather
+   *  than just the name -- e.g. "trade[XYZ]" already contains its symbol, so a
+   *  separate mark would read as a duplicate. The mark column is left empty
+   *  (kept for row alignment) and only the wordmark renders. */
+  wordmarkOnly?: boolean;
   /** Full-page background hues for the /<slug> page, TOP first to BOTTOM
    *  last. These brand colors are mixed heavily into a near-black (`glowBase`)
    *  to produce a DARK, brand-tinted page background (not a vivid gradient) --
@@ -116,10 +121,8 @@ export const BRAND: Record<string, BrandAssets> = {
   nado: {
     mark: "logos/nado/mark.png",
     nameImage: "logos/nado/name.png",
-    // brand's near-white field-lines background (center "[ OVERVIEW ]" removed).
-    // Light background -> flip bg-level text to dark so it stays readable.
-    backgroundImage: "logos/nado/background.png",
-    bgTone: "light",
+    // flat dark charcoal sampled 1:1 from the brand's dark-bg wordmark
+    backgroundCss: "#1E1E1E",
   },
   reya: {
     mark: "logos/reya/mark.png",
@@ -128,10 +131,11 @@ export const BRAND: Record<string, BrandAssets> = {
     backgroundImage: "logos/reya/background.jpg",
   },
   tradexyz: {
-    mark: "logos/tradexyz/mark.png",
+    // the wordmark already contains the "[XYZ]" symbol, so no separate mark
     nameImage: "logos/tradexyz/name.png",
-    // brand's dark isometric-bars hero photo
-    backgroundImage: "logos/tradexyz/background.jpg",
+    wordmarkOnly: true,
+    // flat navy sampled 1:1 from the brand's wordmark background
+    backgroundCss: "#232F43",
   },
 };
 
