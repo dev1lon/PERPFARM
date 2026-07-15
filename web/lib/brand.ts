@@ -85,8 +85,8 @@ export const BRAND: Record<string, BrandAssets> = {
   "01exchange": {
     mark: "logos/01/mark.png",
     nameImage: "logos/01/name.png",
-    // navy from the brand guidelines (#070C18 base), lighter navy glow
-    glow: ["#22366a"],
+    // flat #070C18 exactly, per the brand guidelines
+    glow: ["#070C18"],
     glowBase: "#070C18",
   },
 };
