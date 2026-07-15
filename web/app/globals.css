@@ -3,10 +3,10 @@
 /* Single dark theme (no light mode / theme switching). */
 :root {
   color-scheme: dark;
-  --bg: #070b15;
-  --surface-1: #0d1424;
-  --surface-2: #141c30;
-  --surface-hover: #1a2338; /* hover steps LIGHTER */
+  --bg: #0c1220;
+  --surface-1: #131c2e;
+  --surface-2: #1a2338;
+  --surface-hover: #222c44; /* hover steps LIGHTER */
   --border: rgba(255, 255, 255, 0.06);
   --text-primary: #f2f5fa;
   --text-muted: #99a1b5; /* >=4.5:1 on --surface-1 */
