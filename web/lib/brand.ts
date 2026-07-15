@@ -24,6 +24,11 @@ export interface BrandAssets {
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
    *  the same size. Falls back to PerpName text when absent. */
   nameImage?: string;
+  /** Optional per-perp size multiplier for the name image, to even out
+   *  PERCEIVED size across wordmarks: two names at the same pixel height can
+   *  look very different (all-caps vs. lowercase x-height, or a descender like
+   *  Polymarket's "y" eating into the cap height). Default 1. */
+  nameScale?: number;
   /** Full-page background hues for the /<slug> page, TOP first to BOTTOM
    *  last. These brand colors are mixed heavily into a near-black (`glowBase`)
    *  to produce a DARK, brand-tinted page background (not a vivid gradient) --
@@ -104,6 +109,8 @@ export const BRAND: Record<string, BrandAssets> = {
   polymarket: {
     mark: "logos/polymarket/mark.png",
     nameImage: "logos/polymarket/name.png",
+    // the "y" descender shrinks the cap height at equal image height -> bump
+    nameScale: 1.3,
     // flat "Poly Blue" exactly, per the brand swatch
     backgroundCss: "#2E5CFF",
   },
@@ -124,6 +131,8 @@ export const BRAND: Record<string, BrandAssets> = {
   reya: {
     mark: "logos/reya/mark.png",
     nameImage: "logos/reya/name.png",
+    // thin, wide-spaced caps read small at equal height -> bump to match others
+    nameScale: 1.55,
     // flat near-black, a touch darker than Nado
     backgroundCss: "#0D0D10",
   },
@@ -135,6 +144,8 @@ export const BRAND: Record<string, BrandAssets> = {
     mark: "logos/tradexyz/mark.png",
     markScale: 1.4,
     nameImage: "logos/tradexyz/name.png",
+    // lowercase "trade" reads small at equal height -> bump to match others
+    nameScale: 1.3,
     // flat navy sampled 1:1 from the brand's wordmark background
     backgroundCss: "#232F43",
   },
