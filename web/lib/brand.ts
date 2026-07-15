@@ -138,6 +138,15 @@ export const BRAND: Record<string, BrandAssets> = {
     // flat near-black, a touch darker than Nado
     backgroundCss: "#0D0D10",
   },
+  risex: {
+    // green "R" glyph lifted off the logo tile; the "RISEX" wordmark separately
+    mark: "logos/risex/mark.png",
+    nameImage: "logos/risex/name.png",
+    // outline caps read a touch light -> small bump
+    nameScale: 1.15,
+    // flat dark sampled 1:1 from the brand's bg_ref
+    backgroundCss: "#171C1F",
+  },
   tradexyz: {
     // the "[XYZ]" symbol on a tile whose background is exactly the card colour
     // (#232F43), so the tile edges vanish and only the symbol reads; padded to
