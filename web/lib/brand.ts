@@ -110,20 +110,22 @@ export const BRAND: Record<string, BrandAssets> = {
   perpl: {
     mark: "logos/perpl/mark.png",
     nameImage: "logos/perpl/name.png",
-    // brand's designed purple "Perpl" pattern background
-    backgroundImage: "logos/perpl/background.webp",
+    // flat light lavender; the wordmark is kept in its dark brand colours
+    // (black "Perpl" + purple icon) so it reads on the light background.
+    backgroundCss: "#E1E1FF",
+    bgTone: "light",
   },
   nado: {
     mark: "logos/nado/mark.png",
     nameImage: "logos/nado/name.png",
-    // flat dark charcoal sampled 1:1 from the brand's dark-bg wordmark
-    backgroundCss: "#1E1E1E",
+    // flat near-black sampled 1:1 from the brand's bg_ref
+    backgroundCss: "#131316",
   },
   reya: {
     mark: "logos/reya/mark.png",
     nameImage: "logos/reya/name.png",
-    // brand's dark "mirror" hero photo
-    backgroundImage: "logos/reya/background.jpg",
+    // flat near-black, a touch darker than Nado
+    backgroundCss: "#0D0D10",
   },
   tradexyz: {
     // the "[XYZ]" symbol on a tile whose background is exactly the card colour
