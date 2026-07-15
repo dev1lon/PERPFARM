@@ -133,8 +133,8 @@ export const BRAND: Record<string, BrandAssets> = {
   reya: {
     mark: "logos/reya/mark.png",
     nameImage: "logos/reya/name.png",
-    // thin, wide-spaced caps read small at equal height -> bump to match others
-    nameScale: 1.55,
+    // thin, wide-spaced caps read a touch small -> small bump
+    nameScale: 1.1,
     // flat near-black, a touch darker than Nado
     backgroundCss: "#0D0D10",
   },
@@ -204,4 +204,15 @@ export function brandBg(slug: string): string | undefined {
  * pick a readable color for text drawn directly on the brand background. */
 export function brandBgTone(slug: string): "light" | "dark" {
   return brandAssets(slug).bgTone ?? "dark";
+}
+
+/** Whether a perp's card/page background is a GRADIENT (vs a flat colour). A
+ * translucent hairline border reads unevenly over a gradient -- its colour
+ * shifts with the bg beneath it -- so the card uses a flat, opaque border
+ * instead for these. True for the multi-hue `glow` gradients and any
+ * `backgroundCss` that is itself a gradient. */
+export function brandBgIsGradient(slug: string): boolean {
+  const { backgroundCss, glow } = brandAssets(slug);
+  if (backgroundCss) return /gradient/i.test(backgroundCss);
+  return (glow?.length ?? 0) >= 2;
 }

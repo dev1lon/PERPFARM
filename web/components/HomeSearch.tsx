@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandBg, brandBgTone } from "@/lib/brand";
+import { brandBg, brandBgTone, brandBgIsGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -69,13 +69,17 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
             const lightBg = cardBg !== undefined && brandBgTone(v.slug) === "light";
             // A thin, neat border on every card (all four sides -- a full frame,
             // not the one-edge line that used to read as a seam). Tuned to the
-            // card tone: subtle light hairline on dark cards, subtle dark on the
-            // light (lavender) card, and the theme border on monogram cards.
-            const borderColor = cardBg
-              ? lightBg
+            // card: a translucent hairline (light on dark cards, dark on the
+            // lavender card) reads cleanly over a FLAT background, but shifts
+            // colour along a GRADIENT and looks uneven -- so gradient cards get
+            // a flat, opaque frame instead. Monogram cards keep the theme border.
+            const borderColor = !cardBg
+              ? "border-border"
+              : lightBg
                 ? "border-black/10"
-                : "border-white/10"
-              : "border-border";
+                : brandBgIsGradient(v.slug)
+                  ? "border-[#3a3b42]"
+                  : "border-white/10";
             return (
               <Link
                 key={v.slug}
