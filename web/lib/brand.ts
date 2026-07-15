@@ -41,6 +41,12 @@ export interface BrandAssets {
    *  the brand's designed background) -- crisp at any size, no image
    *  compression. Highest precedence. */
   backgroundCss?: string;
+  /** Luminance of the brand background. Most brands ship a DARK background, so
+   *  bg-level text (header links, headings, the home-card metrics) stays light
+   *  by default. A few brands ship a near-white designed background (e.g. Nado)
+   *  -- set "light" so that bg-level text flips to dark and stays readable.
+   *  Inner surface panels keep their own dark styling regardless. */
+  bgTone?: "light" | "dark";
 }
 
 export const BRAND: Record<string, BrandAssets> = {
@@ -89,6 +95,44 @@ export const BRAND: Record<string, BrandAssets> = {
     glow: ["#070C18"],
     glowBase: "#070C18",
   },
+  hotstuff: {
+    mark: "logos/hotstuff/mark.png",
+    nameImage: "logos/hotstuff/name.png",
+    // flat pure black, per request (the brand's photo bg was not wanted)
+    backgroundCss: "#000000",
+  },
+  polymarket: {
+    mark: "logos/polymarket/mark.png",
+    nameImage: "logos/polymarket/name.png",
+    // flat "Poly Blue" exactly, per the brand swatch
+    backgroundCss: "#2E5CFF",
+  },
+  perpl: {
+    mark: "logos/perpl/mark.png",
+    nameImage: "logos/perpl/name.png",
+    // brand's designed purple "Perpl" pattern background
+    backgroundImage: "logos/perpl/background.webp",
+  },
+  nado: {
+    mark: "logos/nado/mark.png",
+    nameImage: "logos/nado/name.png",
+    // brand's near-white field-lines background (center "[ OVERVIEW ]" removed).
+    // Light background -> flip bg-level text to dark so it stays readable.
+    backgroundImage: "logos/nado/background.png",
+    bgTone: "light",
+  },
+  reya: {
+    mark: "logos/reya/mark.png",
+    nameImage: "logos/reya/name.png",
+    // brand's dark "mirror" hero photo
+    backgroundImage: "logos/reya/background.jpg",
+  },
+  tradexyz: {
+    mark: "logos/tradexyz/mark.png",
+    nameImage: "logos/tradexyz/name.png",
+    // brand's dark isometric-bars hero photo
+    backgroundImage: "logos/tradexyz/background.jpg",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {
@@ -135,4 +179,11 @@ export function brandBg(slug: string): string | undefined {
   if (backgroundCss) return backgroundCss;
   if (backgroundImage) return `url(/${backgroundImage}) center / cover no-repeat`;
   return cardBrandBg(slug);
+}
+
+/** Luminance of a perp's brand background: "dark" (default) or "light" for the
+ * few brands that ship a near-white designed background. Callers use it to
+ * pick a readable color for text drawn directly on the brand background. */
+export function brandBgTone(slug: string): "light" | "dark" {
+  return brandAssets(slug).bgTone ?? "dark";
 }

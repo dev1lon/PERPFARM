@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { perpDexBadgeVars } from "@/components/PerpDexLogo";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandBg } from "@/lib/brand";
+import { brandBg, brandBgTone } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 
@@ -68,6 +68,8 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
             // render BORDERLESS -- an immersive slice of the page, so no border
             // line reads as a seam. Others keep the bordered monogram-tint card.
             const cardBg = brandBg(v.slug);
+            // Brands that ship a near-white background need dark metrics text.
+            const lightBg = cardBg !== undefined && brandBgTone(v.slug) === "light";
             return (
               <Link
                 key={v.slug}
@@ -85,10 +87,14 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                   nameClassName="text-base"
                 />
                 <span className="flex items-center gap-3 text-sm">
-                  <span className="text-text-muted">
+                  <span className={lightBg ? "text-[#454e64]" : "text-text-muted"}>
                     {days !== null ? `season ends in ${days}d` : "season n/a"}
                   </span>
-                  <span className="font-mono-num font-semibold text-text-primary">
+                  <span
+                    className={`font-mono-num font-semibold ${
+                      lightBg ? "text-[#0b1220]" : "text-text-primary"
+                    }`}
+                  >
                     {v.cheapestCostPerPointUsd !== null
                       ? `from ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
                       : "no data yet"}

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { VenueWizard } from "@/components/VenueWizard";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PerpIdentity } from "@/components/PerpIdentity";
-import { brandBg } from "@/lib/brand";
+import { brandBg, brandBgTone } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { MarkdownLite } from "@/lib/markdown-lite";
@@ -24,6 +24,15 @@ export default async function VenuePage({
   // dark brand color gradient -- covers the whole page so the card on the home
   // list reads as a slice of it. Kept behind the content (which is `relative`).
   const pageBg = brandBg(venueSlug);
+  // A few brands ship a near-white background; text drawn directly on it (the
+  // header links, the "How points work" heading + body) flips to dark. Inner
+  // surface panels keep their own dark styling either way.
+  const lightBg = pageBg !== undefined && brandBgTone(venueSlug) === "light";
+  const onBg = lightBg ? "text-[#0b1220]" : "text-text-primary";
+  const onBgMuted = lightBg ? "text-[#454e64]" : "text-text-muted";
+  const onBgLink = lightBg
+    ? "text-[#454e64] hover:text-[#0b1220]"
+    : "text-text-muted hover:text-accent";
 
   return (
     <div className="relative min-h-screen">
@@ -58,7 +67,7 @@ export default async function VenuePage({
               href={venue.meta.referralLink}
               target="_blank"
               rel="noreferrer"
-              className="pf-transition text-text-muted hover:text-accent"
+              className={`pf-transition ${onBgLink}`}
             >
               App ↗
             </a>
@@ -68,7 +77,7 @@ export default async function VenuePage({
               href={venue.meta.twitterUrl}
               target="_blank"
               rel="noreferrer"
-              className="pf-transition text-text-muted hover:text-accent"
+              className={`pf-transition ${onBgLink}`}
             >
               Twitter ↗
             </a>
@@ -78,7 +87,7 @@ export default async function VenuePage({
               href={venue.meta.docsUrl}
               target="_blank"
               rel="noreferrer"
-              className="pf-transition text-text-muted hover:text-accent"
+              className={`pf-transition ${onBgLink}`}
             >
               Docs ↗
             </a>
@@ -114,11 +123,11 @@ export default async function VenuePage({
       </div>
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-text-primary">How points work</h2>
+        <h2 className={`text-sm font-medium ${onBg}`}>How points work</h2>
         {venue.pointsProgram ? (
-          <MarkdownLite text={venue.pointsProgram.descriptionMd} />
+          <MarkdownLite text={venue.pointsProgram.descriptionMd} className={onBgMuted} />
         ) : (
-          <p className="text-sm text-text-muted">No points program data yet.</p>
+          <p className={`text-sm ${onBgMuted}`}>No points program data yet.</p>
         )}
       </div>
 

@@ -14,10 +14,18 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
   });
 }
 
-export function MarkdownLite({ text }: { text: string }) {
+export function MarkdownLite({
+  text,
+  className = "text-text-muted",
+}: {
+  text: string;
+  /** Color/utility classes for the text block. Override on light brand
+   *  backgrounds where the default muted-light color would be unreadable. */
+  className?: string;
+}) {
   const blocks = text.trim().split(/\n\s*\n/);
   return (
-    <div className="space-y-2 text-sm leading-relaxed text-text-muted">
+    <div className={`space-y-2 text-sm leading-relaxed ${className}`}>
       {blocks.map((block, i) => {
         const lines = block.split("\n").map((l) => l.trim());
         const isList = lines.every((l) => l.startsWith("- "));

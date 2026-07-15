@@ -20,6 +20,9 @@ from perpfarm.adapters.lighter import LighterAdapter
 from perpfarm.adapters.nado import NadoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
 from perpfarm.adapters.paradex import ParadexAdapter
+from perpfarm.adapters.perpl import PerplAdapter
+from perpfarm.adapters.polymarket import PolymarketAdapter
+from perpfarm.adapters.reya import ReyaAdapter
 from perpfarm.adapters.risex import RiseXAdapter
 from perpfarm.adapters.tradexyz import TradexyzAdapter
 from perpfarm.adapters.txflow import TxflowAdapter
@@ -64,6 +67,9 @@ REGISTRY: list[VenueRegistration] = [
     _real("hibachi", "Hibachi", HibachiAdapter, api_status="live"),
     _real("risex", "RiseX", RiseXAdapter),
     _real("01exchange", "01 Exchange", Exchange01Adapter),
+    _real("perpl", "Perpl", PerplAdapter),
+    _real("polymarket", "Polymarket", PolymarketAdapter),
+    _real("reya", "Reya", ReyaAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
