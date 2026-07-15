@@ -69,9 +69,9 @@ export const BRAND: Record<string, BrandAssets> = {
   txflow: {
     mark: "logos/txflow/mark.png",
     nameImage: "logos/txflow/name.png",
-    // green mark color, on a dark green base
-    glow: ["#7CFF6B"],
-    glowBase: "#0a160c",
+    // flat dark olive-black background (per the requested swatch)
+    glow: ["#0D0F05"],
+    glowBase: "#0D0F05",
   },
   extended: {
     mark: "logos/extended/mark.png",
