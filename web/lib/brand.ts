@@ -126,7 +126,8 @@ export const BRAND: Record<string, BrandAssets> = {
     backgroundImage: "logos/reya/background.jpg",
   },
   tradexyz: {
-    mark: "logos/tradexyz/mark.png",
+    // the brand's square [XYZ] app-icon tile, inserted as-is (not extracted)
+    mark: "logos/tradexyz/logo.jpg",
     nameImage: "logos/tradexyz/name.png",
     // flat navy sampled 1:1 from the brand's wordmark background
     backgroundCss: "#232F43",
