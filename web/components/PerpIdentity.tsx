@@ -24,7 +24,7 @@ export function PerpIdentity({
   namePx: number;
   nameClassName?: string;
 }) {
-  const { mark, nameImage, markScale, wordmarkOnly } = brandAssets(slug);
+  const { mark, nameImage, markScale } = brandAssets(slug);
   // Fixed column (width + height) so every row lines up and stays an even
   // height regardless of per-perp mark scaling; 1.4 is the max supported scale.
   const colW = Math.round(markPx * 1.7);
@@ -36,7 +36,7 @@ export function PerpIdentity({
         className="flex shrink-0 items-center justify-center"
         style={{ width: colW, height: colH }}
       >
-        {wordmarkOnly ? null : mark ? (
+        {mark ? (
           // eslint-disable-next-line @next/next/no-img-element -- static mark from /public
           <img
             src={`/${mark}`}
