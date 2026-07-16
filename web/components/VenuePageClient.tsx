@@ -64,29 +64,29 @@ function VariationalPointsStatus() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-sm font-medium text-text-primary">{tr(locale, "Points distribution", "Раздача поинтов")}</h2>
-          <p className="mt-1 text-xs text-text-muted">{tr(locale, "Competition points are tracked separately and can be added manually.", "Поинты из турниров учитываются отдельно и добавляются вручную.")}</p>
+          <p className="mt-1 text-sm text-text-muted">{tr(locale, "Competition points are tracked separately and can be added manually.", "Поинты из турниров учитываются отдельно и добавляются вручную.")}</p>
         </div>
-        <span className="text-xs text-text-muted">{tr(locale, "Friday, 00:00 UTC", "Пятница, 00:00 UTC")}</span>
+        <span className="text-sm text-text-muted">{tr(locale, "Friday, 00:00 UTC", "Пятница, 00:00 UTC")}</span>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Distributed", "Уже роздано")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Distributed", "Уже роздано")}</p>
           <p className="mt-1 font-mono-num text-lg text-text-primary">{formatNumber(progress.distributed)}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Remaining", "Осталось")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Remaining", "Осталось")}</p>
           <p className="mt-1 font-mono-num text-lg text-text-primary">{formatNumber(progress.remaining)}</p>
-          <p className="mt-1 text-xs text-text-muted">{progress.weeksRemaining} {tr(locale, "weeks", "недель")}</p>
+          <p className="mt-1 text-sm text-text-muted">{progress.weeksRemaining} {tr(locale, "weeks", "недель")}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Weekly drop", "Еженедельная раздача")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Weekly drop", "Еженедельная раздача")}</p>
           <p className="mt-1 font-mono-num text-lg text-text-primary">+{formatNumber(WEEKLY_POINT_DISTRIBUTION)}</p>
-          <p className="mt-1 text-xs text-text-muted">{tr(locale, "points", "поинтов")}</p>
+          <p className="mt-1 text-sm text-text-muted">{tr(locale, "points", "поинтов")}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Next drop", "Следующая раздача")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Next drop", "Следующая раздача")}</p>
           <p suppressHydrationWarning className="mt-1 font-mono-num text-lg text-text-primary">{days}:{hours}:{minutes}:{seconds}</p>
-          <p className="mt-1 text-xs text-text-muted">{tr(locale, "days : hours : min : sec", "дни : часы : мин : сек")}</p>
+          <p className="mt-1 text-sm text-text-muted">{tr(locale, "days : hours : min : sec", "дни : часы : мин : сек")}</p>
         </div>
       </div>
     </section>
@@ -97,7 +97,7 @@ function VariationalFarmingFocus() {
   const locale = useLocale();
   return (
     <section className="rounded-lg border border-border bg-surface-1 p-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-accent">{tr(locale, "Manual farming playbook", "Ручной playbook фарма")}</p>
+      <p className="text-sm font-medium uppercase tracking-wide text-accent">{tr(locale, "Manual farming playbook", "Ручной playbook фарма")}</p>
       <h2 className="mt-2 text-base font-semibold text-text-primary">{tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}</h2>
       <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current protocol guidance: keep exposure in medium-OI markets first; eligible trading volume is the secondary driver. Tiers, referral boost and an active competition can increase the result.", "Текущий ориентир по протоколу: в первую очередь удерживать позицию на рынках со средним OI; eligible-торговый объём — второй по важности фактор. Tiers, реферальный буст и активный конкурс могут увеличить результат.")}</p>
 
@@ -146,7 +146,7 @@ function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
       >
         <span>
           <span className="block text-sm font-medium text-text-primary">{tr(locale, "Factors affecting points", "Факторы, влияющие на поинты")}</span>
-          <span className="mt-1 block text-xs text-text-muted">
+          <span className="mt-1 block text-sm text-text-muted">
             {isVariational
               ? tr(locale, "Reward tiers, referral boost, weekly distribution and competition", "Reward tiers, реферальный буст, еженедельная раздача и конкурс")
               : tr(locale, "Verified protocol-specific rules and boosts", "Проверенные правила и бусты конкретного протокола")}
@@ -165,17 +165,17 @@ function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
                 {tr(locale, "Points are distributed every Friday at 00:00 UTC for the previous week. Use a referral link before the first trade; the current campaign claim is a +16% point boost — confirm it on the signup screen.", "Поинты распределяются каждую пятницу в 00:00 UTC за предыдущую неделю. Создавайте аккаунт по реферальной ссылке до первой сделки; текущий заявленный буст кампании — +16% к поинтам. Подтвердите его на экране регистрации.")}
               </p>
               <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full min-w-[620px] text-left text-xs">
+                <table className="w-full min-w-[620px] text-left text-sm">
                   <thead className="bg-surface-2 text-text-muted"><tr><th className="px-3 py-2 font-medium">{tr(locale, "Tier", "Tier")}</th><th className="px-3 py-2 font-medium">{tr(locale, "30-day volume to unlock", "Объём за 30 дней")}</th><th className="px-3 py-2 font-medium">{tr(locale, "Points boost", "Буст поинтов")}</th></tr></thead>
                   <tbody>{TIERS.map(([tier, volume, boost]) => <tr key={tier} className="border-t border-border text-text-muted"><td className="px-3 py-2 font-medium text-text-primary">{tier}</td><td className="px-3 py-2 font-mono-num">{volume}</td><td className="px-3 py-2 font-mono-num">{boost}</td></tr>)}</tbody>
                 </table>
               </div>
-              <p className="text-xs text-text-muted">{tr(locale, "Tier volume = personal volume + 0.2 × referred volume. The inviter also earns 1 point per 10 points earned by referred users.", "Объём для tier = личный объём + 0,2 × объём рефералов. Пригласивший также получает 1 поинт за каждые 10 поинтов рефералов.")}</p>
+              <p className="text-sm text-text-muted">{tr(locale, "Tier volume = personal volume + 0.2 × referred volume. The inviter also earns 1 point per 10 points earned by referred users.", "Объём для tier = личный объём + 0,2 × объём рефералов. Пригласивший также получает 1 поинт за каждые 10 поинтов рефералов.")}</p>
               <details className="overflow-hidden rounded-md border border-border bg-surface-2">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-text-primary">
                   {tr(locale, "Trading competition — inactive", "Торговый конкурс — неактивен")}
                 </summary>
-                <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-xs text-text-muted">
+                <div className="flex flex-col gap-3 border-t border-border px-4 py-3 text-sm text-text-muted">
                   <p>{tr(locale, "The latest RWA competition ended on July 13. Variational separately distributed 20,000 points in proportion to eligible TradFi-market volume; those points and the $20,000 USDC prize pool are excluded from base execution-cost calculations.", "Последний RWA-конкурс завершился 13 июля. Variational отдельно распределил 20 000 поинтов пропорционально eligible-объёму рынков TradFi; эти поинты и призовой пул $20 000 USDC исключены из базовых расчётов стоимости исполнения.")}</p>
                   <div className="flex flex-wrap gap-4"><a href="https://docs.variational.io/omni/trading-competition" target="_blank" rel="noreferrer" className="text-accent hover:text-accent-hover">{tr(locale, "Competition rules ↗", "Правила конкурса ↗")}</a><a href="https://x.com/variational_io/status/2077147392764510582" target="_blank" rel="noreferrer" className="text-accent hover:text-accent-hover">{tr(locale, "20,000-point announcement ↗", "Анонс 20 000 поинтов ↗")}</a></div>
                 </div>
@@ -206,7 +206,7 @@ export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDet
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <h1><PerpIdentity slug={venue.slug} name={venue.name} markPx={38} namePx={22} nameClassName="text-2xl" /></h1>
-            {ready && seasonName && <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right"><div className="text-[10px] uppercase tracking-wide text-text-muted">{tr(locale, "Season", "Сезон")}</div><div className="font-mono-num text-sm font-semibold text-text-primary">{seasonDays !== null ? tr(locale, `${seasonDays}d left`, `осталось ${seasonDays} д.`) : seasonName}</div></div>}
+            {ready && seasonName && <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right"><div className="text-sm uppercase tracking-wide text-text-muted">{tr(locale, "Season", "Сезон")}</div><div className="font-mono-num text-sm font-semibold text-text-primary">{seasonDays !== null ? tr(locale, `${seasonDays}d left`, `осталось ${seasonDays} д.`) : seasonName}</div></div>}
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
             {venue.meta?.referralLink && <a href={venue.meta.referralLink} target="_blank" rel="noreferrer" className={`pf-transition ${onBgLink}`}>{tr(locale, "App ↗", "Приложение ↗")}</a>}
@@ -217,8 +217,8 @@ export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDet
 
         {!ready ? <section className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-1 p-6 text-center"><p className="font-mono-num text-5xl font-semibold tracking-[0.22em] text-text-primary">SOON</p><p className="max-w-sm text-sm text-text-muted">{tr(locale, "We are verifying this perp-dex before publishing routes, fees, or point estimates.", "Мы проверяем этот perp-dex перед публикацией маршрутов, комиссий и оценок поинтов.")}</p></section> : <>
           <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface-1 p-5">
-            <div className="flex flex-col gap-1"><span className="text-xs text-text-muted">{tr(locale, "Farm point price", "Цена фарма поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{isVariational ? "$5–11" : "n/a"}</span></div>
-            <div className="flex flex-col gap-1"><span className="text-xs text-text-muted">{tr(locale, "OTC point price", "OTC-цена поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{otcPrice === null ? "n/a" : `$${otcPrice}`}</span></div>
+            <div className="flex flex-col gap-1"><span className="text-sm text-text-muted">{tr(locale, "Farm point price", "Цена фарма поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{isVariational ? "$5–11" : "n/a"}</span></div>
+            <div className="flex flex-col gap-1"><span className="text-sm text-text-muted">{tr(locale, "OTC point price", "OTC-цена поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{otcPrice === null ? "n/a" : `$${otcPrice}`}</span></div>
           </div>
           {isVariational && <VariationalMarketActivity />}
           {isVariational && <VariationalPointsStatus />}

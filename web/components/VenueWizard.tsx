@@ -187,7 +187,7 @@ function StrategyCards({ value, onChange }: { value: Strategy; onChange: (s: Str
             <div className={`text-sm font-medium ${selected ? "text-accent" : "text-text-primary"}`}>
               {s.label}
             </div>
-            <div className="text-xs text-text-muted">{s.description}</div>
+            <div className="text-sm text-text-muted">{s.description}</div>
           </button>
         );
       })}
@@ -246,7 +246,7 @@ function RecipeCard({
             {recipe.chips.map((chip) => (
               <span
                 key={chip}
-                className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-muted"
+                className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-sm uppercase tracking-wide text-text-muted"
               >
                 {chip}
               </span>
@@ -254,7 +254,7 @@ function RecipeCard({
           </div>
           <p className="text-sm text-text-muted">{line}</p>
           {!isSelfMatch && otherLeg && (
-            <span className="text-xs text-accent">View {hedgeName} →</span>
+            <span className="text-sm text-accent">View {hedgeName} →</span>
           )}
         </div>
         <span
@@ -343,19 +343,19 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Выбранный вариант</p><p className="mt-1 text-sm font-medium text-text-primary">{variant}</p></div>
-          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Плановая оценка</p><p className="mt-1 font-mono-num text-sm font-medium text-text-primary">{estimate}</p></div>
-          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Окно удержания</p><p className="mt-1 text-sm font-medium text-text-primary">{hold}</p></div>
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-sm text-text-muted">Выбранный вариант</p><p className="mt-1 text-sm font-medium text-text-primary">{variant}</p></div>
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-sm text-text-muted">Плановая оценка</p><p className="mt-1 font-mono-num text-sm font-medium text-text-primary">{estimate}</p></div>
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-sm text-text-muted">Окно удержания</p><p className="mt-1 text-sm font-medium text-text-primary">{hold}</p></div>
         </div>
         <ol className="grid gap-3 text-sm text-text-muted">
           {steps.map(([heading, body], index) => (
             <li key={heading} className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">{index + 1}</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">{index + 1}</span>
               <span><strong className="font-medium text-text-primary">{heading}</strong> {body}</span>
             </li>
           ))}
         </ol>
-        <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-xs text-text-muted sm:grid-cols-2">
+        <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-sm text-text-muted sm:grid-cols-2">
           <div><p className="font-medium text-text-primary">Расчёт стоимости</p><p className="mt-1">Стоимость = entry impact + exit impact + net funding. Цена поинта = стоимость ÷ (базовые поинты + eligible конкурсные поинты). Призовой пул $20 000 USDC не вычитается.</p></div>
           <div><p className="font-medium text-text-primary">Хедж-схема</p><p className="mt-1">Variational разрешает органический дельта-нейтральный хедж между двумя аккаунтами. Держите одинаковый номинал long и short: маршрут сравнивает стоимость исполнения, а не направленную ставку на рынок.</p></div>
         </div>
@@ -376,22 +376,22 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">Selected variant</p>
+          <p className="text-sm text-text-muted">Selected variant</p>
           <p className="mt-1 text-sm font-medium text-text-primary">{plan.title}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">Planning estimate</p>
+          <p className="text-sm text-text-muted">Planning estimate</p>
           <p className="mt-1 font-mono-num text-sm font-medium text-text-primary">{plan.estimate}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">Hold window</p>
+          <p className="text-sm text-text-muted">Hold window</p>
           <p className="mt-1 text-sm font-medium text-text-primary">{plan.context}</p>
         </div>
       </div>
 
       <ol className="grid gap-3 text-sm text-text-muted">
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">
             1
           </span>
           <span>
@@ -401,7 +401,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">
             2
           </span>
           <span>
@@ -411,7 +411,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">
             3
           </span>
           <span>
@@ -421,7 +421,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">
             4
           </span>
           <span>
@@ -431,7 +431,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-sm text-accent">
             5
           </span>
           <span>
@@ -445,7 +445,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
         </li>
       </ol>
 
-      <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-xs text-text-muted sm:grid-cols-2">
+      <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-sm text-text-muted sm:grid-cols-2">
         <div>
           <p className="font-medium text-text-primary">Cost calculation</p>
           <p className="mt-1">
@@ -626,7 +626,7 @@ export function VenueWizard({
             </div>
           )}
 
-          <p className="text-center text-xs text-text-muted">
+          <p className="text-center text-sm text-text-muted">
             {tr(locale, "Estimates from public data · not financial advice", "Оценки на основе публичных данных · не финансовый совет")}
           </p>
         </div>

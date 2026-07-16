@@ -82,7 +82,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   aria-expanded={open}
                   className="pf-transition grid w-full grid-cols-[2.25rem_1fr_auto] items-center gap-3 px-3 py-3 text-left hover:bg-surface-hover"
                 >
-                  <span className="font-mono-num text-xs text-text-muted">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="font-mono-num text-sm text-text-muted">{String(index + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <p className="font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
                   </div>

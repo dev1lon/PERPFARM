@@ -132,11 +132,11 @@ export function VariationalMarketActivity() {
     <section className="rounded-lg border border-border bg-surface-1 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">{tr(locale, "Market activity", "Активность рынка")}</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-accent">{tr(locale, "Market activity", "Активность рынка")}</p>
           <h2 className="mt-2 text-base font-semibold text-text-primary">{tr(locale, "Volume and open interest — last 30 days", "Объём и открытый интерес — последние 30 дней")}</h2>
           <p className="mt-1 text-sm text-text-muted">{tr(locale, "Platform-wide figures in USD.", "Данные по всей платформе в USD.")}</p>
         </div>
-        {data && <p className="font-mono-num text-xs text-text-muted">{tr(locale, "Updated", "Обновлено")} {new Date(data.asOf).toLocaleTimeString(locale === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" })} UTC</p>}
+        {data && <p className="font-mono-num text-sm text-text-muted">{tr(locale, "Updated", "Обновлено")} {new Date(data.asOf).toLocaleTimeString(locale === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" })} UTC</p>}
       </div>
 
       <div className="mt-5 inline-flex rounded-md border border-border bg-surface-2 p-1" role="tablist" aria-label={tr(locale, "Market activity metric", "Показатель активности рынка")}>
@@ -150,7 +150,7 @@ export function VariationalMarketActivity() {
               role="tab"
               aria-selected={active}
               onClick={() => setMetric(value)}
-              className={`pf-transition rounded px-3 py-1.5 text-xs font-medium ${active ? "bg-surface-1 text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}
+              className={`pf-transition rounded px-3 py-1.5 text-sm font-medium ${active ? "bg-surface-1 text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}
             >
               {tabLabel}
             </button>
@@ -168,7 +168,7 @@ export function VariationalMarketActivity() {
               <h3 className="text-sm font-medium text-text-primary">{label}</h3>
               <p className="mt-1 font-mono-num text-xl font-light text-text-primary">{compactUsd(latest)}</p>
             </div>
-            <p className="font-mono-num text-right text-xs text-text-muted">{data.days}(D)</p>
+            <p className="font-mono-num text-right text-sm text-text-muted">{data.days}(D)</p>
           </div>
 
           {series.length > 1 ? (
