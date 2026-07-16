@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PerpIdentity } from "@/components/PerpIdentity";
 import { VenueWizard } from "@/components/VenueWizard";
+import { VariationalMarketActivity } from "@/components/VariationalMarketActivity";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { brandBg, brandBgTone } from "@/lib/brand";
 import { daysUntil } from "@/lib/format";
@@ -220,6 +221,7 @@ export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDet
             <div className="flex flex-col gap-1"><span className="text-xs text-text-muted">{tr(locale, "Farm point price", "Цена фарма поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{isVariational ? "$5–11" : "n/a"}</span></div>
             <div className="flex flex-col gap-1"><span className="text-xs text-text-muted">{tr(locale, "OTC point price", "OTC-цена поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{otcPrice === null ? "n/a" : `$${otcPrice}`}</span></div>
           </div>
+          {isVariational && <VariationalMarketActivity />}
           {isVariational && <VariationalPointsStatus />}
           {isVariational && <VariationalFarmingFocus />}
           <PointsFactorsPanel isVariational={isVariational} />
