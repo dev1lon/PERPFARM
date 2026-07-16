@@ -99,18 +99,17 @@ function VariationalFarmingFocus() {
     <section className="rounded-lg border border-border bg-surface-1 p-5">
       <p className="text-xs font-medium uppercase tracking-wide text-accent">{tr(locale, "Manual farming playbook", "Ручной playbook фарма")}</p>
       <h2 className="mt-2 text-base font-semibold text-text-primary">{tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}</h2>
-      <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current protocol guidance: keep exposure in medium-OI markets first; eligible trading volume is the secondary driver. This is a manual farming rule, not a published point-emission formula.", "Текущий ориентир по протоколу: в первую очередь удерживать позицию на рынках со средним OI; eligible-торговый объём — второй по важности фактор. Это ручное правило фарма, а не опубликованная формула эмиссии поинтов.")}</p>
+      <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current protocol guidance: keep exposure in medium-OI markets first; eligible trading volume is the secondary driver. Tiers, referral boost and an active competition can increase the result.", "Текущий ориентир по протоколу: в первую очередь удерживать позицию на рынках со средним OI; eligible-торговый объём — второй по важности фактор. Tiers, реферальный буст и активный конкурс могут увеличить результат.")}</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Priority 1", "Приоритет 1")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Priority 1", "Приоритет 1")}</p>
           <p className="mt-1 text-sm font-medium text-text-primary">{tr(locale, "Medium OI · 12–24h hold", "Средний OI · удержание 12–24 ч")}</p>
-          <p className="mt-1 text-xs text-text-muted">{tr(locale, "Current lower-cost farming setup: $5–7 / pt.", "Текущий более дешёвый сценарий фарма: $5–7 / pt.")}</p>
+          <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current lower-cost farming setup: $5–7 / pt.", "Текущий более дешёвый сценарий фарма: $5–7 / pt.")}</p>
         </div>
         <div className="rounded-md border border-border bg-surface-2 p-3">
-          <p className="text-xs text-text-muted">{tr(locale, "Priority 2", "Приоритет 2")}</p>
+          <p className="text-sm text-text-muted">{tr(locale, "Priority 2", "Приоритет 2")}</p>
           <p className="mt-1 text-sm font-medium text-text-primary">{tr(locale, "Eligible trading volume", "Eligible-торговый объём")}</p>
-          <p className="mt-1 text-xs text-text-muted">{tr(locale, "Tiers, referral boost and an active competition can increase the result.", "Tiers, реферальный буст и активный конкурс могут увеличить результат.")}</p>
         </div>
       </div>
 
@@ -119,13 +118,13 @@ function VariationalFarmingFocus() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-md border border-border bg-surface-2 p-3">
             <p className="font-medium text-text-primary">Variational × Variational</p>
-            <p className="mt-1 text-xs text-accent">{tr(locale, "Approved hedge setup", "Разрешённая хедж-схема")}</p>
-            <p className="mt-1 text-xs text-text-muted">{tr(locale, "Variational permits organic delta-neutral hedging with two accounts. Keep equal notional long and short; this is the lowest-cost route.", "Variational разрешает органический дельта-нейтральный хедж двумя аккаунтами. Держите одинаковый номинал long и short: это самый дешёвый маршрут.")}</p>
+            <p className="mt-1 text-sm text-accent">{tr(locale, "Approved hedge setup", "Разрешённая хедж-схема")}</p>
+            <p className="mt-1 text-sm text-text-muted">{tr(locale, "Variational permits organic delta-neutral hedging with two accounts. Keep equal notional long and short; this is the lowest-cost route.", "Variational разрешает органический дельта-нейтральный хедж двумя аккаунтами. Держите одинаковый номинал long и short: это самый дешёвый маршрут.")}</p>
           </div>
           <div className="rounded-md border border-border bg-surface-2 p-3">
             <p className="font-medium text-text-primary">Variational × TxFlow</p>
-            <p className="mt-1 text-xs text-accent">{tr(locale, "Early RWA thesis", "Ранняя RWA-гипотеза")}</p>
-            <p className="mt-1 text-xs text-text-muted">{tr(locale, "TxFlow has no confirmed points program yet and focuses on RWA, so it may later share relevant markets with Variational. Fees, eligibility and the route remain manual research — not a scored recommendation yet.", "У TxFlow пока нет подтверждённой программы поинтов, а фокус на RWA может позже дать пересечение релевантных рынков с Variational. Комиссии, eligibility и сам маршрут остаются ручным исследованием — пока это не scored-рекомендация.")}</p>
+            <p className="mt-1 text-sm text-accent">{tr(locale, "Early RWA thesis", "Ранняя RWA-гипотеза")}</p>
+            <p className="mt-1 text-sm text-text-muted">{tr(locale, "TxFlow has no confirmed points program yet and focuses on RWA, so it may later share relevant markets with Variational. Fees, eligibility and the route remain manual research — not a scored recommendation yet.", "У TxFlow пока нет подтверждённой программы поинтов, а фокус на RWA может позже дать пересечение релевантных рынков с Variational. Комиссии, eligibility и сам маршрут остаются ручным исследованием — пока это не scored-рекомендация.")}</p>
           </div>
         </div>
       </div>

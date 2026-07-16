@@ -124,14 +124,10 @@ export function VariationalMarketActivity() {
   const isVolume = metric === "volume";
   const label = isVolume
     ? tr(locale, "Volume (24h)", "Объём (24ч)")
-    : tr(locale, "Open interest", "Открытый интерес");
+    : tr(locale, "Open interest (24h)", "Открытый интерес (24ч)");
   const series = data ? (isVolume ? data.volume.series : data.openInterest.series) : [];
   const latest = data ? (isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
   const color = isVolume ? "#5d9cff" : "#42d3bf";
-  const source = isVolume
-    ? tr(locale, "Source: Variational public API, retained by PerpFarm.", "Источник: публичный API Variational, сохранённый PerpFarm.")
-    : tr(locale, "Source: DefiLlama open-interest history.", "Источник: история открытого интереса DefiLlama.");
-
   return (
     <section className="rounded-lg border border-border bg-surface-1 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -146,7 +142,7 @@ export function VariationalMarketActivity() {
       <div className="mt-5 inline-flex rounded-md border border-border bg-surface-2 p-1" role="tablist" aria-label={tr(locale, "Market activity metric", "Показатель активности рынка")}>
         {(["volume", "openInterest"] as const).map((value) => {
           const active = metric === value;
-          const tabLabel = value === "volume" ? tr(locale, "Volume (24h)", "Объём (24ч)") : "OI";
+          const tabLabel = value === "volume" ? tr(locale, "Volume", "Объём") : "OI";
           return (
             <button
               key={value}
@@ -184,7 +180,6 @@ export function VariationalMarketActivity() {
                 : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
             </div>
           )}
-          <p className="mt-2 text-xs text-text-muted">{source}</p>
         </div>
       )}
     </section>

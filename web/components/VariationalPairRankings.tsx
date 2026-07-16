@@ -56,7 +56,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
       <div>
         <h2 className="text-sm font-medium text-text-primary">{tr(locale, "Full hedge-cycle calculations", "Расчёты полного хедж-цикла")}</h2>
-        <p className="mt-1 text-xs text-text-muted">
+        <p className="mt-1 text-sm text-text-muted">
           {data
             ? tr(
               locale,
@@ -88,11 +88,11 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   </div>
                   <div className="text-right">
                     <p className="font-mono-num text-sm font-semibold text-text-primary">{formatUsd(pair.cycleCostUsd)}</p>
-                    <p className="text-xs text-text-muted">{tr(locale, "full $200k cycle", "полный цикл $200k")}</p>
+                    <p className="text-sm text-text-muted">{tr(locale, "full $200k cycle", "полный цикл $200k")}</p>
                   </div>
                 </button>
                 {open && (
-                  <div className="grid gap-3 border-t border-border bg-surface-2 px-4 py-3 text-xs text-text-muted sm:grid-cols-2">
+                  <div className="grid gap-3 border-t border-border bg-surface-2 px-4 py-3 text-sm text-text-muted sm:grid-cols-2">
                     <div>
                       <p className="font-medium text-text-primary">{tr(locale, "Account A · LONG", "Аккаунт A · LONG")}</p>
                       <p className="mt-1">{tr(locale, "Entry: buy", "Вход: покупка")} {formatUsd(data.fillNotionalUsd, { decimals: 0 })} — <span className="font-mono-num text-text-primary">{formatUsd(pair.buyCostUsd)}</span> · {pair.buyBps} bps</p>
@@ -110,7 +110,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                     <div className="sm:col-span-2">
                       <p>{tr(locale, "Cycle total", "Итого цикл")}: {formatUsd(pair.longAccountTotalUsd)} + {formatUsd(pair.shortAccountTotalUsd)} = <span className="font-mono-num font-medium text-text-primary">{formatUsd(pair.cycleCostUsd)}</span>.</p>
                       <p className="mt-2 text-text-primary">{tr(locale, "How to execute", "Как исполнять")}</p>
-                      <p className="mt-1">{tr(locale, "Use market / RFQ for both entries and both exits, with a slippage limit enabled. This is the execution used in the calculation.", "Используйте market / RFQ для обоих входов и выходов с включённым лимитом проскальзывания. Именно такое исполнение заложено в расчёт.")}</p>
+                      <p className="mt-1">{tr(locale, "The model uses market / RFQ for both entries and both exits from the live public $50k quote estimate. Enable your slippage limit before trading; the site cannot verify your order settings.", "Модель использует market / RFQ для обоих входов и выходов по live-публичной оценке котировки на $50k. Перед сделкой включите лимит проскальзывания: сайт не может проверить настройки вашей заявки.")}</p>
                       <p className="mt-1">{tr(locale, "Use a limit order only if you are willing to wait for a better quote; it is not included here because one hedge leg may not fill.", "Лимитную заявку используйте только если готовы ждать лучшую котировку: она не входит в расчёт, потому что одна из ног хеджа может не исполниться.")}</p>
                     </div>
                   </div>
@@ -121,7 +121,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
         </ol>
       )}
 
-      {data && <p className="text-xs text-text-muted">{tr(locale, "Snapshot", "Снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</p>}
+      {data && <p className="text-sm text-text-muted">{tr(locale, "Snapshot", "Снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</p>}
     </section>
   );
 }
