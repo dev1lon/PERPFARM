@@ -24,6 +24,8 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
       return i === -1 ? Number.POSITIVE_INFINITY : i;
     };
     return [...venues].sort((a, b) => {
+      if (a.slug === "bullet") return b.slug === "bullet" ? 0 : 1;
+      if (b.slug === "bullet") return -1;
       const ra = rank(a.slug);
       const rb = rank(b.slug);
       return ra !== rb ? ra - rb : a.name.localeCompare(b.name);

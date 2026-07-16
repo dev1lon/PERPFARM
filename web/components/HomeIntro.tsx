@@ -10,7 +10,7 @@ export function HomeIntro({ usingFixtures }: { usingFixtures: boolean }) {
         {tr(locale, "Farm perp points, pay less for them", "Фармите perp-поинты с меньшей стоимостью")}
       </h1>
       <p className="text-text-muted">
-        {tr(locale, "Every tokenless perp-dex, ranked by real cost per point.", "Каждый tokenless perp-dex, ранжированный по реальной цене поинта.")}
+        {tr(locale, "A guide to perp-point farming: reward mechanics, current recommendations and lower-cost routes.", "Гайд по фарму perp-поинтов: механика наград, актуальные рекомендации и более выгодные маршруты.")}
       </p>
       {usingFixtures && (
         <p className="mt-2 inline-block rounded-md border border-dashed border-border px-2 py-1 text-xs text-text-muted">

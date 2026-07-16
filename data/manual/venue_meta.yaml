@@ -101,3 +101,5 @@ venue_meta:
   - venue: txflow
     twitter_url: "https://x.com/TxFlow_L1"
     docs_url: "https://docs.txflow.com/"
+
+  - venue: bullet

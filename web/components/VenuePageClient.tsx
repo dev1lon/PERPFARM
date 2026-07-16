@@ -92,6 +92,26 @@ function VariationalPointsStatus() {
   );
 }
 
+function VariationalFarmingFocus() {
+  const locale = useLocale();
+  return (
+    <section className="rounded-lg border border-border bg-surface-1 p-5">
+      <p className="text-xs font-medium uppercase tracking-wide text-accent">{tr(locale, "Farming focus", "Фокус фарма")}</p>
+      <div className="mt-2 grid gap-4 sm:grid-cols-2">
+        <div>
+          <h2 className="text-base font-semibold text-text-primary">{tr(locale, "What currently earns more", "Что сейчас даёт больше поинтов")}</h2>
+          <p className="mt-1 text-sm text-text-muted">{tr(locale, "The lower-cost Variational setup is a medium-OI market held for 12–24 hours. It is the current farming hypothesis, not an official points-emission formula.", "Более дешёвый сценарий Variational — рынок со средним OI и удержание 12–24 ч. Это текущая гипотеза фарма, а не официальная формула эмиссии поинтов.")}</p>
+        </div>
+        <div className="rounded-md border border-border bg-surface-2 p-3">
+          <p className="text-xs text-text-muted">{tr(locale, "Route guide", "Ориентир по маршрутам")}</p>
+          <p className="mt-1 text-sm font-medium text-text-primary">{tr(locale, "Cheapest: medium OI, 12–24h", "Cheapest: средний OI, 12–24 ч")}</p>
+          <p className="mt-1 text-xs text-text-muted">{tr(locale, "$5–7 / pt · Faster XAU setup: $10–11 / pt", "$5–7 / pt · Быстрый сценарий XAU: $10–11 / pt")}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -181,6 +201,7 @@ export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDet
             <div className="flex flex-col gap-1"><span className="text-xs text-text-muted">{tr(locale, "OTC point price", "OTC-цена поинта")}</span><span className="font-mono-num text-xl font-light text-text-primary">{otcPrice === null ? "n/a" : `$${otcPrice}`}</span></div>
           </div>
           {isVariational && <VariationalPointsStatus />}
+          {isVariational && <VariationalFarmingFocus />}
           <PointsFactorsPanel isVariational={isVariational} />
           <VenueWizard venueSlug={venue.slug} otherVenues={otherVenues} />
         </>}
