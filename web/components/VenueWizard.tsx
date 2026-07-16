@@ -308,33 +308,33 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
     strategy === "max_points"
       ? {
           title: "Faster point accumulation",
-          estimate: "~$11 / pt",
+          estimate: "$10–11 / pt",
           context: "XAU, 1–2h hold",
           note: "The higher planning cost reflects the shorter holding window and faster expected accrual.",
         }
       : strategy === "balanced"
         ? {
             title: "Compare both cases",
-            estimate: "$5–11 / pt",
+            estimate: "$7–10 / pt",
             context: "medium OI 12–24h, plus XAU 1–2h",
             note: "Use this view to compare the slower lower-cost case with the faster XAU case.",
           }
         : {
             title: "Lowest planning cost",
-            estimate: "$5–11 / pt",
+            estimate: "$5–7 / pt",
             context: "medium OI, 12–24h hold",
             note: "This is the current lower-cost manual estimate, not a published rate from Omni.",
         };
 
   if (locale === "ru") {
     const variant = strategy === "max_points" ? "Быстрее набирать поинты" : strategy === "balanced" ? "Сравнить оба варианта" : "Минимальная плановая цена";
-    const estimate = "$5–11 / pt";
+    const estimate = strategy === "max_points" ? "$10–11 / pt" : strategy === "balanced" ? "$7–10 / pt" : "$5–7 / pt";
     const hold = strategy === "max_points" ? "XAU, удержание 1–2 ч" : strategy === "balanced" ? "medium OI 12–24 ч + XAU 1–2 ч" : "medium OI, удержание 12–24 ч";
     const steps = [
       ["Задайте наблюдение.", "Зафиксируйте рынок, время, open interest и срок удержания. Базовый цикл использует по $50 000 на каждый филл: $100 000 объёма на аккаунт и $200 000 на оба аккаунта."],
       ["Смоделируйте экспозицию.", "Модель сопоставляет long и short Variational одного номинала, чтобы отделить спред, funding и влияние исполнения от направленной ставки на рынок."],
       ["Соберите данные входа и выхода.", "В каждом снимке сохраните спред/impact и funding. Maker и taker комиссия Omni — 0 bps, но entry impact, exit impact и funding остаются в реальной стоимости."],
-      ["Примените оценку поинта.", "Ориентир цены фарма — $5–11 за поинт. Это ручной диапазон, пока Omni не публикует поинты за объём."],
+      ["Примените оценку поинта.", "Cheapest: $5–7 за поинт; balanced: $7–10; max points: $10–11. Это ручные ориентиры, пока Omni не публикует поинты за объём."],
       ["Учтите конкурс отдельно.", "При активном конкурсе сохраните eligible TradFi volume. Бонус: 20 000 × eligible объём Variational / общий eligible объём конкурса. USDC-призы в экономику поинтов не входят."],
     ];
     return (
@@ -435,9 +435,9 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
             4
           </span>
           <span>
-            <strong className="font-medium text-text-primary">Apply the point estimate.</strong> For medium OI
-            and any selected hold window, use the $5–11 per-point planning range. This remains a manual
-            benchmark until Omni publishes points per volume.
+            <strong className="font-medium text-text-primary">Apply the point estimate.</strong> Cheapest uses
+            $5–7 per point, balanced uses $7–10, and max points uses $10–11. These remain manual benchmarks
+            until Omni publishes points per volume.
           </span>
         </li>
         <li className="flex gap-3">
