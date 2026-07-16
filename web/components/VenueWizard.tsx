@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCostPerPoint, formatUsd } from "@/lib/format";
 import type { Recipe, RecipesResponse, Strategy, VenueSummary } from "@/lib/types";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { VariationalPairRankings } from "@/components/VariationalPairRankings";
 
 function strategies(locale: "en" | "ru"): { id: Strategy; label: string; description: string }[] {
   return [
@@ -574,7 +575,7 @@ export function VenueWizard({
             {status === "loading" ? tr(locale, "Computing…", "Считаем…") : tr(locale, "Run", "Рассчитать")}
           </button>
           <p className="text-center text-xs text-text-muted">
-            {tr(locale, "Based on the latest nightly scoring run, $10,000 notional, 24h hold.", "На основе последнего nightly-run: номинал $10 000, удержание 24 ч.")}
+            {tr(locale, "Latest points distribution: every Friday at 00:00 UTC for the prior week.", "Последняя раздача поинтов: каждую пятницу в 00:00 UTC за предыдущую неделю.")}
           </p>
         </div>
       </div>
@@ -605,7 +606,17 @@ export function VenueWizard({
           </div>
 
           {response.venue === "variational" && response.hedge === "variational" ? (
-            <VariationalTestFlow strategy={response.strategy} />
+            <>
+              <VariationalPairRankings key={response.strategy} strategy={response.strategy} />
+              <details className="rounded-lg border border-border bg-surface-1">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-text-primary">
+                  {tr(locale, "Model notes and test flow", "Примечания к модели и тестовый flow")}
+                </summary>
+                <div className="border-t border-border p-4">
+                  <VariationalTestFlow strategy={response.strategy} />
+                </div>
+              </details>
+            </>
           ) : response.recipes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
               <p className="text-sm text-text-muted">{tr(locale, "No pairs fit this strategy right now.", "Сейчас нет пар, подходящих этой стратегии.")}</p>
