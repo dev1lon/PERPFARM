@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCostPerPoint, formatUsd } from "@/lib/format";
 import type { Recipe, RecipesResponse, Strategy, VenueSummary } from "@/lib/types";
+import { tr, useLocale } from "@/components/LocaleProvider";
 
-const STRATEGIES: { id: Strategy; label: string; description: string }[] = [
-  { id: "cheapest", label: "Cheapest", description: "Lowest cost per point" },
-  { id: "max_points", label: "Max points", description: "More points, higher cost" },
-  { id: "balanced", label: "Balanced", description: "Cost and points, weighted evenly" },
-];
+function strategies(locale: "en" | "ru"): { id: Strategy; label: string; description: string }[] {
+  return [
+    { id: "cheapest", label: tr(locale, "Cheapest", "Дешевле"), description: tr(locale, "Lowest cost per point", "Минимальная цена поинта") },
+    { id: "max_points", label: tr(locale, "Max points", "Больше поинтов"), description: tr(locale, "More points, higher cost", "Больше поинтов, выше цена") },
+    { id: "balanced", label: tr(locale, "Balanced", "Баланс"), description: tr(locale, "Cost and points, weighted evenly", "Цена и поинты с равным весом") },
+  ];
+}
 
 interface HedgeOption {
   slug: string;
@@ -24,6 +27,7 @@ function HedgeSelect({
   value: string;
   onChange: (slug: string) => void;
 }) {
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -93,8 +97,8 @@ function HedgeSelect({
         className="pf-transition flex w-full items-center justify-between rounded-md border border-border bg-surface-1 px-4 py-3 text-left text-sm text-text-primary hover:bg-surface-hover"
       >
         <span>
-          <span className="text-text-muted">Hedge with: </span>
-          {selected?.name ?? "Select a perp-dex"}
+          <span className="text-text-muted">{tr(locale, "Hedge with: ", "Хедж с: ")}</span>
+          {selected?.name ?? tr(locale, "Select a perp-dex", "Выберите perp-dex")}
         </span>
         <span className="text-text-muted" aria-hidden>
           ▾
@@ -112,7 +116,7 @@ function HedgeSelect({
               setActiveIndex(0);
             }}
             onKeyDown={onListKeyDown}
-            placeholder="Search perp-dexes"
+            placeholder={tr(locale, "Search perp-dexes", "Поиск perp-dex")}
             className="w-full border-b border-border bg-transparent px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
           />
           <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
@@ -133,7 +137,7 @@ function HedgeSelect({
                 </button>
               </li>
             ))}
-            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-text-muted">No matches</li>}
+            {filtered.length === 0 && <li className="px-3 py-2 text-sm text-text-muted">{tr(locale, "No matches", "Нет совпадений")}</li>}
           </ul>
         </div>
       )}
@@ -142,6 +146,8 @@ function HedgeSelect({
 }
 
 function StrategyCards({ value, onChange }: { value: Strategy; onChange: (s: Strategy) => void }) {
+  const locale = useLocale();
+  const availableStrategies = strategies(locale);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   function onKeyDown(e: React.KeyboardEvent, index: number) {
@@ -150,14 +156,14 @@ function StrategyCards({ value, onChange }: { value: Strategy; onChange: (s: Str
     }
     e.preventDefault();
     const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
-    const next = (index + dir + STRATEGIES.length) % STRATEGIES.length;
-    onChange(STRATEGIES[next].id);
+    const next = (index + dir + availableStrategies.length) % availableStrategies.length;
+    onChange(availableStrategies[next].id);
     refs.current[next]?.focus();
   }
 
   return (
-    <div role="radiogroup" aria-label="Strategy" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-      {STRATEGIES.map((s, i) => {
+    <div role="radiogroup" aria-label={tr(locale, "Strategy", "Стратегия")} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {availableStrategies.map((s, i) => {
         const selected = s.id === value;
         return (
           <button
@@ -296,6 +302,7 @@ function ResultsSkeleton() {
 }
 
 function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
+  const locale = useLocale();
   const plan =
     strategy === "max_points"
       ? {
@@ -316,7 +323,48 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
             estimate: "$5–7 / pt",
             context: "medium OI, 12–24h hold",
             note: "This is the current lower-cost manual estimate, not a published rate from Omni.",
-          };
+        };
+
+  if (locale === "ru") {
+    const variant = strategy === "max_points" ? "Быстрее набирать поинты" : strategy === "balanced" ? "Сравнить оба варианта" : "Минимальная плановая цена";
+    const estimate = strategy === "max_points" ? "~$11 / pt" : strategy === "balanced" ? "$5–7 / pt и ~$11 / pt" : "$5–7 / pt";
+    const hold = strategy === "max_points" ? "XAU, удержание 1–2 ч" : strategy === "balanced" ? "medium OI 12–24 ч + XAU 1–2 ч" : "medium OI, удержание 12–24 ч";
+    const steps = [
+      ["Задайте наблюдение.", "Зафиксируйте рынок, время, open interest, срок удержания и равный номинал для обеих ног Variational. Базовое сравнение использует $10 000."],
+      ["Смоделируйте экспозицию.", "Модель сопоставляет long и short Variational одного номинала, чтобы отделить спред, funding и влияние исполнения от направленной ставки на рынок."],
+      ["Соберите данные входа и выхода.", "В каждом снимке сохраните спред/impact и funding. Maker и taker комиссия Omni — 0 bps, но entry impact, exit impact и funding остаются в реальной стоимости."],
+      ["Примените оценку поинта.", "Для medium OI и 12–24 ч ориентир — $5–7 за поинт. Для XAU и 1–2 ч — около $11. Это ручные ориентиры, пока Omni не публикует поинты за объём."],
+      ["Учтите конкурс отдельно.", "При активном конкурсе сохраните eligible TradFi volume. Бонус: 20 000 × eligible объём Variational / общий eligible объём конкурса. USDC-призы в экономику поинтов не входят."],
+    ];
+    return (
+      <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface-1 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-text-primary">Тестовый flow Variational</p>
+            <p className="mt-1 text-sm text-text-muted">Полная плановая модель для записи входных данных и сравнения вариантов фарма.</p>
+          </div>
+          <span className="rounded-sm bg-surface-2 px-2 py-1 font-mono-num text-xs text-text-muted">ТЕСТОВАЯ МОДЕЛЬ</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Выбранный вариант</p><p className="mt-1 text-sm font-medium text-text-primary">{variant}</p></div>
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Плановая оценка</p><p className="mt-1 font-mono-num text-sm font-medium text-text-primary">{estimate}</p></div>
+          <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Окно удержания</p><p className="mt-1 text-sm font-medium text-text-primary">{hold}</p></div>
+        </div>
+        <ol className="grid gap-3 text-sm text-text-muted">
+          {steps.map(([heading, body], index) => (
+            <li key={heading} className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">{index + 1}</span>
+              <span><strong className="font-medium text-text-primary">{heading}</strong> {body}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-xs text-text-muted sm:grid-cols-2">
+          <div><p className="font-medium text-text-primary">Расчёт стоимости</p><p className="mt-1">Стоимость = entry impact + exit impact + net funding. Цена поинта = стоимость ÷ (базовые поинты + eligible конкурсные поинты). Призовой пул $20 000 USDC не вычитается.</p></div>
+          <div><p className="font-medium text-text-primary">Проверка eligibility</p><p className="mt-1">Перед live-планом проверьте актуальные правила Variational. Если правила исключают выбранную активность, оставляйте запись только тестовой моделью.</p></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface-1 p-5">
@@ -445,6 +493,7 @@ export function VenueWizard({
   venueSlug: string;
   otherVenues: VenueSummary[];
 }) {
+  const locale = useLocale();
   const hedgeOptions: HedgeOption[] = useMemo(
     () => [
       ...(venueSlug === "variational" ? [{ slug: "variational", name: "Variational" }] : []),
@@ -467,7 +516,7 @@ export function VenueWizard({
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-6 text-center">
         <p className="font-mono-num text-3xl font-semibold tracking-[0.2em] text-text-primary">SOON</p>
         <p className="text-sm text-text-muted">
-          A neutral hedge needs a second verified perp-dex. We will enable recipes once one is live.
+          {tr(locale, "A neutral hedge needs a second verified perp-dex. We will enable recipes once one is live.", "Нейтральному хеджу нужен второй проверенный perp-dex. Рецепты появятся после его подключения.")}
         </p>
       </section>
     );
@@ -522,10 +571,10 @@ export function VenueWizard({
             disabled={status === "loading"}
             className="pf-transition w-full rounded-md bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
           >
-            {status === "loading" ? "Computing…" : "Run"}
+            {status === "loading" ? tr(locale, "Computing…", "Считаем…") : tr(locale, "Run", "Рассчитать")}
           </button>
           <p className="text-center text-xs text-text-muted">
-            Based on the latest nightly scoring run, $10,000 notional, 24h hold.
+            {tr(locale, "Based on the latest nightly scoring run, $10,000 notional, 24h hold.", "На основе последнего nightly-run: номинал $10 000, удержание 24 ч.")}
           </p>
         </div>
       </div>
@@ -534,7 +583,7 @@ export function VenueWizard({
 
       {status === "error" && (
         <div className="rounded-lg border border-negative/40 bg-negative/10 p-4 text-sm text-negative">
-          Couldn&apos;t compute recipes: {errorMessage}
+          {tr(locale, "Couldn’t compute recipes:", "Не удалось рассчитать рецепты:")} {errorMessage}
         </div>
       )}
 
@@ -543,15 +592,15 @@ export function VenueWizard({
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-text-primary">
               {response.venue === "variational" && response.hedge === "variational"
-                ? "Planning statistics"
-                : `${response.recipes.length} recipe${response.recipes.length === 1 ? "" : "s"}`}
+                ? tr(locale, "Planning statistics", "Плановая статистика")
+                : tr(locale, `${response.recipes.length} recipe${response.recipes.length === 1 ? "" : "s"}`, `${response.recipes.length} рецепт(ов)`)}
             </h2>
             <button
               type="button"
               onClick={reset}
               className="pf-transition text-sm text-text-muted hover:text-text-primary"
             >
-              Reset
+              {tr(locale, "Reset", "Сбросить")}
             </button>
           </div>
 
@@ -559,7 +608,7 @@ export function VenueWizard({
             <VariationalTestFlow strategy={response.strategy} />
           ) : response.recipes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
-              <p className="text-sm text-text-muted">No pairs fit this strategy right now.</p>
+              <p className="text-sm text-text-muted">{tr(locale, "No pairs fit this strategy right now.", "Сейчас нет пар, подходящих этой стратегии.")}</p>
               {strategy !== "cheapest" && (
                 <button
                   type="button"
@@ -568,7 +617,7 @@ export function VenueWizard({
                   }}
                   className="pf-transition rounded-md border border-border px-4 py-2 text-sm text-text-primary hover:bg-surface-hover"
                 >
-                  Try Cheapest
+                  {tr(locale, "Try Cheapest", "Выбрать дешевле")}
                 </button>
               )}
             </div>
@@ -589,7 +638,7 @@ export function VenueWizard({
           )}
 
           <p className="text-center text-xs text-text-muted">
-            Estimates from public data · not financial advice
+            {tr(locale, "Estimates from public data · not financial advice", "Оценки на основе публичных данных · не финансовый совет")}
           </p>
         </div>
       )}

@@ -30,8 +30,8 @@ venue_meta:
     raised_usd: 50000000 # $50M Series A led by Dragonfly (Bain Capital Crypto, Coinbase Ventures)
     investors: "Dragonfly Capital, Bain Capital Crypto, Coinbase Ventures"
     community_supply_pct: null
-    otc_point_price_usd: null # user's manual/OTC knowledge slot -- never computed
-    season_name: null
+    otc_point_price_usd: 21 # current manual OTC quote; never computed from the model
+    season_name: "Season 1"
     season_end_date: null
     twitter_url: "https://x.com/variational_io"
     docs_url: "https://docs.variational.io/omni/"

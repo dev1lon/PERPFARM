@@ -8,12 +8,14 @@ import { brandBg, brandBgTone, brandBgIsGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 import { isReadyVenue } from "@/lib/venue-status";
+import { tr, useLocale } from "@/components/LocaleProvider";
 
 // Perps pinned to the top of the list, in this order; everything else follows
 // alphabetically.
 const PINNED_ORDER = ["variational", "hibachi"];
 
 export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
+  const locale = useLocale();
   const [query, setQuery] = useState("");
 
   const ordered = useMemo(() => {
@@ -45,20 +47,24 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search perp-dexes or pairs"
+        placeholder={tr(locale, "Search perp-dexes or pairs", "Поиск perp-dex или пары")}
         className="pf-transition w-full rounded-md border border-border bg-surface-1 px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent"
       />
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
           <p className="text-sm text-text-muted">
-            Nothing found. We track {venues.length} perp-dex{venues.length === 1 ? "" : "es"}.
+            {tr(
+              locale,
+              `Nothing found. We track ${venues.length} perp-dex${venues.length === 1 ? "" : "es"}.`,
+              `Ничего не найдено. Мы отслеживаем ${venues.length} perp-dex.`
+            )}
           </p>
           <a
             href="mailto:hello@perpfarm.example?subject=Perp-dex%20suggestion"
             className="pf-transition text-sm text-accent hover:text-accent-hover"
           >
-            Suggest a perp-dex
+            {tr(locale, "Suggest a perp-dex", "Предложить perp-dex")}
           </a>
         </div>
       ) : (
@@ -66,6 +72,7 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
             const ready = isReadyVenue(v.slug);
+            const seasonName = v.seasonName ?? (v.slug === "variational" ? "Season 1" : null);
             const cardBg = brandBg(v.slug);
             // Brands that ship a near-white background need dark metrics text.
             const lightBg = cardBg !== undefined && brandBgTone(v.slug) === "light";
@@ -112,18 +119,26 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                   namePx={15}
                   nameClassName="text-base"
                 />
-                <span className="flex items-center gap-3 text-sm">
-                  <span className={metricMuted}>
-                    {ready && days !== null ? `season ends in ${days}d` : "SOON"}
+                {ready ? (
+                  <span className="flex items-center gap-3 text-sm">
+                    {seasonName && (
+                      <span className={metricMuted}>
+                        {days !== null
+                          ? tr(locale, `${seasonName}: ${days}d left`, `${seasonName}: осталось ${days} д.`)
+                          : seasonName}
+                      </span>
+                    )}
+                    <span className={`font-mono-num font-semibold ${metricStrong}`}>
+                      {v.cheapestCostPerPointUsd !== null
+                        ? `${tr(locale, "from", "от")} ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
+                        : v.slug === "variational"
+                          ? "est. $5–7/pt"
+                          : tr(locale, "Awaiting estimate", "Ожидается оценка")}
+                    </span>
                   </span>
-                  <span className={`font-mono-num font-semibold ${metricStrong}`}>
-                    {ready && v.cheapestCostPerPointUsd !== null
-                      ? `from ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
-                      : ready && v.slug === "variational"
-                        ? "est. $5–7/pt"
-                      : "SOON"}
-                  </span>
-                </span>
+                ) : (
+                  <span className={`font-mono-num font-semibold ${metricStrong}`}>SOON</span>
+                )}
               </Link>
             );
           })}
