@@ -132,7 +132,7 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                       {v.cheapestCostPerPointUsd !== null
                         ? `${tr(locale, "from", "от")} ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
                         : v.slug === "variational"
-                          ? "est. $5–7/pt"
+                          ? "est. $5–11/pt"
                           : tr(locale, "Awaiting estimate", "Ожидается оценка")}
                     </span>
                   </span>

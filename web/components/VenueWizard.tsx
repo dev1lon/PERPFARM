@@ -574,9 +574,6 @@ export function VenueWizard({
           >
             {status === "loading" ? tr(locale, "Computing…", "Считаем…") : tr(locale, "Run", "Рассчитать")}
           </button>
-          <p className="text-center text-xs text-text-muted">
-            {tr(locale, "Latest points distribution: every Friday at 00:00 UTC for the prior week.", "Последняя раздача поинтов: каждую пятницу в 00:00 UTC за предыдущую неделю.")}
-          </p>
         </div>
       </div>
 

@@ -8,16 +8,16 @@ import type { Strategy } from "@/lib/types";
 interface PairRanking {
   pair: string;
   openInterestUsd: number;
-  executionBps: number;
+  longExecutionBps: number;
+  shortExecutionBps: number;
   longCostUsd: number;
   shortCostUsd: number;
-  costPer100kUsd: number;
+  averageCostUsd: number;
 }
 
 interface RankingResponse {
   asOf: string;
-  totalVolumeUsd: number;
-  fillNotionalUsd: number;
+  executionNotionalUsd: number;
   pairs: PairRanking[];
 }
 
@@ -48,14 +48,12 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
       <div>
-        <h2 className="text-sm font-medium text-text-primary">
-          {tr(locale, "10 cheapest pair calculations", "Расчёты 10 самых дешёвых пар")}
-        </h2>
+        <h2 className="text-sm font-medium text-text-primary">{tr(locale, "Pair execution calculations", "Расчёты исполнения по парам")}</h2>
         <p className="mt-1 text-xs text-text-muted">
           {tr(
             locale,
-            "Costs are normalized to $100,000 total traded volume: $25,000 per fill × long entry/exit and short entry/exit. Fees, spread and RFQ quote impact are included; equal long/short funding nets to $0.",
-            "Затраты приведены к общему объёму $100 000: по $25 000 на каждый из четырёх филлов — вход/выход long и вход/выход short. Учтены комиссии, спред и RFQ impact; funding для равных long/short взаимно сокращается до $0."
+            "One $100,000 entry per direction. LONG is the executable buy quote; SHORT is the executable sell quote. This is the same one-way execution-cost basis as PerpDexList.",
+            "По одному входу на $100 000 в каждую сторону. LONG — исполнимая котировка на покупку; SHORT — на продажу. Это та же база one-way execution cost, что и в PerpDexList."
           )}
         </p>
       </div>
@@ -78,26 +76,26 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   <span className="font-mono-num text-xs text-text-muted">{String(index + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <p className="font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
-                    <p className="mt-0.5 text-xs text-text-muted">OI {formatUsd(pair.openInterestUsd, { decimals: 0 })} · {pair.executionBps} bps</p>
+                    <p className="mt-0.5 text-xs text-text-muted">OI {formatUsd(pair.openInterestUsd, { decimals: 0 })}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono-num text-sm font-semibold text-text-primary">{formatUsd(pair.costPer100kUsd)}</p>
-                    <p className="text-xs text-text-muted">{tr(locale, "per $100k volume", "за $100k объёма")}</p>
+                    <p className="font-mono-num text-sm font-semibold text-text-primary">L {formatUsd(pair.longCostUsd)} · S {formatUsd(pair.shortCostUsd)}</p>
+                    <p className="text-xs text-text-muted">{tr(locale, "each / $100k entry", "каждый / вход $100k")}</p>
                   </div>
                 </button>
                 {open && (
                   <div className="grid gap-3 border-t border-border bg-surface-2 px-4 py-3 text-xs text-text-muted sm:grid-cols-2">
                     <div>
                       <p className="font-medium text-text-primary">LONG · Variational</p>
-                      <p className="mt-1">{tr(locale, "Entry + exit cost", "Стоимость входа + выхода")}: {formatUsd(pair.longCostUsd)} · {formatUsd(data.fillNotionalUsd, { decimals: 0 })} {tr(locale, "per fill", "на филл")}</p>
+                      <p className="mt-1">{tr(locale, "Buy entry", "Вход на покупку")}: <span className="font-mono-num text-text-primary">{formatUsd(pair.longCostUsd)}</span> · {pair.longExecutionBps} bps</p>
                     </div>
                     <div>
                       <p className="font-medium text-text-primary">SHORT · Variational</p>
-                      <p className="mt-1">{tr(locale, "Entry + exit cost", "Стоимость входа + выхода")}: {formatUsd(pair.shortCostUsd)} · {formatUsd(data.fillNotionalUsd, { decimals: 0 })} {tr(locale, "per fill", "на филл")}</p>
+                      <p className="mt-1">{tr(locale, "Sell entry", "Вход на продажу")}: <span className="font-mono-num text-text-primary">{formatUsd(pair.shortCostUsd)}</span> · {pair.shortExecutionBps} bps</p>
                     </div>
                     <div className="sm:col-span-2">
-                      <p>{tr(locale, "Calculation", "Расчёт")}: {formatUsd(pair.longCostUsd)} + {formatUsd(pair.shortCostUsd)} = <span className="font-mono-num font-medium text-text-primary">{formatUsd(pair.costPer100kUsd)}</span>.</p>
-                      <p className="mt-1">{tr(locale, "Included: maker/taker fees (0 bps), half-spread, RFQ quote-curve impact from the public $1k/$100k buckets, and equal long/short funding (net $0).", "Учтено: maker/taker комиссии (0 bps), половина спреда, impact RFQ-кривой из публичных бакетов $1k/$100k и равный funding long/short (итог $0).")}</p>
+                      <p>{tr(locale, "Average one-way entry cost", "Средняя стоимость одного входа")}: <span className="font-mono-num font-medium text-text-primary">{formatUsd(pair.averageCostUsd)}</span> {tr(locale, "per $100k", "на $100k")}.</p>
+                      <p className="mt-1">{tr(locale, "Included: 0 bps trading fee and the live public RFQ quote for this size (base spread + quote impact). OI is shown for pair selection. Exit, funding and point emissions are separate: they depend on the chosen holding period and are not part of a one-way execution cost.", "Учтено: торговая комиссия 0 bps и live-публичная RFQ-котировка для этого размера (базовый спред + impact котировки). OI показан для выбора пары. Выход, funding и эмиссия поинтов считаются отдельно: они зависят от выбранного срока удержания и не входят в цену одного входа.")}</p>
                     </div>
                   </div>
                 )}
@@ -107,7 +105,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
         </ol>
       )}
 
-      {data && <p className="text-xs text-text-muted">{tr(locale, "Snapshot", "Снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</p>}
+      {data && <p className="text-xs text-text-muted">{tr(locale, "Snapshot", "Снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")} · {tr(locale, "RFQ size", "Размер RFQ")} {formatUsd(data.executionNotionalUsd, { decimals: 0 })}</p>}
     </section>
   );
 }
