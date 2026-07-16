@@ -52,8 +52,10 @@ export default function RootLayout({
             </nav>
           </div>
         </header>
-        {/* pb clears the fixed SiteFooter so nothing hides behind it. */}
-        <main className="flex-1 pb-12">{children}</main>
+        {/* Each page adds its own bottom padding to clear the fixed SiteFooter;
+            keeping it out of <main> avoids a bg-coloured strip under pages whose
+            brand background is a min-h-screen layer. */}
+        <main className="flex-1">{children}</main>
         <SiteFooter />
       </body>
     </html>

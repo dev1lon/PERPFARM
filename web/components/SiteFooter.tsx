@@ -47,7 +47,8 @@ export function SiteFooter() {
     // main gets matching bottom padding in app/layout.tsx so nothing hides
     // behind it.
     <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-1">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-1.5 text-xs sm:px-6">
+      {/* Full-bleed: prices hard-left, credit hard-right (no centred max-width). */}
+      <div className="flex items-center justify-between gap-3 whitespace-nowrap px-4 py-1.5 text-xs sm:px-6">
         <div className="flex items-center gap-4 font-mono-num">
           <span>
             <span className="text-text-muted">BTC</span>{" "}
@@ -59,7 +60,8 @@ export function SiteFooter() {
           </span>
         </div>
         <div className="flex items-center gap-1 text-text-muted">
-          <span>created by</span>
+          {/* Drop the prefix on very narrow phones so prices + link never overflow. */}
+          <span className="hidden min-[400px]:inline">created by</span>
           <a
             href="https://x.com/devilonnn"
             target="_blank"
