@@ -473,14 +473,6 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
         </div>
       </div>
 
-      <a
-        href="https://docs.variational.io/omni/trading-competition"
-        target="_blank"
-        rel="noreferrer"
-        className="w-fit text-xs text-accent hover:text-accent-hover"
-      >
-        Check current competition rules ↗
-      </a>
     </section>
   );
 }
