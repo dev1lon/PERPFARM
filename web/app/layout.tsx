@@ -52,7 +52,8 @@ export default function RootLayout({
             </nav>
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        {/* pb clears the fixed SiteFooter so nothing hides behind it. */}
+        <main className="flex-1 pb-12">{children}</main>
         <SiteFooter />
       </body>
     </html>

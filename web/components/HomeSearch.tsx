@@ -80,6 +80,20 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 : brandBgIsGradient(v.slug)
                   ? "border-[#3a3b42]"
                   : "border-white/10";
+            // Metrics sit ON the brand background (fixed, theme-independent), so
+            // their colour must track the BRAND tone, not the site theme --
+            // otherwise light theme turns them dark and they vanish on a dark
+            // card. Non-branded cards use theme tokens (their tint IS themed).
+            const metricMuted = cardBg
+              ? lightBg
+                ? "text-[#454e64]"
+                : "text-[#aab2c5]"
+              : "text-text-muted";
+            const metricStrong = cardBg
+              ? lightBg
+                ? "text-[#0b1220]"
+                : "text-white"
+              : "text-text-primary";
             return (
               <Link
                 key={v.slug}
@@ -97,14 +111,10 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                   nameClassName="text-base"
                 />
                 <span className="flex items-center gap-3 text-sm">
-                  <span className={lightBg ? "text-[#454e64]" : "text-text-muted"}>
+                  <span className={metricMuted}>
                     {days !== null ? `season ends in ${days}d` : "season n/a"}
                   </span>
-                  <span
-                    className={`font-mono-num font-semibold ${
-                      lightBg ? "text-[#0b1220]" : "text-text-primary"
-                    }`}
-                  >
+                  <span className={`font-mono-num font-semibold ${metricStrong}`}>
                     {v.cheapestCostPerPointUsd !== null
                       ? `from ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
                       : "no data yet"}

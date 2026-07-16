@@ -24,14 +24,18 @@ export default async function VenuePage({
   // dark brand color gradient -- covers the whole page so the card on the home
   // list reads as a slice of it. Kept behind the content (which is `relative`).
   const pageBg = brandBg(venueSlug);
-  // A few brands ship a near-white background; text drawn directly on it (the
-  // header links, the "How points work" heading + body) flips to dark. Inner
-  // surface panels keep their own dark styling either way.
-  const lightBg = pageBg !== undefined && brandBgTone(venueSlug) === "light";
-  const onBg = lightBg ? "text-[#0b1220]" : "text-text-primary";
-  const onBgMuted = lightBg ? "text-[#454e64]" : "text-text-muted";
-  const onBgLink = lightBg
-    ? "text-[#454e64] hover:text-[#0b1220]"
+  // Text drawn directly on the brand page background must contrast the BRAND
+  // (fixed, theme-independent) tone, not the site theme -- else light theme
+  // turns it dark and it vanishes on a dark brand bg. Inner surface panels keep
+  // their own themed styling. Venues with no brand bg use plain theme tokens.
+  const branded = pageBg !== undefined;
+  const lightBg = branded && brandBgTone(venueSlug) === "light";
+  const onBg = branded ? (lightBg ? "text-[#0b1220]" : "text-white") : "text-text-primary";
+  const onBgMuted = branded ? (lightBg ? "text-[#454e64]" : "text-[#aab2c5]") : "text-text-muted";
+  const onBgLink = branded
+    ? lightBg
+      ? "text-[#454e64] hover:text-[#0b1220]"
+      : "text-[#aab2c5] hover:text-white"
     : "text-text-muted hover:text-accent";
 
   return (

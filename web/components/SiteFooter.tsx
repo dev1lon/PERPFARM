@@ -43,9 +43,12 @@ export function SiteFooter() {
   }, []);
 
   return (
-    <footer className="border-t border-border bg-surface-1">
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-4 text-sm font-mono-num">
+    // Fixed to the viewport bottom (always visible), a thin single-line bar.
+    // main gets matching bottom padding in app/layout.tsx so nothing hides
+    // behind it.
+    <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-1">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-1.5 text-xs sm:px-6">
+        <div className="flex items-center gap-4 font-mono-num">
           <span>
             <span className="text-text-muted">BTC</span>{" "}
             <span className="font-semibold text-text-primary">{formatUsd(prices.btc)}</span>
@@ -55,15 +58,18 @@ export function SiteFooter() {
             <span className="font-semibold text-text-primary">{formatUsd(prices.eth)}</span>
           </span>
         </div>
-        <a
-          href="https://x.com/devilonnn"
-          target="_blank"
-          rel="noreferrer"
-          className="pf-transition flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary"
-        >
-          created by devilonnn
-          <XLogo />
-        </a>
+        <div className="flex items-center gap-1 text-text-muted">
+          <span>created by</span>
+          <a
+            href="https://x.com/devilonnn"
+            target="_blank"
+            rel="noreferrer"
+            className="pf-transition inline-flex items-center gap-1 font-medium text-text-primary hover:text-accent"
+          >
+            devilonnn
+            <XLogo />
+          </a>
+        </div>
       </div>
     </footer>
   );
