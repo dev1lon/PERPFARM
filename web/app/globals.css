@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
-/* Single dark theme (no light mode / theme switching). */
+/* Dark is the default theme; light is opt-in via <html data-theme="light">
+   (toggled by components/ThemeToggle). These tokens style the SITE CHROME
+   only -- per-perp brand card/page backgrounds are applied as inline styles
+   (see lib/brand.ts / brandBg), so they stay identical in both themes. */
 :root {
   color-scheme: dark;
   --bg: #0c1220;
@@ -14,6 +17,21 @@
   --accent-hover: #6690f7;
   --positive: #2fd181;
   --negative: #f05c5c;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface-1: #ffffff;
+  --surface-2: #eef1f5;
+  --surface-hover: #e6eaf0; /* hover steps DARKER on light */
+  --border: rgba(0, 0, 0, 0.1);
+  --text-primary: #0d1220;
+  --text-muted: #5a6474; /* >=4.5:1 on white --surface-1 */
+  --accent: #2c5fe0;
+  --accent-hover: #1f4fca;
+  --positive: #12a45f;
+  --negative: #d23b3b;
 }
 
 @theme inline {
