@@ -99,7 +99,7 @@ function VariationalFarmingFocus() {
     <section className="rounded-lg border border-border bg-surface-1 p-5">
       <p className="text-sm font-medium uppercase tracking-wide text-accent">{tr(locale, "Manual farming playbook", "Ручной playbook фарма")}</p>
       <h2 className="mt-2 text-base font-semibold text-text-primary">{tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}</h2>
-      <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current protocol guidance: keep exposure in medium-OI markets first; eligible trading volume is the secondary driver. Tiers, referral boost and an active competition can increase the result.", "Текущий ориентир по протоколу: в первую очередь удерживать позицию на рынках со средним OI; eligible-торговый объём — второй по важности фактор. Tiers, реферальный буст и активный конкурс могут увеличить результат.")}</p>
+      <p className="mt-1 text-sm text-text-muted">{tr(locale, "Current protocol guidance: keep exposure in medium-OI markets first; eligible trading volume is the secondary driver. Passive limit orders provide liquidity and are more point-efficient than immediate market/RFQ orders. Tiers, referral boost and an active competition can increase the result.", "Текущий ориентир по протоколу: в первую очередь удерживать позицию на рынках со средним OI; eligible-торговый объём — второй по важности фактор. Пассивные limit-заявки предоставляют ликвидность и эффективнее для поинтов, чем немедленные market/RFQ-ордера. Tiers, реферальный буст и активный конкурс могут увеличить результат.")}</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-border bg-surface-2 p-3">
@@ -148,7 +148,7 @@ function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
           <span className="block text-sm font-medium text-text-primary">{tr(locale, "Factors affecting points", "Факторы, влияющие на поинты")}</span>
           <span className="mt-1 block text-sm text-text-muted">
             {isVariational
-              ? tr(locale, "Reward tiers, referral boost, weekly distribution and competition", "Reward tiers, реферальный буст, еженедельная раздача и конкурс")
+              ? tr(locale, "Passive limit liquidity, reward tiers, referral boost and competition", "Пассивная limit-ликвидность, reward tiers, реферальный буст и конкурс")
               : tr(locale, "Verified protocol-specific rules and boosts", "Проверенные правила и бусты конкретного протокола")}
           </span>
         </span>
@@ -161,6 +161,9 @@ function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
             <p className="text-sm text-text-muted">{tr(locale, "No verified point factors have been added for this protocol yet.", "Для этого протокола пока не добавлены проверенные факторы поинтов.")}</p>
           ) : (
             <>
+              <p className="text-sm text-text-muted">
+                {tr(locale, "Passive LIMIT orders provide liquidity and are more point-efficient than immediate market/RFQ orders. On Omni, OLP is the actual RFQ maker; here “maker” means a passive user limit order that waits for a quoted price.", "Пассивные LIMIT-заявки предоставляют ликвидность и эффективнее для поинтов, чем немедленные market/RFQ-ордера. В Omni реальный RFQ-maker — OLP; здесь «maker» означает пассивную limit-заявку пользователя, ожидающую нужную котировку.")}
+              </p>
               <p className="text-sm text-text-muted">
                 {tr(locale, "Points are distributed every Friday at 00:00 UTC for the previous week. Use a referral link before the first trade; the current campaign claim is a +16% point boost — confirm it on the signup screen.", "Поинты распределяются каждую пятницу в 00:00 UTC за предыдущую неделю. Создавайте аккаунт по реферальной ссылке до первой сделки; текущий заявленный буст кампании — +16% к поинтам. Подтвердите его на экране регистрации.")}
               </p>

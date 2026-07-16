@@ -21,6 +21,8 @@ type Listing = {
 
 type FundingSource = "seven_day_mean" | "partial_history" | "current_rate";
 type FundingHistory = { annualizedRate: number; observedHours: number; observations: number };
+type FirstLimitSide = "long" | "short";
+type RecommendedLimitSide = FirstLimitSide | "either";
 
 function asNumber(value: unknown): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -119,7 +121,18 @@ export async function GET(request: NextRequest) {
         if (buyBps < 0 || sellBps < 0) return null;
         const buyCostUsd = (FILL_NOTIONAL_USD * buyBps) / 10_000;
         const sellCostUsd = (FILL_NOTIONAL_USD * sellBps) / 10_000;
-        const accountExecutionCostUsd = buyCostUsd + sellCostUsd;
+        // A limit-first hedge has two passive limit fills and two immediate
+        // market/RFQ hedge fills. If the long limit fills first, the short is
+        // hedged at market; at exit the order is reversed. The only public
+        // cost we can quantify is the two market/RFQ legs. The limit price is
+        // user-defined and a fill is never guaranteed.
+        const limitLongCycleCostUsd = sellCostUsd * 2;
+        const limitShortCycleCostUsd = buyCostUsd * 2;
+        const recommendedLimitSide: RecommendedLimitSide = Math.abs(limitLongCycleCostUsd - limitShortCycleCostUsd) < 0.01
+          ? "either"
+          : limitLongCycleCostUsd < limitShortCycleCostUsd ? "long" : "short";
+        const firstLimitSide: FirstLimitSide = recommendedLimitSide === "short" ? "short" : "long";
+        const marketLegCostUsd = firstLimitSide === "long" ? sellCostUsd : buyCostUsd;
 
         const history = fundingHistory.get(pair);
         const currentFundingRate = asNumber(listing.funding_rate);
@@ -134,8 +147,12 @@ export async function GET(request: NextRequest) {
         // long account and received by the short account (and vice versa).
         const longFundingUsd = fundingCostUsd;
         const shortFundingUsd = fundingCostUsd === null ? null : -fundingCostUsd;
-        const longAccountTotalUsd = accountExecutionCostUsd + (longFundingUsd ?? 0);
-        const shortAccountTotalUsd = accountExecutionCostUsd + (shortFundingUsd ?? 0);
+        // With the selected sequence each account has one passive limit leg
+        // and one immediate market/RFQ leg, so both accounts carry the same
+        // modeled execution cost. Funding remains shown by account even
+        // though equal long/short notional nets to zero for the cycle.
+        const longAccountTotalUsd = marketLegCostUsd + (longFundingUsd ?? 0);
+        const shortAccountTotalUsd = marketLegCostUsd + (shortFundingUsd ?? 0);
 
         return {
           pair,
@@ -144,7 +161,11 @@ export async function GET(request: NextRequest) {
           sellBps,
           buyCostUsd,
           sellCostUsd,
-          accountExecutionCostUsd,
+          limitLongCycleCostUsd,
+          limitShortCycleCostUsd,
+          firstLimitSide,
+          recommendedLimitSide,
+          marketLegCostUsd,
           longFundingUsd,
           shortFundingUsd,
           longAccountTotalUsd,
@@ -164,7 +185,11 @@ export async function GET(request: NextRequest) {
           sellBps: number;
           buyCostUsd: number;
           sellCostUsd: number;
-          accountExecutionCostUsd: number;
+          limitLongCycleCostUsd: number;
+          limitShortCycleCostUsd: number;
+          firstLimitSide: FirstLimitSide;
+          recommendedLimitSide: RecommendedLimitSide;
+          marketLegCostUsd: number;
           longFundingUsd: number | null;
           shortFundingUsd: number | null;
           longAccountTotalUsd: number;
@@ -197,7 +222,9 @@ export async function GET(request: NextRequest) {
       sellBps: Number(candidate.sellBps.toFixed(2)),
       buyCostUsd: Number(candidate.buyCostUsd.toFixed(2)),
       sellCostUsd: Number(candidate.sellCostUsd.toFixed(2)),
-      accountExecutionCostUsd: Number(candidate.accountExecutionCostUsd.toFixed(2)),
+      limitLongCycleCostUsd: Number(candidate.limitLongCycleCostUsd.toFixed(2)),
+      limitShortCycleCostUsd: Number(candidate.limitShortCycleCostUsd.toFixed(2)),
+      marketLegCostUsd: Number(candidate.marketLegCostUsd.toFixed(2)),
       longFundingUsd: candidate.longFundingUsd === null ? null : Number(candidate.longFundingUsd.toFixed(2)),
       shortFundingUsd: candidate.shortFundingUsd === null ? null : Number(candidate.shortFundingUsd.toFixed(2)),
       longAccountTotalUsd: Number(candidate.longAccountTotalUsd.toFixed(2)),

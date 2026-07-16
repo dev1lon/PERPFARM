@@ -329,8 +329,8 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
     const hold = strategy === "max_points" ? "XAU, удержание 1–2 ч" : strategy === "balanced" ? "medium OI 12–24 ч + XAU 1–2 ч" : "medium OI, удержание 12–24 ч";
     const steps = [
       ["Задайте наблюдение.", "Зафиксируйте рынок, время, open interest и срок удержания. Базовый цикл использует по $50 000 на каждый филл: $100 000 объёма на аккаунт и $200 000 на оба аккаунта."],
-      ["Смоделируйте экспозицию.", "Модель сопоставляет long и short Variational одного номинала, чтобы отделить спред, funding и влияние исполнения от направленной ставки на рынок."],
-      ["Соберите данные входа и выхода.", "В каждом снимке сохраните спред/impact и funding. Maker и taker комиссия Omni — 0 bps, но entry impact, exit impact и funding остаются в реальной стоимости."],
+      ["Смоделируйте limit-first хедж.", "Сначала поставьте пассивный limit на одну ногу. Только после полного исполнения сразу откройте противоположную market/RFQ-ногу с лимитом проскальзывания; на выходе повторите последовательность в обратном порядке."],
+      ["Соберите данные входа и выхода.", "В каждом снимке сохраните цену limit и market/RFQ-исполнения, спред/impact и funding. Торговая комиссия Omni — 0 bps; в модели учитываются две market/RFQ-ноги, а limit-цена зависит от вашей заявки и не угадывается."],
       ["Примените оценку поинта.", "Cheapest: $5–7 за поинт; balanced: $7–10; max points: $10–11. Это ручные ориентиры, пока Omni не публикует поинты за объём."],
       ["Учтите конкурс отдельно.", "При активном конкурсе сохраните eligible TradFi volume. Бонус: 20 000 × eligible объём Variational / общий eligible объём конкурса. USDC-призы в экономику поинтов не входят."],
     ];
@@ -356,7 +356,7 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           ))}
         </ol>
         <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-sm text-text-muted sm:grid-cols-2">
-          <div><p className="font-medium text-text-primary">Расчёт стоимости</p><p className="mt-1">Стоимость = entry impact + exit impact + net funding. Цена поинта = стоимость ÷ (базовые поинты + eligible конкурсные поинты). Призовой пул $20 000 USDC не вычитается.</p></div>
+          <div><p className="font-medium text-text-primary">Расчёт стоимости</p><p className="mt-1">Расчётная стоимость = две market/RFQ-хедж-ноги + net funding. Цена и факт исполнения пассивного limit не угадываются. Цена поинта = стоимость ÷ (базовые поинты + eligible конкурсные поинты). Призовой пул $20 000 USDC не вычитается.</p></div>
           <div><p className="font-medium text-text-primary">Хедж-схема</p><p className="mt-1">Variational разрешает органический дельта-нейтральный хедж между двумя аккаунтами. Держите одинаковый номинал long и short: маршрут сравнивает стоимость исполнения, а не направленную ставку на рынок.</p></div>
         </div>
       </section>
@@ -405,9 +405,9 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
             2
           </span>
           <span>
-            <strong className="font-medium text-text-primary">Model the exposure.</strong> The route pairs a
-            Variational long with a Variational short of the same nominal value, so the record isolates spreads,
-            funding, and execution impact rather than a directional market view.
+            <strong className="font-medium text-text-primary">Model the limit-first hedge.</strong> Place a
+            passive limit on one account first. Only after it fills in full, immediately open the opposite
+            market/RFQ hedge with a slippage limit; reverse that sequence when closing the two legs.
           </span>
         </li>
         <li className="flex gap-3">
@@ -416,8 +416,8 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
           <span>
             <strong className="font-medium text-text-primary">Capture entry and exit data.</strong> At each
-            timestamp store the quoted spread/impact and funding rate. Omni publishes 0 bps trading fees, but
-            the model still includes entry impact, exit impact, and funding in the realised cost.
+            timestamp store the limit target, market/RFQ quote, spread/impact and funding rate. Omni publishes
+            0 bps trading fees; the model charges the two market/RFQ hedge legs and does not guess a limit fill.
           </span>
         </li>
         <li className="flex gap-3">
@@ -449,8 +449,9 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
         <div>
           <p className="font-medium text-text-primary">Cost calculation</p>
           <p className="mt-1">
-            Cost = entry impact + exit impact + net funding. Cost per point = cost ÷ (base points + eligible
-            competition bonus points). The $20,000 USDC prize pool is never deducted from cost.
+            Modeled cost = two market/RFQ hedge fills + net funding. The passive limit price and whether it fills
+            are not guessed. Cost per point = cost ÷ (base points + eligible competition bonus points). The
+            $20,000 USDC prize pool is never deducted from cost.
           </p>
         </div>
         <div>
