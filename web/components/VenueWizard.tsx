@@ -302,7 +302,7 @@ function ResultsSkeleton() {
   );
 }
 
-function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
+function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
   const locale = useLocale();
   const plan =
     strategy === "max_points"
@@ -310,20 +310,17 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
           title: "Faster point accumulation",
           estimate: "$10–11 / pt",
           context: "XAU, 1–2h hold",
-          note: "The higher planning cost reflects the shorter holding window and faster expected accrual.",
         }
       : strategy === "balanced"
         ? {
             title: "Compare both cases",
             estimate: "$7–10 / pt",
             context: "medium OI 12–24h, plus XAU 1–2h",
-            note: "Use this view to compare the slower lower-cost case with the faster XAU case.",
           }
         : {
             title: "Lowest planning cost",
             estimate: "$5–7 / pt",
             context: "medium OI, 12–24h hold",
-            note: "This is the current lower-cost manual estimate, not a published rate from Omni.",
         };
 
   if (locale === "ru") {
@@ -341,10 +338,9 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
       <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface-1 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-text-primary">Тестовый flow Variational</p>
-            <p className="mt-1 text-sm text-text-muted">Полная плановая модель для записи входных данных и сравнения вариантов фарма.</p>
+            <p className="text-sm font-medium text-text-primary">План фарма Variational</p>
+            <p className="mt-1 text-sm text-text-muted">Гайд по маршруту и параметрам исполнения для выбранного варианта фарма.</p>
           </div>
-          <span className="rounded-sm bg-surface-2 px-2 py-1 font-mono-num text-xs text-text-muted">ТЕСТОВАЯ МОДЕЛЬ</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-md border border-border bg-surface-2 p-3"><p className="text-xs text-text-muted">Выбранный вариант</p><p className="mt-1 text-sm font-medium text-text-primary">{variant}</p></div>
@@ -361,7 +357,7 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
         </ol>
         <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-xs text-text-muted sm:grid-cols-2">
           <div><p className="font-medium text-text-primary">Расчёт стоимости</p><p className="mt-1">Стоимость = entry impact + exit impact + net funding. Цена поинта = стоимость ÷ (базовые поинты + eligible конкурсные поинты). Призовой пул $20 000 USDC не вычитается.</p></div>
-          <div><p className="font-medium text-text-primary">Проверка eligibility</p><p className="mt-1">Перед live-планом проверьте актуальные правила Variational. Если правила исключают выбранную активность, оставляйте запись только тестовой моделью.</p></div>
+          <div><p className="font-medium text-text-primary">Хедж-схема</p><p className="mt-1">Variational разрешает органический дельта-нейтральный хедж между двумя аккаунтами. Держите одинаковый номинал long и short: маршрут сравнивает стоимость исполнения, а не направленную ставку на рынок.</p></div>
         </div>
       </section>
     );
@@ -371,15 +367,11 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
     <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface-1 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-text-primary">Variational test flow</p>
+          <p className="text-sm font-medium text-text-primary">Variational farming plan</p>
           <p className="mt-1 text-sm text-text-muted">
-            A full planning model for recording the inputs and comparing the farming variants before any live
-            activity.
+            Route guide and execution inputs for the selected farming variant.
           </p>
         </div>
-        <span className="rounded-sm bg-surface-2 px-2 py-1 font-mono-num text-xs text-text-muted">
-          TEST MODEL
-        </span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -397,8 +389,6 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
         </div>
       </div>
 
-      <p className="text-xs text-text-muted">{plan.note}</p>
-
       <ol className="grid gap-3 text-sm text-text-muted">
         <li className="flex gap-3">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
@@ -415,7 +405,7 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
             2
           </span>
           <span>
-            <strong className="font-medium text-text-primary">Model the exposure.</strong> The test pairs a
+            <strong className="font-medium text-text-primary">Model the exposure.</strong> The route pairs a
             Variational long with a Variational short of the same nominal value, so the record isolates spreads,
             funding, and execution impact rather than a directional market view.
           </span>
@@ -464,11 +454,10 @@ function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
           </p>
         </div>
         <div>
-          <p className="font-medium text-text-primary">Eligibility gate</p>
+          <p className="font-medium text-text-primary">Hedge setup</p>
           <p className="mt-1">
-            Before using a live plan, check the current Variational rules. Its published competition rules may
-            disqualify self-transactions, matched activity, or multi-account farming; in that case this stays a
-            test record only.
+            Variational permits organic delta-neutral hedging across two accounts. Keep equal notional on the
+            long and short legs; this route compares execution cost, not a directional market view.
           </p>
         </div>
       </div>
@@ -599,10 +588,10 @@ export function VenueWizard({
               <VariationalPairRankings key={response.strategy} strategy={response.strategy} />
               <details className="rounded-lg border border-border bg-surface-1">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-text-primary">
-                  {tr(locale, "Model notes and test flow", "Примечания к модели и тестовый flow")}
+                  {tr(locale, "Model notes and execution plan", "Примечания к модели и план исполнения")}
                 </summary>
                 <div className="border-t border-border p-4">
-                  <VariationalTestFlow strategy={response.strategy} />
+                  <VariationalFarmingPlan strategy={response.strategy} />
                 </div>
               </details>
             </>

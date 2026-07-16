@@ -119,8 +119,8 @@ function VariationalFarmingFocus() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="rounded-md border border-border bg-surface-2 p-3">
             <p className="font-medium text-text-primary">Variational × Variational</p>
-            <p className="mt-1 text-xs text-accent">{tr(locale, "Lowest-cost route", "Самый дешёвый маршрут")}</p>
-            <p className="mt-1 text-xs text-text-muted">{tr(locale, "Two independent Variational accounts make the cheapest execution hedge. Use only where the current protocol rules allow the activity.", "Два независимых аккаунта Variational дают самый дешёвый execution-хедж. Используйте только если текущие правила протокола допускают такую активность.")}</p>
+            <p className="mt-1 text-xs text-accent">{tr(locale, "Approved hedge setup", "Разрешённая хедж-схема")}</p>
+            <p className="mt-1 text-xs text-text-muted">{tr(locale, "Variational permits organic delta-neutral hedging with two accounts. Keep equal notional long and short; this is the lowest-cost route.", "Variational разрешает органический дельта-нейтральный хедж двумя аккаунтами. Держите одинаковый номинал long и short: это самый дешёвый маршрут.")}</p>
           </div>
           <div className="rounded-md border border-border bg-surface-2 p-3">
             <p className="font-medium text-text-primary">Variational × TxFlow</p>

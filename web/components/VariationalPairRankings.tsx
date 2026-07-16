@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { formatPct, formatUsd } from "@/lib/format";
+import { formatUsd } from "@/lib/format";
 import type { Strategy } from "@/lib/types";
-
-type FundingSource = "seven_day_mean" | "partial_history" | "current_rate";
 
 interface PairRanking {
   pair: string;
-  openInterestUsd: number;
   buyBps: number;
   sellBps: number;
   buyCostUsd: number;
@@ -20,10 +17,6 @@ interface PairRanking {
   longAccountTotalUsd: number;
   shortAccountTotalUsd: number;
   cycleCostUsd: number;
-  fundingAnnualizedRate: number | null;
-  fundingSource: FundingSource;
-  fundingObservedHours: number;
-  fundingObservations: number;
 }
 
 interface RankingResponse {
@@ -33,16 +26,6 @@ interface RankingResponse {
   totalCycleVolumeUsd: number;
   holdHours: number;
   pairs: PairRanking[];
-}
-
-function fundingWindow(locale: "en" | "ru", pair: PairRanking) {
-  if (pair.fundingSource === "seven_day_mean") {
-    return tr(locale, "7-day mean", "среднее за 7 дней");
-  }
-  if (pair.fundingSource === "partial_history") {
-    return tr(locale, `${pair.fundingObservedHours}h observed`, `наблюдение ${pair.fundingObservedHours} ч`);
-  }
-  return tr(locale, "current rate only — history is collecting", "только текущая ставка — история собирается");
 }
 
 export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
@@ -102,7 +85,6 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   <span className="font-mono-num text-xs text-text-muted">{String(index + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <p className="font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
-                    <p className="mt-0.5 text-xs text-text-muted">OI {formatUsd(pair.openInterestUsd, { decimals: 0 })}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono-num text-sm font-semibold text-text-primary">{formatUsd(pair.cycleCostUsd)}</p>
@@ -127,8 +109,9 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                     </div>
                     <div className="sm:col-span-2">
                       <p>{tr(locale, "Cycle total", "Итого цикл")}: {formatUsd(pair.longAccountTotalUsd)} + {formatUsd(pair.shortAccountTotalUsd)} = <span className="font-mono-num font-medium text-text-primary">{formatUsd(pair.cycleCostUsd)}</span>.</p>
-                      <p className="mt-1">{tr(locale, "Funding rate", "Ставка funding")}: {formatPct(pair.fundingAnnualizedRate, 2)} {tr(locale, "annualized", "годовых")} · {fundingWindow(locale, pair)}. {tr(locale, "At equal long/short size on the same Variational market, one account’s funding payment is the other account’s credit, so net funding is $0; both legs are shown for transparency.", "При равном long/short на одном рынке Variational funding, уплаченный одним аккаунтом, получает другой, поэтому net funding = $0; обе ноги показаны для прозрачности.")}</p>
-                      <p className="mt-1">{tr(locale, "Execution uses live public RFQ quotes at $50k, including base spread and quote impact. The future exit quote cannot be known, so the current quote is used as the exit estimate.", "Исполнение использует live-публичные RFQ-котировки на $50k, включая базовый спред и impact котировки. Будущую котировку выхода узнать нельзя, поэтому для оценки выхода используется текущая котировка.")}</p>
+                      <p className="mt-2 text-text-primary">{tr(locale, "How to execute", "Как исполнять")}</p>
+                      <p className="mt-1">{tr(locale, "Use market / RFQ for both entries and both exits, with a slippage limit enabled. This is the execution used in the calculation.", "Используйте market / RFQ для обоих входов и выходов с включённым лимитом проскальзывания. Именно такое исполнение заложено в расчёт.")}</p>
+                      <p className="mt-1">{tr(locale, "Use a limit order only if you are willing to wait for a better quote; it is not included here because one hedge leg may not fill.", "Лимитную заявку используйте только если готовы ждать лучшую котировку: она не входит в расчёт, потому что одна из ног хеджа может не исполниться.")}</p>
                     </div>
                   </div>
                 )}
