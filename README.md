@@ -92,11 +92,11 @@ ruff check .
 `perpfarm/adapters/base.py` defines the `VenueAdapter` interface
 (`get_markets`, `get_funding`, `get_orderbook_top`, `get_volume`,
 `get_fees`). `FixtureAdapter` reads JSON from `data/fixtures/<slug>/` and is fully
-functional — used for dev and tests. The 11 real-venue adapters (variational,
-lighter, extended, paradex, pacifica, nado, txflow, tradexyz, hotstuff,
-hibachi, risex) are stubs that raise `NotImplementedError` with
-`TODO(verify)` markers; wiring real endpoints is intentionally left to be
-filled in against verified docs, per the project's no-fabrication rule.
+functional — used for dev and tests. Variational and Hibachi have live public
+data adapters; the remaining real-venue adapters are stubs that raise
+`NotImplementedError` with `TODO(verify)` markers. Wiring a new endpoint is
+only done against verified primary documentation, per the project's
+no-fabrication rule.
 
 ## Manual data
 

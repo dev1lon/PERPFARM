@@ -6,6 +6,7 @@ import { brandBg, brandBgTone } from "@/lib/brand";
 import { daysUntil, formatBps, formatDate, formatNumber } from "@/lib/format";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { MarkdownLite } from "@/lib/markdown-lite";
+import { isReadyVenue } from "@/lib/venue-status";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ export default async function VenuePage({
   const [venue, allVenues] = await Promise.all([getVenueDetail(venueSlug), getVenues()]);
   if (!venue) notFound();
 
-  const otherVenues = allVenues.filter((v) => v.slug !== venueSlug);
+  const ready = isReadyVenue(venueSlug);
+  const otherVenues = allVenues.filter((v) => v.slug !== venueSlug && isReadyVenue(v.slug));
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   // Full-page brand background: the perp's designed background image, or its
   // dark brand color gradient -- covers the whole page so the card on the home
@@ -54,16 +56,14 @@ export default async function VenuePage({
           <h1>
             <PerpIdentity slug={venueSlug} name={venue.name} markPx={38} namePx={22} nameClassName="text-2xl" />
           </h1>
-          {seasonDays !== null && (
-            <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right">
-              <div className="text-[10px] uppercase tracking-wide text-text-muted">
-                {venue.meta?.seasonName ?? "Season"}
-              </div>
-              <div className="font-mono-num text-sm font-semibold text-text-primary">
-                ends in {seasonDays}d
-              </div>
+          <div className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-right">
+            <div className="text-[10px] uppercase tracking-wide text-text-muted">
+              {ready && venue.meta?.seasonName ? venue.meta.seasonName : "Season"}
             </div>
-          )}
+            <div className="font-mono-num text-sm font-semibold text-text-primary">
+              {ready && seasonDays !== null ? `ends in ${seasonDays}d` : "SOON"}
+            </div>
+          </div>
         </div>
         <div className="flex flex-wrap gap-4 text-sm">
           {venue.meta?.referralLink && (
@@ -99,6 +99,15 @@ export default async function VenuePage({
         </div>
       </div>
 
+      {!ready ? (
+        <section className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-1 p-6 text-center">
+          <p className="font-mono-num text-5xl font-semibold tracking-[0.22em] text-text-primary">SOON</p>
+          <p className="max-w-sm text-sm text-text-muted">
+            We are verifying this perp-dex before publishing routes, fees, or point estimates.
+          </p>
+        </section>
+      ) : (
+        <>
       <div className="grid grid-cols-3 gap-4 rounded-lg border border-border bg-surface-1 p-5">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-text-muted">Points per $1</span>
@@ -131,11 +140,79 @@ export default async function VenuePage({
         {venue.pointsProgram ? (
           <MarkdownLite text={venue.pointsProgram.descriptionMd} className={onBgMuted} />
         ) : (
-          <p className={`text-sm ${onBgMuted}`}>No points program data yet.</p>
+          <p className={`text-sm ${onBgMuted}`}>SOON</p>
         )}
       </div>
 
+        {venueSlug === "variational" && (
+          <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
+            <div>
+              <h2 className="text-sm font-medium text-text-primary">PerpFarm planning estimate</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Manual estimate, not a published point-emission formula.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="font-mono-num text-xl text-text-primary">$5–7 / pt</p>
+                <p className="text-xs text-text-muted">medium OI, 12–24h hold</p>
+              </div>
+              <div>
+                <p className="font-mono-num text-xl text-text-primary">~$11 / pt</p>
+                <p className="text-xs text-text-muted">XAU, 1–2h hold</p>
+              </div>
+              <div>
+                <p className="font-mono-num text-xl text-text-primary">0 bps</p>
+                <p className="text-xs text-text-muted">published Omni trading fee</p>
+              </div>
+            </div>
+            <p className="text-xs text-text-muted">
+              Short XAU holds are more expensive per point but target faster point accumulation. We do not
+              publish a calculated route score until Omni publishes a verifiable points-per-volume formula.
+            </p>
+          </section>
+        )}
+
+        {venueSlug === "variational" && (
+          <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-medium text-text-primary">Trading competition</h2>
+              <span className="rounded-sm bg-surface-2 px-2 py-1 font-mono-num text-xs text-text-muted">
+                INACTIVE
+              </span>
+            </div>
+            <p className="text-sm text-text-muted">
+              The latest RWA competition ended on July 13. PerpFarm&apos;s operating rule is to join an
+              active competition before running its plan. Variational also distributed an additional 20,000
+              points to competitors, proportional to TradFi-market volume; those points and the $20,000 USDC
+              prize pool are excluded from cost-per-point estimates.
+            </p>
+            <p className="text-xs text-text-muted">
+              Leaderboard eligibility required $250k of TradFi notional; prizes require KYC. Variational
+              can disqualify self-transactions, matched trading, or multi-account farming.
+            </p>
+            <a
+              href="https://docs.variational.io/omni/trading-competition"
+              target="_blank"
+              rel="noreferrer"
+              className="w-fit text-xs text-accent hover:text-accent-hover"
+            >
+              Competition rules ↗
+            </a>
+            <a
+              href="https://x.com/variational_io/status/2077147392764510582"
+              target="_blank"
+              rel="noreferrer"
+              className="w-fit text-xs text-accent hover:text-accent-hover"
+            >
+              20,000-point distribution announcement ↗
+            </a>
+          </section>
+        )}
+
         <VenueWizard venueSlug={venueSlug} otherVenues={otherVenues} />
+        </>
+      )}
       </div>
     </div>
   );

@@ -38,8 +38,9 @@ venue_meta:
     referral_link: null
     notes_md: >-
       Omni: RFQ perp DEX with 0% trading fees on Arbitrum, cross-margined
-      crypto + TradFi markets. Points/rewards program exists; mechanics not
-      wired to a live adapter yet.
+      crypto + TradFi markets. Public quotes, funding, 24h volume, and OI are
+      wired; the published points program has no points-per-volume formula,
+      so definitive cost-per-point routes remain intentionally unavailable.
 
   - venue: hibachi
     raised_usd: null # funding rounds exist (cryptorank/messari) but amount not verified -- do not guess

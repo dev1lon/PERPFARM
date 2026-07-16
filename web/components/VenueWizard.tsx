@@ -129,11 +129,6 @@ function HedgeSelect({
                     i === activeIndex ? "bg-surface-hover" : ""
                   } ${o.slug === value ? "text-accent" : "text-text-primary"}`}
                 >
-                  {o.slug === "self" && (
-                    <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
-                      same perp-dex
-                    </span>
-                  )}
                   {o.name}
                 </button>
               </li>
@@ -311,13 +306,12 @@ export function VenueWizard({
 }) {
   const hedgeOptions: HedgeOption[] = useMemo(
     () => [
-      { slug: "self", name: "— second account" },
+      ...(venueSlug === "variational" ? [{ slug: "variational", name: "Variational" }] : []),
       ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
     ],
-    [otherVenues]
+    [venueSlug, otherVenues]
   );
-
-  const [hedge, setHedge] = useState(hedgeOptions[1]?.slug ?? "self");
+  const [hedge, setHedge] = useState(hedgeOptions[0]?.slug ?? "");
   const [strategy, setStrategy] = useState<Strategy>("cheapest");
   const [status, setStatus] = useState<Status>("idle");
   const [response, setResponse] = useState<RecipesResponse | null>(null);
@@ -325,10 +319,35 @@ export function VenueWizard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
+  const isVariationalStatistics = venueSlug === "variational" && hedge === "variational";
+
+  if (hedgeOptions.length === 0) {
+    return (
+      <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-6 text-center">
+        <p className="font-mono-num text-3xl font-semibold tracking-[0.2em] text-text-primary">SOON</p>
+        <p className="text-sm text-text-muted">
+          A neutral hedge needs a second verified perp-dex. We will enable recipes once one is live.
+        </p>
+      </section>
+    );
+  }
 
   async function run() {
     setStatus("loading");
     setErrorMessage(null);
+    if (isVariationalStatistics) {
+      setResponse({
+        venue: venueSlug,
+        hedge,
+        strategy,
+        notionalUsd: 10_000,
+        holdHours: 24,
+        recipes: [],
+      });
+      setExpandedPair(null);
+      setStatus("loaded");
+      return;
+    }
     try {
       const res = await fetch(
         `/api/venues/${venueSlug}/recipes?hedge=${encodeURIComponent(hedge)}&strategy=${strategy}`
@@ -382,7 +401,9 @@ export function VenueWizard({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-text-primary">
-              {response.recipes.length} recipe{response.recipes.length === 1 ? "" : "s"}
+              {response.venue === "variational" && response.hedge === "variational"
+                ? "Planning statistics"
+                : `${response.recipes.length} recipe${response.recipes.length === 1 ? "" : "s"}`}
             </h2>
             <button
               type="button"
@@ -393,7 +414,42 @@ export function VenueWizard({
             </button>
           </div>
 
-          {response.recipes.length === 0 ? (
+          {response.venue === "variational" && response.hedge === "variational" ? (
+            <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
+              <div>
+                <p className="text-sm font-medium text-text-primary">Variational</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Statistics-only scenario. It is not an execution playbook or a calculated route score.
+                </p>
+              </div>
+              {response.strategy === "max_points" ? (
+                <div>
+                  <p className="font-mono-num text-xl text-text-primary">~$11 / pt</p>
+                  <p className="text-xs text-text-muted">XAU, 1–2h hold — faster point accumulation</p>
+                </div>
+              ) : response.strategy === "balanced" ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="font-mono-num text-xl text-text-primary">$5–7 / pt</p>
+                    <p className="text-xs text-text-muted">medium OI, 12–24h hold</p>
+                  </div>
+                  <div>
+                    <p className="font-mono-num text-xl text-text-primary">~$11 / pt</p>
+                    <p className="text-xs text-text-muted">XAU, 1–2h hold — faster points</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="font-mono-num text-xl text-text-primary">$5–7 / pt</p>
+                  <p className="text-xs text-text-muted">medium OI, 12–24h hold — lowest planning estimate</p>
+                </div>
+              )}
+              <p className="text-xs text-text-muted">
+                Omni has not published a verifiable points-per-volume formula. Follow current Variational
+                rules; its competition rules prohibit matched activity and multi-account farming.
+              </p>
+            </section>
+          ) : response.recipes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
               <p className="text-sm text-text-muted">No pairs fit this strategy right now.</p>
               {strategy !== "cheapest" && (

@@ -7,6 +7,7 @@ import { PerpIdentity } from "@/components/PerpIdentity";
 import { brandBg, brandBgTone, brandBgIsGradient } from "@/lib/brand";
 import { daysUntil, formatCostPerPoint } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
+import { isReadyVenue } from "@/lib/venue-status";
 
 // Perps pinned to the top of the list, in this order; everything else follows
 // alphabetically.
@@ -64,6 +65,7 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
         <div className="flex flex-col gap-2">
           {filtered.map((v) => {
             const days = daysUntil(v.seasonEndDate);
+            const ready = isReadyVenue(v.slug);
             const cardBg = brandBg(v.slug);
             // Brands that ship a near-white background need dark metrics text.
             const lightBg = cardBg !== undefined && brandBgTone(v.slug) === "light";
@@ -112,12 +114,14 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 />
                 <span className="flex items-center gap-3 text-sm">
                   <span className={metricMuted}>
-                    {days !== null ? `season ends in ${days}d` : "season n/a"}
+                    {ready && days !== null ? `season ends in ${days}d` : "SOON"}
                   </span>
                   <span className={`font-mono-num font-semibold ${metricStrong}`}>
-                    {v.cheapestCostPerPointUsd !== null
+                    {ready && v.cheapestCostPerPointUsd !== null
                       ? `from ${formatCostPerPoint(v.cheapestCostPerPointUsd)}/pt`
-                      : "no data yet"}
+                      : ready && v.slug === "variational"
+                        ? "est. $5–7/pt"
+                      : "SOON"}
                   </span>
                 </span>
               </Link>

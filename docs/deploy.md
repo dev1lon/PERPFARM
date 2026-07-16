@@ -18,7 +18,7 @@ this repo, and fix up anything the dashboard's own validator flags.
 |---|---|---|
 | `perpfarm-web` | Web Service (Node) | `web/` -- Next.js, `npm run build` / `npm start` |
 | `perpfarm-nightly` | Cron Job (Python) | `perpfarm job nightly` -- recomputes `route_scores` |
-| `perpfarm-fee-watch` | Cron Job (Python) | `perpfarm job fee-watch` -- fee-schedule diff watcher |
+| `perpfarm-fee-watch` | Cron Job (Python, weekly) | `perpfarm job fee-watch` -- fee-schedule diff watcher |
 | `perpfarm-sync-snapshots` | Cron Job (Python) | `perpfarm job sync-snapshots` -- book/funding/volume snapshot sync, hourly |
 | `perpfarm-db` | Managed Postgres | shared by all four |
 
@@ -99,18 +99,14 @@ delivers it. That's a deliberate, minimal stopping point: the schema
 (`alerts.notified_at` nullable, `alerts.kind`/`payload_json` generic) was
 already designed for a notifier to be bolted on later without changes here.
 
-**All 11 real-venue adapters still raise `NotImplementedError` for
-`get_fees()`** (same as their other methods) -- per this project's
-no-fabrication rule, nobody has verified their actual fee-schedule
-endpoint/page yet. The watcher treats `NotImplementedError` as "not wired up
-yet" and skips that venue silently (counted in the job's `skipped` total,
-not its `errors`); it does *not* raise or fail the run. Only the two fixture
-venues (`venue_alpha`, `venue_beta`, via `data/fixtures/<slug>/fees.json`)
-currently produce real fee-watch activity. Wiring a real venue's `get_fees()`
-is the same kind of task as wiring its `get_markets()`/`get_funding()`/etc.
--- confirm the actual fee-schedule source (API endpoint or static page) and
-its auth/rate-limit requirements before implementing, and keep the
-`TODO(verify)` marker until you have.
+Variational currently produces real fee-watch activity: its official fee
+documentation confirms 0% trading fees, so the watcher records a 0/0 bps
+schedule. The watcher runs weekly (Sunday 00:00 UTC), because published base
+fees are not expected to change intraday. The fixture venues also produce
+activity through `data/fixtures/<slug>/fees.json`. Unwired adapters are
+silently skipped (counted in the job's `skipped` total, not its `errors`).
+Wiring a new venue's `get_fees()` still requires confirming its actual source
+and authentication/rate-limit requirements first.
 
 ## Market-data snapshot sync (`perpfarm job sync-snapshots`)
 

@@ -9,6 +9,7 @@
 import * as db from "./db";
 import * as fixtures from "./fixtures-source";
 import type { RouteDetail, RouteScoreRow, VenueDetail, VenueSummary } from "./types";
+import { isReadyVenue } from "./venue-status";
 
 export const usingFixtures = !process.env.DATABASE_URL;
 
@@ -26,7 +27,14 @@ function isHidden(slug: string): boolean {
 }
 
 function visibleRoutes(routes: RouteScoreRow[]): RouteScoreRow[] {
-  return routes.filter((r) => !isHidden(r.longVenueSlug) && !isHidden(r.shortVenueSlug));
+  return routes.filter(
+    (r) =>
+      !isHidden(r.longVenueSlug) &&
+      !isHidden(r.shortVenueSlug) &&
+      isReadyVenue(r.longVenueSlug) &&
+      isReadyVenue(r.shortVenueSlug) &&
+      r.longVenueSlug !== r.shortVenueSlug
+  );
 }
 
 export async function getLatestRouteScores(
@@ -43,7 +51,15 @@ export async function getRouteDetail(
   longSlug: string,
   shortSlug: string
 ): Promise<RouteDetail | null> {
-  if (isHidden(longSlug) || isHidden(shortSlug)) return null;
+  if (
+    isHidden(longSlug) ||
+    isHidden(shortSlug) ||
+    !isReadyVenue(longSlug) ||
+    !isReadyVenue(shortSlug) ||
+    longSlug === shortSlug
+  ) {
+    return null;
+  }
   if (usingFixtures) return fixtures.fixtureRouteDetail(symbolCanonical, longSlug, shortSlug);
   return db.getRouteDetail(symbolCanonical, longSlug, shortSlug);
 }
@@ -63,7 +79,15 @@ export async function getRoutesForVenuePair(
   venueSlug: string,
   hedgeSlug: string
 ): Promise<RouteScoreRow[]> {
-  if (isHidden(venueSlug) || isHidden(hedgeSlug)) return [];
+  if (
+    isHidden(venueSlug) ||
+    isHidden(hedgeSlug) ||
+    !isReadyVenue(venueSlug) ||
+    !isReadyVenue(hedgeSlug) ||
+    venueSlug === hedgeSlug
+  ) {
+    return [];
+  }
   const routes = usingFixtures
     ? fixtures.fixtureRoutesForVenuePair(venueSlug, hedgeSlug)
     : await db.getRoutesForVenuePair(venueSlug, hedgeSlug);

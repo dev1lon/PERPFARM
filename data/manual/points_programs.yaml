@@ -29,6 +29,22 @@ points_programs:
     last_verified: 2026-07-01
     source: "own trades"
 
+  - venue: variational
+    description_md: |
+      Omni points are distributed every Friday at 00:00 UTC for the prior
+      week. Reward tiers add a 0–5% points boost; accounts that traded before
+      launch receive an additional 10% boost. The public documentation does
+      **not** disclose a points-per-volume emission formula, so PerpFarm does
+      not calculate a definitive cost per point from public data alone. The
+      second TradFi competition also distributed an additional 20,000 points
+      proportional to competitor volume; competition bonuses are excluded from
+      ongoing route economics.
+    points_per_usd_volume_estimate: null
+    weight_notes: "Referral rewards add 1 point per 10 points earned by referrals; exclude referral rewards, competition bonus points, and prizes from route economics."
+    confidence: confirmed
+    last_verified: 2026-07-16
+    source: "https://docs.variational.io/omni/rewards/points"
+
   - venue: hibachi
     description_md: |
       **1,000,000 points per weekly epoch**, distributed every Monday 03:00

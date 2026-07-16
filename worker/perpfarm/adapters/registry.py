@@ -53,7 +53,7 @@ def _fixture(slug: str, name: str) -> VenueRegistration:
 
 
 REGISTRY: list[VenueRegistration] = [
-    _real("variational", "Variational", VariationalAdapter),
+    _real("variational", "Variational", VariationalAdapter, api_status="live"),
     _real("extended", "Extended", ExtendedAdapter),
     _real("pacifica", "Pacifica", PacificaAdapter),
     _real("nado", "Nado", NadoAdapter),
