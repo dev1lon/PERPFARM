@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Callable
 
 from perpfarm.adapters.base import VenueAdapter
-from perpfarm.adapters.bullet import BulletAdapter
 from perpfarm.adapters.exchange01 import Exchange01Adapter
 from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
@@ -67,7 +66,6 @@ REGISTRY: list[VenueRegistration] = [
     _real("perpl", "Perpl", PerplAdapter),
     _real("polymarket", "Polymarket", PolymarketAdapter),
     _real("reya", "Reya", ReyaAdapter),
-    _real("bullet", "Bullet", BulletAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]

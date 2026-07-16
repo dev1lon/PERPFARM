@@ -13,17 +13,31 @@ import { tr, useLocale } from "@/components/LocaleProvider";
 // Perps pinned to the top of the list, in this order; everything else follows
 // alphabetically.
 const PINNED_ORDER = ["variational", "hibachi"];
+const BULLET_CARD: VenueSummary = {
+  slug: "bullet",
+  name: "Bullet",
+  apiStatus: "stub",
+  seasonName: null,
+  seasonEndDate: null,
+  makerBps: null,
+  takerBps: null,
+  confidence: null,
+  lastVerified: null,
+  pairs: [],
+  cheapestCostPerPointUsd: null,
+};
 
 export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
   const locale = useLocale();
   const [query, setQuery] = useState("");
 
   const ordered = useMemo(() => {
+    const catalog = venues.some((venue) => venue.slug === BULLET_CARD.slug) ? venues : [...venues, BULLET_CARD];
     const rank = (slug: string) => {
       const i = PINNED_ORDER.indexOf(slug);
       return i === -1 ? Number.POSITIVE_INFINITY : i;
     };
-    return [...venues].sort((a, b) => {
+    return [...catalog].sort((a, b) => {
       if (a.slug === "bullet") return b.slug === "bullet" ? 0 : 1;
       if (b.slug === "bullet") return -1;
       const ra = rank(a.slug);
@@ -105,15 +119,10 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 ? "text-[#0b1220]"
                 : "text-white"
               : "text-text-primary";
-            return (
-              <Link
-                key={v.slug}
-                href={`/${v.slug}`}
-                className={`pf-transition flex flex-col gap-1 rounded-lg border ${borderColor} px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
-                  cardBg ? "hover:brightness-110" : "pf-card-tint"
-                }`}
-                style={cardBg ? { background: cardBg } : perpDexBadgeVars(v.slug)}
-              >
+            const cardClassName = `pf-transition flex flex-col gap-1 rounded-lg border ${borderColor} px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 ${
+              cardBg ? "hover:brightness-110" : "pf-card-tint"
+            }`;
+            const cardContent = <>
                 <PerpIdentity
                   slug={v.slug}
                   name={v.name}
@@ -141,6 +150,14 @@ export function HomeSearch({ venues }: { venues: VenueSummary[] }) {
                 ) : (
                   <span className={`font-mono-num font-semibold ${metricStrong}`}>SOON</span>
                 )}
+              </>;
+            return v.slug === BULLET_CARD.slug ? (
+              <div key={v.slug} className={cardClassName} style={cardBg ? { background: cardBg } : perpDexBadgeVars(v.slug)}>
+                {cardContent}
+              </div>
+            ) : (
+              <Link key={v.slug} href={`/${v.slug}`} className={cardClassName} style={cardBg ? { background: cardBg } : perpDexBadgeVars(v.slug)}>
+                {cardContent}
               </Link>
             );
           })}
