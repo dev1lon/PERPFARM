@@ -6,7 +6,9 @@ const DEFILLAMA_OPEN_INTEREST_URL =
 const VARIATIONAL_STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
 const HISTORY_DAYS = 30;
 
-export const revalidate = 60 * 60;
+// Next.js requires a literal here; expressions such as `60 * 60` are not
+// accepted as route-segment config during the production build.
+export const revalidate = 3600;
 
 type ActivityPoint = { date: string; value: number };
 
