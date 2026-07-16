@@ -295,6 +295,147 @@ function ResultsSkeleton() {
   );
 }
 
+function VariationalTestFlow({ strategy }: { strategy: Strategy }) {
+  const plan =
+    strategy === "max_points"
+      ? {
+          title: "Faster point accumulation",
+          estimate: "~$11 / pt",
+          context: "XAU, 1–2h hold",
+          note: "The higher planning cost reflects the shorter holding window and faster expected accrual.",
+        }
+      : strategy === "balanced"
+        ? {
+            title: "Compare both cases",
+            estimate: "$5–7 / pt and ~$11 / pt",
+            context: "medium OI 12–24h, plus XAU 1–2h",
+            note: "Use this view to compare the slower lower-cost case with the faster XAU case.",
+          }
+        : {
+            title: "Lowest planning cost",
+            estimate: "$5–7 / pt",
+            context: "medium OI, 12–24h hold",
+            note: "This is the current lower-cost manual estimate, not a published rate from Omni.",
+          };
+
+  return (
+    <section className="flex flex-col gap-5 rounded-lg border border-border bg-surface-1 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-text-primary">Variational test flow</p>
+          <p className="mt-1 text-sm text-text-muted">
+            A full planning model for recording the inputs and comparing the farming variants before any live
+            activity.
+          </p>
+        </div>
+        <span className="rounded-sm bg-surface-2 px-2 py-1 font-mono-num text-xs text-text-muted">
+          TEST MODEL
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-border bg-surface-2 p-3">
+          <p className="text-xs text-text-muted">Selected variant</p>
+          <p className="mt-1 text-sm font-medium text-text-primary">{plan.title}</p>
+        </div>
+        <div className="rounded-md border border-border bg-surface-2 p-3">
+          <p className="text-xs text-text-muted">Planning estimate</p>
+          <p className="mt-1 font-mono-num text-sm font-medium text-text-primary">{plan.estimate}</p>
+        </div>
+        <div className="rounded-md border border-border bg-surface-2 p-3">
+          <p className="text-xs text-text-muted">Hold window</p>
+          <p className="mt-1 text-sm font-medium text-text-primary">{plan.context}</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-text-muted">{plan.note}</p>
+
+      <ol className="grid gap-3 text-sm text-text-muted">
+        <li className="flex gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+            1
+          </span>
+          <span>
+            <strong className="font-medium text-text-primary">Set the observation.</strong> Record the market,
+            timestamp, open interest, selected hold window, and equal notional for both Variational legs. The
+            default comparison uses $10,000 notional.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+            2
+          </span>
+          <span>
+            <strong className="font-medium text-text-primary">Model the exposure.</strong> The test pairs a
+            Variational long with a Variational short of the same nominal value, so the record isolates spreads,
+            funding, and execution impact rather than a directional market view.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+            3
+          </span>
+          <span>
+            <strong className="font-medium text-text-primary">Capture entry and exit data.</strong> At each
+            timestamp store the quoted spread/impact and funding rate. Omni publishes 0 bps trading fees, but
+            the model still includes entry impact, exit impact, and funding in the realised cost.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+            4
+          </span>
+          <span>
+            <strong className="font-medium text-text-primary">Apply the point estimate.</strong> For medium OI
+            and a 12–24h window, compare against $5–7 per point. For XAU with a 1–2h window, compare against
+            about $11 per point. These remain manual benchmarks until Omni publishes points per volume.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 font-mono-num text-xs text-accent">
+            5
+          </span>
+          <span>
+            <strong className="font-medium text-text-primary">Account for a competition separately.</strong>
+            When one is active, log eligible TradFi volume and calculate the 20,000-point bonus pro rata:
+            <span className="ml-1 font-mono-num text-text-primary">
+              20,000 × eligible Variational volume / total eligible competition volume.
+            </span>
+            USDC prizes are deliberately excluded from point economics.
+          </span>
+        </li>
+      </ol>
+
+      <div className="grid gap-3 rounded-md border border-border bg-surface-2 p-4 text-xs text-text-muted sm:grid-cols-2">
+        <div>
+          <p className="font-medium text-text-primary">Cost calculation</p>
+          <p className="mt-1">
+            Cost = entry impact + exit impact + net funding. Cost per point = cost ÷ (base points + eligible
+            competition bonus points). The $20,000 USDC prize pool is never deducted from cost.
+          </p>
+        </div>
+        <div>
+          <p className="font-medium text-text-primary">Eligibility gate</p>
+          <p className="mt-1">
+            Before using a live plan, check the current Variational rules. Its published competition rules may
+            disqualify self-transactions, matched activity, or multi-account farming; in that case this stays a
+            test record only.
+          </p>
+        </div>
+      </div>
+
+      <a
+        href="https://docs.variational.io/omni/trading-competition"
+        target="_blank"
+        rel="noreferrer"
+        className="w-fit text-xs text-accent hover:text-accent-hover"
+      >
+        Check current competition rules ↗
+      </a>
+    </section>
+  );
+}
+
 type Status = "idle" | "loading" | "loaded" | "error";
 
 export function VenueWizard({
@@ -415,40 +556,7 @@ export function VenueWizard({
           </div>
 
           {response.venue === "variational" && response.hedge === "variational" ? (
-            <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
-              <div>
-                <p className="text-sm font-medium text-text-primary">Variational</p>
-                <p className="mt-1 text-sm text-text-muted">
-                  Statistics-only scenario. It is not an execution playbook or a calculated route score.
-                </p>
-              </div>
-              {response.strategy === "max_points" ? (
-                <div>
-                  <p className="font-mono-num text-xl text-text-primary">~$11 / pt</p>
-                  <p className="text-xs text-text-muted">XAU, 1–2h hold — faster point accumulation</p>
-                </div>
-              ) : response.strategy === "balanced" ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="font-mono-num text-xl text-text-primary">$5–7 / pt</p>
-                    <p className="text-xs text-text-muted">medium OI, 12–24h hold</p>
-                  </div>
-                  <div>
-                    <p className="font-mono-num text-xl text-text-primary">~$11 / pt</p>
-                    <p className="text-xs text-text-muted">XAU, 1–2h hold — faster points</p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <p className="font-mono-num text-xl text-text-primary">$5–7 / pt</p>
-                  <p className="text-xs text-text-muted">medium OI, 12–24h hold — lowest planning estimate</p>
-                </div>
-              )}
-              <p className="text-xs text-text-muted">
-                Omni has not published a verifiable points-per-volume formula. Follow current Variational
-                rules; its competition rules prohibit matched activity and multi-account farming.
-              </p>
-            </section>
+            <VariationalTestFlow strategy={response.strategy} />
           ) : response.recipes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
               <p className="text-sm text-text-muted">No pairs fit this strategy right now.</p>
