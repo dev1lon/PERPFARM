@@ -122,9 +122,9 @@ export async function GET(request: NextRequest) {
         const buyCostUsd = (FILL_NOTIONAL_USD * buyBps) / 10_000;
         const sellCostUsd = (FILL_NOTIONAL_USD * sellBps) / 10_000;
         // A limit-first hedge has two passive limit fills and two immediate
-        // market/RFQ hedge fills. If the long limit fills first, the short is
+        // market hedge fills. If the long limit fills first, the short is
         // hedged at market; at exit the order is reversed. The only public
-        // cost we can quantify is the two market/RFQ legs. The limit price is
+        // cost we can quantify is the two market legs. The limit price is
         // user-defined and a fill is never guaranteed.
         const limitLongCycleCostUsd = sellCostUsd * 2;
         const limitShortCycleCostUsd = buyCostUsd * 2;
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
         const longFundingUsd = fundingCostUsd;
         const shortFundingUsd = fundingCostUsd === null ? null : -fundingCostUsd;
         // With the selected sequence each account has one passive limit leg
-        // and one immediate market/RFQ leg, so both accounts carry the same
+        // and one immediate market leg, so both accounts carry the same
         // modeled execution cost. Funding remains shown by account even
         // though equal long/short notional nets to zero for the cycle.
         const longAccountTotalUsd = marketLegCostUsd + (longFundingUsd ?? 0);
