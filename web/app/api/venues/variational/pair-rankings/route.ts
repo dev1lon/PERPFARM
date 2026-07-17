@@ -112,7 +112,11 @@ export async function GET(request: NextRequest) {
         const quote50k = quoteAt50k(listing);
         const longOi = asNumber(listing.open_interest?.long_open_interest);
         const shortOi = asNumber(listing.open_interest?.short_open_interest);
-        const openInterestUsd = longOi !== null && shortOi !== null ? longOi + shortOi : null;
+        // Omni's market selector displays gross OI: both the user-side
+        // long/short exposure and OLP's matching counterparty exposure.
+        // The per-listing directional fields are one side only, so double
+        // their sum to match Omni's displayed Open Interest convention.
+        const openInterestUsd = longOi !== null && shortOi !== null ? (longOi + shortOi) * 2 : null;
         if (!pair || !base || !quote50k || openInterestUsd === null || openInterestUsd <= 0) return null;
 
         const baseMid = (base[0] + base[1]) / 2;
