@@ -7,6 +7,7 @@ import type { Strategy } from "@/lib/types";
 
 interface PairRanking {
   pair: string;
+  openInterestUsd: number;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
 }
@@ -18,6 +19,15 @@ interface RankingResponse {
   totalCycleVolumeUsd: number;
   holdHours: number;
   pairs: PairRanking[];
+}
+
+function formatCompactUsd(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
@@ -78,7 +88,10 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   className="pf-transition grid w-full grid-cols-[2.25rem_1fr_auto] items-center gap-3 px-3 py-3 text-left hover:bg-surface-hover"
                 >
                   <span className="font-mono-num text-sm text-text-muted">{String(index + 1).padStart(2, "0")}</span>
-                  <p className="min-w-0 font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
+                  <div className="min-w-0">
+                    <p className="font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
+                    <p className="mt-0.5 text-xs text-text-muted">OI <span className="font-mono-num">{formatCompactUsd(pair.openInterestUsd)}</span></p>
+                  </div>
                   <div className="text-right">
                     <p className="font-mono-num text-sm font-semibold text-text-primary">{formatUsd(pair.cycleCostUsd)}</p>
                     <p className="text-sm text-text-muted">{tr(locale, "full $200k cycle", "полный цикл $200k")}</p>
