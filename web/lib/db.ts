@@ -18,19 +18,24 @@ let pool: Pool | null = null;
 
 export function getPool(): Pool {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
+    const raw = process.env.DATABASE_URL;
+    if (!raw) {
       throw new Error("DATABASE_URL environment variable is not set");
     }
-    // External managed Postgres (e.g. Supabase/Neon on the free staging env)
-    // requires TLS -- opt in when the URL asks for it. Render's internal prod
-    // connection string has no `sslmode` and needs no TLS, so prod is
-    // unaffected. rejectUnauthorized:false accepts the provider's cert chain
-    // without bundling its CA (encryption stays on).
-    const ssl = /[?&]sslmode=require/i.test(connectionString)
-      ? { rejectUnauthorized: false }
-      : undefined;
-    pool = new Pool({ connectionString, ssl });
+    // Managed Postgres (Supabase/Neon on the free staging env) requires TLS but
+    // serves a cert that isn't in Node's default CA bundle -> "self-signed
+    // certificate in certificate chain". When the URL asks for SSL, STRIP the
+    // sslmode param (so `pg` doesn't derive its own strict verification from the
+    // connection string and override us) and pass an explicit relaxed ssl
+    // config. Render's internal prod URL has no sslmode -> left untouched, no TLS.
+    const wantsSsl = /[?&]sslmode=(require|prefer|verify-full|verify-ca)/i.test(raw);
+    const connectionString = wantsSsl
+      ? raw.replace(/[?&]sslmode=[^&]*/i, "").replace(/[?&]+$/, "")
+      : raw;
+    pool = new Pool({
+      connectionString,
+      ssl: wantsSsl ? { rejectUnauthorized: false } : undefined,
+    });
   }
   return pool;
 }
