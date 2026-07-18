@@ -12,7 +12,7 @@ export function MethodologyContent() {
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-text-primary">{tr(locale, "What “cost per point” means", "Что означает «цена поинта»")}</h2>
         <p className="leading-relaxed text-text-muted">
-          {tr(locale, "We combine trading fees, crossed spread, price impact at the selected size, and funding. The total is compared with the points earned by the same volume.", "Мы объединяем торговые комиссии, пересечённый спред, влияние на цену при выбранном размере и funding. Итог сравнивается с поинтами за тот же объём.")}
+          {tr(locale, "We combine trading fees, crossed spread, price impact at the selected size, and funding into one execution cost. Points per unit of volume aren’t published and their weighting differs from protocol to protocol, so pairs are ranked by that execution cost rather than a computed points ratio. Pairs with less than $1k of 24h volume are treated as dead and left out of the rankings.", "Мы объединяем торговые комиссии, пересечённый спред, влияние на цену при выбранном размере и funding в единую стоимость исполнения. Сколько поинтов даётся за объём — протоколы не публикуют, и веса различаются от протокола к протоколу, поэтому пары ранжируются по этой стоимости исполнения, а не по расчётному отношению к поинтам. Пары с объёмом меньше $1k за 24 часа считаются мёртвыми и исключаются из ранжирования.")}
         </p>
       </section>
       <section className="flex flex-col gap-3">
