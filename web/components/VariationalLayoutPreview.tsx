@@ -10,6 +10,8 @@ import type { VenueSummary } from "@/lib/types";
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
 const INITIAL_POINTS_REMAINING = 1_650_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
+// One-off TradFi-competition bonus, counted into the Distributed total.
+const COMPETITION_BONUS_POINTS = 20_000;
 const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -22,7 +24,7 @@ function pointsProgress(now: number) {
     );
   const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
   return {
-    distributed: INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION,
+    distributed: INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION + COMPETITION_BONUS_POINTS,
     remaining,
     weeksRemaining: Math.ceil(remaining / WEEKLY_POINT_DISTRIBUTION),
     nextDrop: FIRST_TRACKED_DROP_UTC + completedDrops * WEEK_MS,
@@ -115,7 +117,7 @@ function FactorsAffectingPoints({ className = "" }: { className?: string }) {
             {tr(locale, "Passive LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders.", "Пассивные LIMIT-ордера дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера.")}
           </p>
           <p className="mt-3 text-base leading-7 text-text-muted">
-            {tr(locale, "Points are distributed every Friday at 00:00 UTC for the previous week. Use a referral link before the first trade; the current campaign claim is a +16% point boost — confirm it on the signup screen.", "Поинты раздаются каждую пятницу в 00:00 UTC за прошлую неделю. Используйте реферальную ссылку до первой сделки; текущий клейм кампании — буст +16% к поинтам — подтвердите его на экране регистрации.")}
+            {tr(locale, "When registering an account, be sure to use a referral code — it gives a +16% points boost.", "При регистрации аккаунта обязательно воспользуйтесь реферальным кодом — он даёт +16% буст к поинтам.")}
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -173,6 +175,9 @@ function ProtocolActivityPreview({ className = "" }: { className?: string }) {
         </div>
         <p className="mt-3 text-base leading-7 text-text-muted">
           {tr(locale, "Jul 17, 00:00 UTC — Jul 31, 00:00 UTC. Score: TradFi PnL × √TradFi volume.", "17 июля, 00:00 UTC — 31 июля, 00:00 UTC. Score: TradFi PnL × √TradFi volume.")}
+        </p>
+        <p className="mt-3 text-base leading-7 text-text-muted">
+          {tr(locale, "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi).", "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi).")}
         </p>
         <a
           href="https://docs.variational.io/omni/trading-competition"

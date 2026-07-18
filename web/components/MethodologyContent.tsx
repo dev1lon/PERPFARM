@@ -8,18 +8,17 @@ export function MethodologyContent() {
     <div className="mx-auto flex max-w-2xl flex-col gap-10 px-4 py-20 sm:px-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold text-text-primary">{tr(locale, "Methodology", "Методология")}</h1>
-        <p className="font-mono-num text-sm text-text-muted">{tr(locale, "Updated 2026-07-16", "Обновлено 16.07.2026")}</p>
       </div>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-text-primary">{tr(locale, "What “cost per point” means", "Что означает «цена поинта»")}</h2>
         <p className="leading-relaxed text-text-muted">
-          {tr(locale, "We combine trading fees, crossed spread, price impact at the selected size, and funding. The total is compared with points earned by the same volume. When a venue does not publish points per volume, PerpFarm marks the result as a planning estimate.", "Мы объединяем торговые комиссии, пересечённый спред, влияние на цену при выбранном размере и funding. Итог сравнивается с поинтами за тот же объём. Если площадка не публикует поинты за объём, PerpFarm помечает результат как плановую оценку.")}
+          {tr(locale, "We combine trading fees, crossed spread, price impact at the selected size, and funding. The total is compared with the points earned by the same volume.", "Мы объединяем торговые комиссии, пересечённый спред, влияние на цену при выбранном размере и funding. Итог сравнивается с поинтами за тот же объём.")}
         </p>
       </section>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-text-primary">{tr(locale, "Where data comes from", "Откуда берутся данные")}</h2>
         <p className="leading-relaxed text-text-muted">
-          {tr(locale, "Prices, quotes, open interest and funding come from public perp-dex APIs. Fee schedules are verified from public venue documentation. Reward tiers, referral multipliers and competition terms remain separate assumptions when the protocol has not published a complete emissions formula.", "Цены, котировки, open interest и funding берутся из публичных API perp-dex. Комиссии проверяются по публичной документации площадок. Reward tiers, referral-множители и условия конкурсов остаются отдельными допущениями, если протокол не опубликовал полную формулу эмиссии.")}
+          {tr(locale, "Prices, quotes, open interest and funding come from public perp-dex APIs. Fee schedules are verified from public venue documentation. Reward tiers, referral multipliers and competition terms come from public and community sources and vary from protocol to protocol. Point prices come from open sources and the perpfarm team’s own experience obtaining them.", "Цены, котировки, open interest и funding берутся из публичных API perp-dex. Комиссии проверяются по публичной документации площадок. Reward tiers, referral-множители и условия конкурсов берутся из публичных и коммьюнити-источников и различаются от протокола к протоколу. Цены за поинт — из открытых источников и опыта их получения командой perpfarm.")}
         </p>
       </section>
       <section className="flex flex-col gap-3">

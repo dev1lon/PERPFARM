@@ -81,8 +81,8 @@ export function VariationalPairRankings({
 
       {data?.competition.active && (
         <div className="rounded-md border border-accent/35 bg-accent/10 px-3 py-2 text-sm leading-5 text-text-primary">
-          <span className="font-medium text-accent">{data.competition.name}</span>{" "}
-          {tr(locale, `is active — recommendations use eligible TradFi/RWA pairs with at least ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })} OI so their volume counts toward the competition score.`, `активен — в рекомендациях только eligible TradFi/RWA-пары с OI от ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })}; их объём идёт в зачёт конкурса.`)}
+          <span className="font-medium text-accent">{tr(locale, "Trading competition", "Торговый конкурс")}</span>{" "}
+          {tr(locale, `is active — recommendations use eligible TradFi pairs with at least ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })} OI so their volume counts toward the competition score.`, `активен — в рекомендациях только eligible TradFi-пары с OI от ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })}; их объём идёт в зачёт конкурса.`)}
         </div>
       )}
 
