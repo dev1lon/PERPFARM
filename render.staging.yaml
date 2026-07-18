@@ -1,0 +1,39 @@
+# Render Blueprint for the FREE staging environment (separate from prod's
+# render.yaml). One free web service that deploys from the `staging` branch and
+# talks to an EXTERNAL Supabase Postgres. There is NO database or cron here:
+#
+#   * DB      -> a free Supabase project (persistent; set DATABASE_URL by hand).
+#   * Crons   -> none (paid on Render). Seed/refresh the staging DB by running
+#                the worker CLI locally against the Supabase URL -- see
+#                docs/staging.md.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> pick this file on the
+# `staging` branch, then fill the `sync: false` env vars in the dashboard.
+#
+# Note: a free web service spins down after ~15 min idle and cold-starts
+# (~30-60s) on the next request. Expected for staging.
+
+services:
+  - type: web
+    name: perpfarm-web-staging
+    runtime: node
+    rootDir: web
+    plan: free # verify the exact free-plan id in the dashboard if it complains
+    branch: staging
+    region: oregon
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      # Supabase connection string, e.g.
+      #   postgresql://postgres.<ref>:<pwd>@<host>:5432/postgres?sslmode=require
+      # Keep the `?sslmode=require` -- lib/db.ts turns on TLS when it sees it.
+      # Set in the dashboard; never committed.
+      - key: DATABASE_URL
+        sync: false
+      # Optional -- only if you want live DefiLlama volume / Dune users on staging.
+      - key: DEFILLAMA_API_KEY
+        sync: false
+      - key: DUNE_API_KEY
+        sync: false
+      - key: DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID
+        sync: false

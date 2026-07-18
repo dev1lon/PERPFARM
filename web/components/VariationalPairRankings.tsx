@@ -8,6 +8,7 @@ import type { Strategy } from "@/lib/types";
 interface PairRanking {
   pair: string;
   openInterestUsd: number;
+  competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
 }
@@ -18,6 +19,7 @@ interface RankingResponse {
   accountVolumeUsd: number;
   totalCycleVolumeUsd: number;
   holdHours: number;
+  competition: { active: boolean; name: string; eligiblePairsOnly: boolean; minimumOpenInterestUsd: number };
   pairs: PairRanking[];
 }
 
@@ -30,7 +32,13 @@ function formatCompactUsd(value: number): string {
   }).format(value);
 }
 
-export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
+export function VariationalPairRankings({
+  strategy,
+  accountVolumeUsd,
+}: {
+  strategy: Strategy;
+  accountVolumeUsd: number;
+}) {
   const locale = useLocale();
   const [data, setData] = useState<RankingResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +46,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/venues/variational/pair-rankings?strategy=${strategy}`)
+    fetch(`/api/venues/variational/pair-rankings?strategy=${strategy}&accountVolumeUsd=${accountVolumeUsd}`)
       .then(async (response) => {
         if (!response.ok) throw new Error((await response.json()).error ?? "request failed");
         return response.json() as Promise<RankingResponse>;
@@ -52,7 +60,7 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
     return () => {
       active = false;
     };
-  }, [strategy]);
+  }, [strategy, accountVolumeUsd]);
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
@@ -70,6 +78,13 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
             : tr(locale, "Four fills per cycle: two LIMIT and two MARKET orders. Funding is included from the observed funding history.", "Четыре филла на цикл: два LIMIT- и два MARKET-ордера. Funding включён из доступной истории ставок.")}
         </p>
       </div>
+
+      {data?.competition.active && (
+        <div className="rounded-md border border-accent/35 bg-accent/10 px-3 py-2 text-sm leading-5 text-text-primary">
+          <span className="font-medium text-accent">{data.competition.name}</span>{" "}
+          {tr(locale, `is active — recommendations use eligible TradFi/RWA pairs with at least ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })} OI so their volume counts toward the competition score.`, `активен — в рекомендациях только eligible TradFi/RWA-пары с OI от ${formatUsd(data.competition.minimumOpenInterestUsd, { decimals: 0 })}; их объём идёт в зачёт конкурса.`)}
+        </div>
+      )}
 
       {!data && !error && <div className="pf-skeleton h-72 rounded-md border border-border bg-surface-2" />}
       {error && <p className="text-sm text-negative">{tr(locale, "Couldn't load live pair calculations.", "Не удалось загрузить live-расчёты пар.")}</p>}
@@ -90,11 +105,18 @@ export function VariationalPairRankings({ strategy }: { strategy: Strategy }) {
                   <span className="font-mono-num text-sm text-text-muted">{String(index + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
                     <p className="font-mono-num text-sm font-medium text-text-primary">{pair.pair}</p>
-                    <p className="mt-0.5 text-xs text-text-muted">OI <span className="font-mono-num">{formatCompactUsd(pair.openInterestUsd)}</span></p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+                      <span>OI <span className="font-mono-num">{formatCompactUsd(pair.openInterestUsd)}</span></span>
+                      {data.competition.active && pair.competitionEligible && (
+                        <span className="rounded border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 font-medium text-emerald-400">
+                          {tr(locale, "Competition eligible", "Eligible для конкурса")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="font-mono-num text-sm font-semibold text-text-primary">{formatUsd(pair.cycleCostUsd)}</p>
-                    <p className="text-sm text-text-muted">{tr(locale, "full $200k cycle", "полный цикл $200k")}</p>
+                    <p className="text-sm text-text-muted">{tr(locale, `full ${formatUsd(data.totalCycleVolumeUsd, { decimals: 0 })} cycle`, `полный цикл ${formatUsd(data.totalCycleVolumeUsd, { decimals: 0 })}`)}</p>
                   </div>
                 </button>
                 {open && (

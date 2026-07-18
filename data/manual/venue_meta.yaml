@@ -58,6 +58,7 @@ venue_meta:
       (AUD, GBP, EUR, NZD, PAXG, XAG) that close on weekends.
 
   # Social/docs links only (other fields unknown -> null via VenueMetaRow defaults).
+  # Legacy identifier retained while the protocol is displayed as N1.
   - venue: "01exchange"
     twitter_url: "https://x.com/01Exchange"
     docs_url: "https://docs.01.xyz/"

@@ -23,10 +23,12 @@ function HedgeSelect({
   options,
   value,
   onChange,
+  sidebar = false,
 }: {
   options: HedgeOption[];
   value: string;
   onChange: (slug: string) => void;
+  sidebar?: boolean;
 }) {
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -86,6 +88,7 @@ function HedgeSelect({
 
   return (
     <div ref={containerRef} className="relative">
+      {sidebar && <p className="mb-2 text-sm text-text-muted">{tr(locale, "Hedge with", "Хедж с")}</p>}
       <button
         ref={triggerRef}
         type="button"
@@ -98,7 +101,7 @@ function HedgeSelect({
         className="pf-transition flex w-full items-center justify-between rounded-md border border-border bg-surface-1 px-4 py-3 text-left text-sm text-text-primary hover:bg-surface-hover"
       >
         <span>
-          <span className="text-text-muted">{tr(locale, "Hedge with: ", "Хедж с: ")}</span>
+          {!sidebar && <span className="text-text-muted">{tr(locale, "Hedge with: ", "Хедж с: ")}</span>}
           {selected?.name ?? tr(locale, "Select a perp-dex", "Выберите perp-dex")}
         </span>
         <span className="text-text-muted" aria-hidden>
@@ -146,7 +149,7 @@ function HedgeSelect({
   );
 }
 
-function StrategyCards({ value, onChange }: { value: Strategy; onChange: (s: Strategy) => void }) {
+function StrategyCards({ value, onChange, sidebar = false }: { value: Strategy; onChange: (s: Strategy) => void; sidebar?: boolean }) {
   const locale = useLocale();
   const availableStrategies = strategies(locale);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -163,7 +166,7 @@ function StrategyCards({ value, onChange }: { value: Strategy; onChange: (s: Str
   }
 
   return (
-    <div role="radiogroup" aria-label={tr(locale, "Strategy", "Стратегия")} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div role="radiogroup" aria-label={tr(locale, "Strategy", "Стратегия")} className={`grid grid-cols-1 gap-2 ${sidebar ? "" : "sm:grid-cols-3"}`}>
       {availableStrategies.map((s, i) => {
         const selected = s.id === value;
         return (
@@ -302,8 +305,9 @@ function ResultsSkeleton() {
   );
 }
 
-function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
+function VariationalFarmingPlan({ strategy, accountVolumeUsd }: { strategy: Strategy; accountVolumeUsd: number }) {
   const locale = useLocale();
+  const fillNotionalUsd = accountVolumeUsd / 2;
   const plan =
     strategy === "max_points"
       ? {
@@ -396,8 +400,9 @@ function VariationalFarmingPlan({ strategy }: { strategy: Strategy }) {
           </span>
           <span>
             <strong className="font-medium text-text-primary">Set the observation.</strong> Record the market,
-            timestamp, open interest, and selected hold window. The default cycle uses four $50,000 fills:
-            $100,000 of volume per account and $200,000 across both accounts.
+            timestamp, open interest, and selected hold window. This calculation uses four {formatUsd(fillNotionalUsd, { decimals: 0 })} fills:
+            {" "}{formatUsd(accountVolumeUsd, { decimals: 0 })} of volume per account and {" "}
+            {formatUsd(accountVolumeUsd * 2, { decimals: 0 })} across both accounts.
           </span>
         </li>
         <li className="flex gap-3">
@@ -472,9 +477,14 @@ type Status = "idle" | "loading" | "loaded" | "error";
 export function VenueWizard({
   venueSlug,
   otherVenues,
+  layout = "default",
+  allowCustomAccountVolume = false,
 }: {
   venueSlug: string;
   otherVenues: VenueSummary[];
+  layout?: "default" | "sidebar" | "sidebar-wide";
+  /** Kept local to the Variational preview until the planner design is final. */
+  allowCustomAccountVolume?: boolean;
 }) {
   const locale = useLocale();
   const hedgeOptions: HedgeOption[] = useMemo(
@@ -490,9 +500,17 @@ export function VenueWizard({
   const [response, setResponse] = useState<RecipesResponse | null>(null);
   const [expandedPair, setExpandedPair] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [accountVolumeInput, setAccountVolumeInput] = useState("100000");
 
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
   const isVariationalStatistics = venueSlug === "variational" && hedge === "variational";
+  const customAccountVolumeEnabled = allowCustomAccountVolume && isVariationalStatistics;
+  const requestedAccountVolumeUsd = Number(accountVolumeInput);
+  const validAccountVolume = Number.isFinite(requestedAccountVolumeUsd)
+    && requestedAccountVolumeUsd >= 1_000
+    && requestedAccountVolumeUsd <= 200_000;
+  const sidebar = layout !== "default";
+  const wideSidebar = layout === "sidebar-wide";
 
   if (hedgeOptions.length === 0) {
     return (
@@ -509,11 +527,16 @@ export function VenueWizard({
     setStatus("loading");
     setErrorMessage(null);
     if (isVariationalStatistics) {
+      if (customAccountVolumeEnabled && !validAccountVolume) {
+        setErrorMessage(tr(locale, "Enter volume from $1,000 to $200,000 per account.", "Введите объём от $1 000 до $200 000 на один аккаунт."));
+        setStatus("error");
+        return;
+      }
       setResponse({
         venue: venueSlug,
         hedge,
         strategy,
-        notionalUsd: 10_000,
+        notionalUsd: customAccountVolumeEnabled ? requestedAccountVolumeUsd : 100_000,
         holdHours: 24,
         recipes: [],
       });
@@ -543,10 +566,35 @@ export function VenueWizard({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">
-        <HedgeSelect options={hedgeOptions} value={hedge} onChange={setHedge} />
-        <StrategyCards value={strategy} onChange={setStrategy} />
+    <div className={wideSidebar ? "contents" : "flex flex-col gap-6"}>
+      <div className={`flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5 ${wideSidebar ? "lg:col-start-2 lg:row-start-2" : ""}`}>
+        <HedgeSelect options={hedgeOptions} value={hedge} onChange={setHedge} sidebar={sidebar} />
+        {customAccountVolumeEnabled && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-text-muted">{tr(locale, "Volume per account", "Объём на один аккаунт")}</span>
+            <div className="flex items-center rounded-md border border-border bg-surface-1 focus-within:border-accent">
+              <span className="pl-3 font-mono-num text-sm text-text-muted">$</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1000"
+                max="200000"
+                step="1000"
+                value={accountVolumeInput}
+                onChange={(event) => setAccountVolumeInput(event.target.value)}
+                aria-describedby="account-volume-note"
+                className="pf-inline-number-input w-full bg-transparent px-1 py-3 font-mono-num text-sm text-text-primary"
+              />
+              <span className="pr-3 text-sm text-text-muted">USDC</span>
+            </div>
+            <span id="account-volume-note" className="text-sm leading-5 text-text-muted">
+              {validAccountVolume
+                ? tr(locale, `Full hedge cycle: ${formatUsd(requestedAccountVolumeUsd * 2, { decimals: 0 })} across two accounts.`, `Полный хедж-цикл: ${formatUsd(requestedAccountVolumeUsd * 2, { decimals: 0 })} на два аккаунта.`)
+                : tr(locale, "Allowed range: $1,000–$200,000 per account.", "Допустимый диапазон: $1 000–$200 000 на аккаунт.")}
+            </span>
+          </label>
+        )}
+        <StrategyCards value={strategy} onChange={setStrategy} sidebar={sidebar} />
         <div className="flex flex-col gap-1.5">
           <button
             type="button"
@@ -559,16 +607,16 @@ export function VenueWizard({
         </div>
       </div>
 
-      {status === "loading" && <ResultsSkeleton />}
+      {status === "loading" && (wideSidebar ? <div className="lg:col-span-2"><ResultsSkeleton /></div> : <ResultsSkeleton />)}
 
       {status === "error" && (
-        <div className="rounded-lg border border-negative/40 bg-negative/10 p-4 text-sm text-negative">
+        <div className={`rounded-lg border border-negative/40 bg-negative/10 p-4 text-sm text-negative ${wideSidebar ? "lg:col-span-2" : ""}`}>
           {tr(locale, "Couldn’t compute recipes:", "Не удалось рассчитать рецепты:")} {errorMessage}
         </div>
       )}
 
       {status === "loaded" && response && (
-        <div className="flex flex-col gap-4">
+        <div className={`flex flex-col gap-4 ${wideSidebar ? "lg:col-span-2" : ""}`}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-text-primary">
               {response.venue === "variational" && response.hedge === "variational"
@@ -586,13 +634,17 @@ export function VenueWizard({
 
           {response.venue === "variational" && response.hedge === "variational" ? (
             <>
-              <VariationalPairRankings key={response.strategy} strategy={response.strategy} />
+              <VariationalPairRankings
+                key={`${response.strategy}-${response.notionalUsd}`}
+                strategy={response.strategy}
+                accountVolumeUsd={response.notionalUsd}
+              />
               <details className="rounded-lg border border-border bg-surface-1">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-text-primary">
                   {tr(locale, "Model notes and execution plan", "Примечания к модели и план исполнения")}
                 </summary>
                 <div className="border-t border-border p-4">
-                  <VariationalFarmingPlan strategy={response.strategy} />
+                  <VariationalFarmingPlan strategy={response.strategy} accountVolumeUsd={response.notionalUsd} />
                 </div>
               </details>
             </>

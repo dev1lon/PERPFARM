@@ -128,12 +128,26 @@ body {
   outline-offset: 2px;
 }
 
+/* The volume field already highlights its full container on focus. Avoid a
+   second inset browser outline around just the digits. */
+.pf-inline-number-input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+}
+
 /* Per-entity logo-placeholder badge + card tint, used for perps without a
    real brand logo (components/PerpDexLogo.tsx sets --pf-badge per slug, from
    the dataviz skill's validated categorical palette). */
 .pf-logo-badge {
   background: var(--pf-badge);
 }
+
+/* Several supplied marks are white-only assets. Preserve white on dark pages,
+   but keep those marks visible against a light surface. */
+:root[data-theme="light"] .pf-mark-invert-on-light {
+  filter: brightness(0);
+}
+
 /* .pf-card-tint sets its own hover rule (rather than pairing with Tailwind's
    hover:bg-* utility) because Tailwind v4 emits utilities inside @layer
    utilities, and unlayered rules always beat layered ones regardless of

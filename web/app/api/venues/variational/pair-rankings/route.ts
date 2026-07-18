@@ -4,12 +4,30 @@ import { getPool } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 const STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
-// Each account turns over $100k: a $50k entry and a $50k exit. The two-account
-// hedge therefore has four fills and $200k gross trading volume.
-const FILL_NOTIONAL_USD = 50_000;
-const ACCOUNT_VOLUME_USD = FILL_NOTIONAL_USD * 2;
-const TOTAL_CYCLE_VOLUME_USD = ACCOUNT_VOLUME_USD * 2;
+// The requested volume is entry plus exit turnover on one account. The
+// two-account hedge has four equal fills and twice that volume in total.
+// Public quote tiers go to $100k, so the input never extrapolates beyond the
+// published depth.
+const DEFAULT_ACCOUNT_VOLUME_USD = 100_000;
+const MIN_ACCOUNT_VOLUME_USD = 1_000;
+const MAX_ACCOUNT_VOLUME_USD = 200_000;
+const MIN_RECOMMENDED_OI_USD = 50_000;
 const HOURS_PER_YEAR = 8_760;
+const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
+
+// The stats endpoint exposes ticker/name but not an asset-class field. Keep
+// the TradFi universe explicit while the competition is live, rather than
+// pretending that a low-OI crypto ticker is competition eligible. This covers
+// the stocks, ETFs, metals and commodities currently listed by Omni.
+const TRADFI_TICKERS = new Set([
+  "AAOI", "AAPL", "AMD", "AMZN", "ANTHROPIC", "ARM", "AVGO", "BBX", "BOT", "BRKB", "BX", "BZ",
+  "COST", "CBRS", "CL", "COIN", "COST", "CRM", "CRCL", "DRAM", "EBAY", "EWJ", "EWY", "EWT", "EWZ",
+  "GME", "GOOGL", "HD", "HIMS", "HOOD", "HPE", "INTC", "JPM", "LITE", "LLY", "META", "MRVL", "MSFT",
+  "MSTR", "MU", "NATGAS", "NBIS", "NFLX", "NOK", "NVO", "NVDA", "OPENAI", "ORCL", "PAXG", "PLTR",
+  "QCOM", "QQQ", "RIVN", "RKLB", "SNDK", "SOXL", "SPCX", "STXX", "STRC", "TSLA", "TSM", "UBER",
+  "URNM", "US500", "USAR", "WMT", "XAG", "XAU", "XAUT", "XPD", "XPT",
+]);
 
 type Quote = { bid?: string | number; ask?: string | number };
 type Listing = {
@@ -35,12 +53,13 @@ function quotePair(quote: Quote | undefined): [number, number] | null {
   return bid !== null && ask !== null && bid > 0 && ask > 0 ? [bid, ask] : null;
 }
 
-function quoteAt50k(listing: Listing): [number, number] | null {
+function quoteAtNotional(listing: Listing, fillNotionalUsd: number): [number, number] | null {
   const base = quotePair(listing.quotes?.base) ?? quotePair(listing.quotes?.size_1k);
   const oneK = quotePair(listing.quotes?.size_1k) ?? base;
   const hundredK = quotePair(listing.quotes?.size_100k);
   if (!oneK || !hundredK) return null;
-  const position = (FILL_NOTIONAL_USD - 1_000) / 99_000;
+  if (fillNotionalUsd <= 1_000) return base ?? oneK;
+  const position = (fillNotionalUsd - 1_000) / 99_000;
   return [
     oneK[0] + (hundredK[0] - oneK[0]) * position,
     oneK[1] + (hundredK[1] - oneK[1]) * position,
@@ -51,6 +70,10 @@ function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
+function competitionIsActive(now = Date.now()): boolean {
+  return now >= TRADFI_COMPETITION_START_UTC && now < TRADFI_COMPETITION_END_UTC;
 }
 
 async function fundingHistoryByPair(): Promise<Map<string, FundingHistory>> {
@@ -96,7 +119,20 @@ function holdHoursForStrategy(strategy: string): number {
 export async function GET(request: NextRequest) {
   try {
     const strategy = request.nextUrl.searchParams.get("strategy") ?? "cheapest";
+    const requestedAccountVolume = request.nextUrl.searchParams.get("accountVolumeUsd");
+    const accountVolumeUsd = requestedAccountVolume === null
+      ? DEFAULT_ACCOUNT_VOLUME_USD
+      : Number(requestedAccountVolume);
+    if (!Number.isFinite(accountVolumeUsd) || accountVolumeUsd < MIN_ACCOUNT_VOLUME_USD || accountVolumeUsd > MAX_ACCOUNT_VOLUME_USD) {
+      return NextResponse.json(
+        { error: `Account volume must be between $${MIN_ACCOUNT_VOLUME_USD.toLocaleString("en-US")} and $${MAX_ACCOUNT_VOLUME_USD.toLocaleString("en-US")}` },
+        { status: 400 },
+      );
+    }
+    const fillNotionalUsd = accountVolumeUsd / 2;
+    const totalCycleVolumeUsd = accountVolumeUsd * 2;
     const holdHours = holdHoursForStrategy(strategy);
+    const competitionActive = competitionIsActive();
     const [response, fundingHistory] = await Promise.all([
       fetch(STATS_URL, { next: { revalidate: 60 }, headers: { Accept: "application/json" } }),
       fundingHistoryByPair(),
@@ -109,7 +145,7 @@ export async function GET(request: NextRequest) {
       .map((listing) => {
         const pair = listing.ticker;
         const base = quotePair(listing.quotes?.base) ?? quotePair(listing.quotes?.size_1k);
-        const quote50k = quoteAt50k(listing);
+        const fillQuote = quoteAtNotional(listing, fillNotionalUsd);
         const longOi = asNumber(listing.open_interest?.long_open_interest);
         const shortOi = asNumber(listing.open_interest?.short_open_interest);
         // Omni's market selector displays gross OI: both the user-side
@@ -117,14 +153,14 @@ export async function GET(request: NextRequest) {
         // The per-listing directional fields are one side only, so double
         // their sum to match Omni's displayed Open Interest convention.
         const openInterestUsd = longOi !== null && shortOi !== null ? (longOi + shortOi) * 2 : null;
-        if (!pair || !base || !quote50k || openInterestUsd === null || openInterestUsd <= 0) return null;
+        if (!pair || !base || !fillQuote || openInterestUsd === null || openInterestUsd <= 0) return null;
 
         const baseMid = (base[0] + base[1]) / 2;
-        const buyBps = ((quote50k[1] - baseMid) / baseMid) * 10_000;
-        const sellBps = ((baseMid - quote50k[0]) / baseMid) * 10_000;
+        const buyBps = ((fillQuote[1] - baseMid) / baseMid) * 10_000;
+        const sellBps = ((baseMid - fillQuote[0]) / baseMid) * 10_000;
         if (buyBps < 0 || sellBps < 0) return null;
-        const buyCostUsd = (FILL_NOTIONAL_USD * buyBps) / 10_000;
-        const sellCostUsd = (FILL_NOTIONAL_USD * sellBps) / 10_000;
+        const buyCostUsd = (fillNotionalUsd * buyBps) / 10_000;
+        const sellCostUsd = (fillNotionalUsd * sellBps) / 10_000;
         // A limit-first hedge has two passive limit fills and two immediate
         // market hedge fills. If the long limit fills first, the short is
         // hedged at market; at exit the order is reversed. The only public
@@ -146,7 +182,7 @@ export async function GET(request: NextRequest) {
           : "current_rate";
         const fundingCostUsd = fundingAnnualizedRate === null
           ? null
-          : (FILL_NOTIONAL_USD * holdHours * fundingAnnualizedRate) / HOURS_PER_YEAR;
+          : (fillNotionalUsd * holdHours * fundingAnnualizedRate) / HOURS_PER_YEAR;
         // At equal size on the same instrument, positive funding is paid by the
         // long account and received by the short account (and vice versa).
         const longFundingUsd = fundingCostUsd;
@@ -160,6 +196,7 @@ export async function GET(request: NextRequest) {
 
         return {
           pair,
+          competitionEligible: TRADFI_TICKERS.has(pair),
           openInterestUsd,
           buyBps,
           sellBps,
@@ -184,6 +221,7 @@ export async function GET(request: NextRequest) {
       .filter(
         (value): value is {
           pair: string;
+          competitionEligible: boolean;
           openInterestUsd: number;
           buyBps: number;
           sellBps: number;
@@ -208,15 +246,28 @@ export async function GET(request: NextRequest) {
 
     if (candidates.length < 10) throw new Error("Not enough quotable Variational markets");
 
-    const medianOi = median(candidates.map((candidate) => candidate.openInterestUsd));
-    const ranked = [...candidates].sort((a, b) => {
+    // Exclude only markets below the explicit liquidity floor. The cheapest
+    // route must then be a pure execution-cost ranking — not a hidden OI
+    // preference which can make the displayed result hard to audit.
+    const eligibleCandidates = competitionActive
+      ? candidates.filter((candidate) => candidate.competitionEligible)
+      : candidates;
+    const selectionPool = eligibleCandidates.filter(
+      (candidate) => candidate.openInterestUsd >= MIN_RECOMMENDED_OI_USD,
+    );
+    if (selectionPool.length < 10) {
+      throw new Error("Not enough quotable markets above the $50k OI minimum");
+    }
+
+    const medianOi = median(selectionPool.map((candidate) => candidate.openInterestUsd));
+    const ranked = [...selectionPool].sort((a, b) => {
       const aMediumOiDistance = Math.abs(Math.log(a.openInterestUsd / medianOi));
       const bMediumOiDistance = Math.abs(Math.log(b.openInterestUsd / medianOi));
-      if (strategy === "max_points") return b.openInterestUsd - a.openInterestUsd;
+      if (strategy === "max_points") return b.openInterestUsd - a.openInterestUsd || a.cycleCostUsd - b.cycleCostUsd;
       if (strategy === "balanced") {
         return a.cycleCostUsd + aMediumOiDistance - (b.cycleCostUsd + bMediumOiDistance);
       }
-      return a.cycleCostUsd + aMediumOiDistance * 0.5 - (b.cycleCostUsd + bMediumOiDistance * 0.5);
+      return a.cycleCostUsd - b.cycleCostUsd || b.openInterestUsd - a.openInterestUsd;
     });
 
     const pairs = ranked.slice(0, 10).map((candidate) => ({
@@ -241,10 +292,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         asOf: new Date().toISOString(),
-        fillNotionalUsd: FILL_NOTIONAL_USD,
-        accountVolumeUsd: ACCOUNT_VOLUME_USD,
-        totalCycleVolumeUsd: TOTAL_CYCLE_VOLUME_USD,
+        fillNotionalUsd,
+        accountVolumeUsd,
+        totalCycleVolumeUsd,
         holdHours,
+        competition: {
+          active: competitionActive,
+          name: "TradFi Trading Competition #5",
+          eligiblePairsOnly: competitionActive,
+          minimumOpenInterestUsd: MIN_RECOMMENDED_OI_USD,
+        },
         pairs,
       },
       { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=60" } }

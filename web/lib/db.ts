@@ -22,7 +22,15 @@ export function getPool(): Pool {
     if (!connectionString) {
       throw new Error("DATABASE_URL environment variable is not set");
     }
-    pool = new Pool({ connectionString });
+    // External managed Postgres (e.g. Supabase/Neon on the free staging env)
+    // requires TLS -- opt in when the URL asks for it. Render's internal prod
+    // connection string has no `sslmode` and needs no TLS, so prod is
+    // unaffected. rejectUnauthorized:false accepts the provider's cert chain
+    // without bundling its CA (encryption stays on).
+    const ssl = /[?&]sslmode=require/i.test(connectionString)
+      ? { rejectUnauthorized: false }
+      : undefined;
+    pool = new Pool({ connectionString, ssl });
   }
   return pool;
 }

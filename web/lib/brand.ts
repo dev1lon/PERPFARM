@@ -20,6 +20,9 @@ export interface BrandAssets {
    *  one at the same height). Default 1; capped by the column so rows stay an
    *  even height. */
   markScale?: number;
+  /** White-only mark assets should be black when rendered on the light theme.
+   * This is opt-in so coloured marks retain their native colours. */
+  invertMarkOnLight?: boolean;
   /** The perp's NAME as a brand image (its unique font), split out of its
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
    *  the same size. Falls back to PerpName text when absent. */
@@ -86,6 +89,7 @@ export const BRAND: Record<string, BrandAssets> = {
   },
   extended: {
     mark: "logos/extended/mark.png",
+    invertMarkOnLight: true,
     nameImage: "logos/extended/name.png",
     // brand's designed background reproduced as a crisp CSS gradient (colors
     // sampled from the source PNG: near-black with a dark-green glow in the
@@ -94,20 +98,24 @@ export const BRAND: Record<string, BrandAssets> = {
       "radial-gradient(135% 125% at 100% 100%, #0a6044 0%, #03301f 26%, #02130d 50%, #010101 78%)",
   },
   "01exchange": {
-    mark: "logos/01/mark.png",
-    nameImage: "logos/01/name.png",
-    // flat #070C18 exactly, per the brand guidelines
-    glow: ["#070C18"],
-    glowBase: "#070C18",
+    // N1 is the current name of the protocol. Keep the legacy slug so its
+    // existing route and data identifiers keep working, while showing the
+    // current logo and name everywhere in the UI.
+    mark: "logos/n1/N1_Logo_White.svg",
+    invertMarkOnLight: true,
+    // flat Obsidian background from the current brand palette
+    backgroundCss: "#1b1b1b",
   },
   hotstuff: {
     mark: "logos/hotstuff/mark.png",
+    invertMarkOnLight: true,
     nameImage: "logos/hotstuff/name.png",
     // flat pure black, per request (the brand's photo bg was not wanted)
     backgroundCss: "#000000",
   },
   polymarket: {
     mark: "logos/polymarket/mark.png",
+    invertMarkOnLight: true,
     nameImage: "logos/polymarket/name.png",
     // the "y" descender shrinks the cap height at equal image height -> bump
     nameScale: 1.3,
@@ -116,6 +124,7 @@ export const BRAND: Record<string, BrandAssets> = {
   },
   perpl: {
     mark: "logos/perpl/mark.png",
+    invertMarkOnLight: true,
     nameImage: "logos/perpl/name.png",
     // "p" descender shrinks the cap height at equal image height -> bump
     nameScale: 1.45,
@@ -124,6 +133,7 @@ export const BRAND: Record<string, BrandAssets> = {
   },
   nado: {
     mark: "logos/nado/mark.png",
+    invertMarkOnLight: true,
     nameImage: "logos/nado/name.png",
     // flat near-black sampled 1:1 from the brand's bg_ref
     backgroundCss: "#131316",
