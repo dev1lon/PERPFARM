@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { VenuePageClient } from "@/components/VenuePageClient";
+import { VariationalLayoutPreview } from "@/components/VariationalLayoutPreview";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { isReadyVenue } from "@/lib/venue-status";
 
@@ -17,5 +18,10 @@ export default async function VenuePage({
   const ready = isReadyVenue(venueSlug);
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
+  // The only "done" perp uses the full designed layout; every other perp is
+  // not ready yet, so VenuePageClient renders its SOON page (isReadyVenue).
+  if (venueSlug === "variational") {
+    return <VariationalLayoutPreview otherVenues={otherVenues} />;
+  }
   return <VenuePageClient venue={venue} otherVenues={otherVenues} ready={ready} />;
 }
