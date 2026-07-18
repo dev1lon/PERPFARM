@@ -27,7 +27,8 @@ export function PerpIdentity({
   /** Set false on neutral lists that should use one shared text treatment. */
   useNameImage?: boolean;
 }) {
-  const { mark, nameImage, markScale, nameScale, invertMarkOnLight } = brandAssets(slug);
+  const { mark, nameImage, markScale, nameScale, invertMarkOnLight, invertNameOnLight } =
+    brandAssets(slug);
   // Fixed column (width + height) so every row lines up and stays an even
   // height regardless of per-perp mark scaling; 1.4 is the max supported scale.
   const colW = Math.round(markPx * 1.7);
@@ -57,7 +58,7 @@ export function PerpIdentity({
         <img
           src={`/${nameImage}`}
           alt={name}
-          className="w-auto shrink-0"
+          className={`w-auto shrink-0${invertNameOnLight ? " pf-mark-invert-on-light" : ""}`}
           style={{ height: Math.round(namePx * (nameScale ?? 1)) }}
         />
       ) : (

@@ -23,6 +23,9 @@ export interface BrandAssets {
   /** White-only mark assets should be black when rendered on the light theme.
    * This is opt-in so coloured marks retain their native colours. */
   invertMarkOnLight?: boolean;
+  /** Same as invertMarkOnLight but for the NAME wordmark image -- a white-only
+   *  wordmark flips to black on the light theme so it stays readable. */
+  invertNameOnLight?: boolean;
   /** The perp's NAME as a brand image (its unique font), split out of its
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
    *  the same size. Falls back to PerpName text when absent. */
@@ -61,6 +64,8 @@ export const BRAND: Record<string, BrandAssets> = {
   variational: {
     mark: "logos/vari/mark.png",
     nameImage: "logos/vari/name.png",
+    // white wordmark -> flip to black on the light theme (the blue mark stays)
+    invertNameOnLight: true,
     // brand palette: Blue -> Navy, on the brand's Black base
     glow: ["#4C9AF8", "#1C5BD9"],
     glowBase: "#010612",

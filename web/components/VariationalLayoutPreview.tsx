@@ -219,7 +219,7 @@ export function VariationalLayoutPreview({
           <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-5">
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
               <h1><PerpIdentity slug="variational" name="Variational" markPx={40} namePx={28} nameClassName="text-3xl" /></h1>
-              <p className="text-base text-text-muted"><span className="block sm:inline">{tr(locale, "Season", "Сезон")}</span> <span className="font-mono-num text-text-primary">1</span></p>
+              <p className="text-base text-text-muted"><span className="block sm:inline">{tr(locale, "Season", "Сезон")}</span> 1</p>
               <a href="https://x.com/variational_io" target="_blank" rel="noreferrer" className="text-base text-accent hover:text-accent-hover">Twitter ↗</a>
               <a href="https://docs.variational.io/omni" target="_blank" rel="noreferrer" className="text-base text-accent hover:text-accent-hover">Docs ↗</a>
             </div>
