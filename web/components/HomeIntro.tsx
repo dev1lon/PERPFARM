@@ -16,8 +16,8 @@ export function HomeIntro({ usingFixtures }: { usingFixtures: boolean }) {
         <p className="mt-2 inline-block rounded-md border border-dashed border-border px-2 py-1 text-xs text-text-muted">
           {tr(
             locale,
-            "No DATABASE_URL set — showing synthetic fixture venues for dev/demo.",
-            "DATABASE_URL не задан — показаны синтетические площадки для разработки."
+            "No DATABASE_URL set — showing synthetic fixture protocols for dev/demo.",
+            "DATABASE_URL не задан — показаны синтетические протоколы для разработки."
           )}
         </p>
       )}
