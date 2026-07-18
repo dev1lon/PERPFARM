@@ -213,9 +213,9 @@ export function VariationalLayoutPreview({
 }) {
   const locale = useLocale();
   return (
-    <main className="min-h-screen bg-[#070b14] px-3 py-3 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-bg px-3 py-3 sm:px-6 sm:py-6">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-[1.5rem] bg-[#070b15] p-5 sm:p-9">
+        <div className="rounded-[1.5rem] bg-bg p-5 sm:p-9">
           <header className="flex flex-wrap items-center justify-between gap-x-8 gap-y-5">
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
               <h1><PerpIdentity slug="variational" name="Variational" markPx={40} namePx={28} nameClassName="text-3xl" /></h1>

@@ -5,7 +5,6 @@ import { PerpIdentity } from "@/components/PerpIdentity";
 import { VenueWizard } from "@/components/VenueWizard";
 import { VariationalMarketActivity } from "@/components/VariationalMarketActivity";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { brandBg, brandBgTone } from "@/lib/brand";
 import { daysUntil } from "@/lib/format";
 import type { VenueDetail, VenueSummary } from "@/lib/types";
 
@@ -194,17 +193,14 @@ function PointsFactorsPanel({ isVariational }: { isVariational: boolean }) {
 export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDetail; otherVenues: VenueSummary[]; ready: boolean }) {
   const locale = useLocale();
   const isVariational = venue.slug === "variational";
-  const pageBg = brandBg(venue.slug);
-  const branded = pageBg !== undefined;
-  const lightBg = branded && brandBgTone(venue.slug) === "light";
-  const onBgLink = branded ? (lightBg ? "text-[#454e64] hover:text-[#0b1220]" : "text-[#aab2c5] hover:text-white") : "text-text-muted hover:text-accent";
+  // All pages share the flat site background (--bg); no per-brand page bg.
+  const onBgLink = "text-text-muted hover:text-accent";
   const seasonName = venue.meta?.seasonName ?? (isVariational ? "Season 1" : null);
   const seasonDays = daysUntil(venue.meta?.seasonEndDate ?? null);
   const otcPrice = venue.meta?.otcPointPriceUsd ?? (isVariational ? 21 : null);
 
   return (
     <div className="relative min-h-screen">
-      {pageBg && <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: pageBg }} />}
       <div className="relative mx-auto flex max-w-2xl flex-col gap-8 px-4 pb-16 pt-10 sm:px-6">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
