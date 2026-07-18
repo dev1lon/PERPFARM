@@ -135,6 +135,17 @@ body {
   outline-offset: 0;
 }
 
+/* Recharts makes the chart surface focusable (keyboard nav). Suppress the box
+   outline the browser draws around the whole chart when it's clicked/focused --
+   the hover tooltip is the interaction, a frame around the plot just looks like
+   a stray border. */
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none;
+}
+
 /* Per-entity logo-placeholder badge + card tint, used for perps without a
    real brand logo (components/PerpDexLogo.tsx sets --pf-badge per slug, from
    the dataviz skill's validated categorical palette). */
