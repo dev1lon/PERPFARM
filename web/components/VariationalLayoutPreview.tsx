@@ -177,7 +177,11 @@ function ProtocolActivityPreview({ className = "" }: { className?: string }) {
           {tr(locale, "Jul 17, 00:00 UTC — Jul 31, 00:00 UTC. Score: TradFi PnL × √TradFi volume.", "17 июля, 00:00 UTC — 31 июля, 00:00 UTC. Score: TradFi PnL × √TradFi volume.")}
         </p>
         <p className="mt-3 text-base leading-7 text-text-muted">
-          {tr(locale, "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi).", "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi).")}
+          {locale === "ru" ? (
+            <>Участие фактически <strong className="font-semibold text-text-primary">обязательно</strong> для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi).</>
+          ) : (
+            <>Joining is effectively <strong className="font-semibold text-text-primary">required</strong> for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi).</>
+          )}
         </p>
         <a
           href="https://docs.variational.io/omni/trading-competition"
