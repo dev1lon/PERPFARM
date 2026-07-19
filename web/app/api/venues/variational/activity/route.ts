@@ -6,66 +6,17 @@ const VARIATIONAL_OMNI_URL = "https://www.variational.io/omni";
 // Official Omni site, checked on 2026-07-17. It is a lower bound ("50K+")
 // rather than an exact account count.
 const OFFICIAL_UNIQUE_TRADERS_FLOOR = 50_000;
-const HISTORY_DAYS = 30;
+// How far back the first-party series may reach. Real observations only exist
+// from when sync-snapshots started writing; days beyond that are backfilled
+// on the client from the reference envelope until the DB catches up.
+const HISTORY_DAYS = 180;
 const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
-
-function defiLlamaUrl(path: string): string {
-  const apiKey = process.env.DEFILLAMA_API_KEY;
-  return apiKey ? `https://pro-api.llama.fi/${apiKey}${path}` : `https://api.llama.fi${path}`;
-}
-
-const DEFILLAMA_OPEN_INTEREST_URL = defiLlamaUrl(
-  "/overview/open-interest?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=false",
-);
-const DEFILLAMA_VOLUME_URL = defiLlamaUrl(
-  "/summary/derivatives/variational-omni?excludeTotalDataChart=false&excludeTotalDataChartBreakdown=true&dataType=dailyVolume",
-);
 
 // Next.js requires a literal here; expressions such as `60 * 60` are not
 // accepted as route-segment config during the production build.
 export const revalidate = 3600;
 
 type ActivityPoint = { date: string; value: number };
-
-// The daily chart seed covers the available January–July view. Current
-// Variational API snapshots and retained database observations always overwrite
-// these values for their matching dates.
-// Initial daily values transcribed from the DefiLlama Variational Perp Volume
-// chart on 2026-07-16. They total $24.823b over 30 days and $5.475b over the
-// final seven days, matching the chart totals. The hourly Variational API
-// snapshots below overwrite these dates as first-party observations accrue.
-const INITIAL_VARIATIONAL_VOLUME_HISTORY: ActivityPoint[] = [
-  { date: "2026-06-17", value: 680_000_000 },
-  { date: "2026-06-18", value: 800_000_000 },
-  { date: "2026-06-19", value: 1_040_000_000 },
-  { date: "2026-06-20", value: 1_070_000_000 },
-  { date: "2026-06-21", value: 860_000_000 },
-  { date: "2026-06-22", value: 950_000_000 },
-  { date: "2026-06-23", value: 800_000_000 },
-  { date: "2026-06-24", value: 650_000_000 },
-  { date: "2026-06-25", value: 950_000_000 },
-  { date: "2026-06-26", value: 1_080_000_000 },
-  { date: "2026-06-27", value: 850_000_000 },
-  { date: "2026-06-28", value: 728_000_000 },
-  { date: "2026-06-29", value: 640_000_000 },
-  { date: "2026-06-30", value: 850_000_000 },
-  { date: "2026-07-01", value: 950_000_000 },
-  { date: "2026-07-02", value: 900_000_000 },
-  { date: "2026-07-03", value: 760_000_000 },
-  { date: "2026-07-04", value: 680_000_000 },
-  { date: "2026-07-05", value: 920_000_000 },
-  { date: "2026-07-06", value: 1_060_000_000 },
-  { date: "2026-07-07", value: 760_000_000 },
-  { date: "2026-07-08", value: 620_000_000 },
-  { date: "2026-07-09", value: 750_000_000 },
-  { date: "2026-07-10", value: 780_000_000 },
-  { date: "2026-07-11", value: 820_000_000 },
-  { date: "2026-07-12", value: 680_000_000 },
-  { date: "2026-07-13", value: 760_000_000 },
-  { date: "2026-07-14", value: 810_000_000 },
-  { date: "2026-07-15", value: 950_000_000 },
-  { date: "2026-07-16", value: 675_000_000 },
-];
 
 function asNumber(value: unknown): number | null {
   const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -76,71 +27,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function utcDate(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
-}
-
-function chartPoints(chart: unknown, breakdownKey?: string): ActivityPoint[] {
-  if (!Array.isArray(chart)) return [];
-  return chart
-    .map((row): ActivityPoint | null => {
-      if (!Array.isArray(row) || row.length < 2) return null;
-      const timestamp = asNumber(row[0]);
-      const rawValue = row[1];
-      const value = breakdownKey && isRecord(rawValue)
-        ? asNumber(rawValue[breakdownKey])
-        : asNumber(rawValue);
-      return timestamp === null || value === null ? null : { date: utcDate(timestamp), value };
-    })
-    .filter((point): point is ActivityPoint => point !== null)
-    .slice(-HISTORY_DAYS);
-}
-
-async function getDefiLlamaOpenInterest(): Promise<ActivityPoint[]> {
-  const response = await fetch(DEFILLAMA_OPEN_INTEREST_URL, {
-    next: { revalidate: 60 * 60 },
-  });
-  if (!response.ok) throw new Error(`DefiLlama returned ${response.status}`);
-
-  const payload: unknown = await response.json();
-  if (!isRecord(payload) || !Array.isArray(payload.totalDataChartBreakdown)) {
-    throw new Error("DefiLlama did not return an open-interest history");
-  }
-
-  return chartPoints(payload.totalDataChartBreakdown, "Variational");
-}
-
-async function getDefiLlamaDailyVolume(): Promise<ActivityPoint[]> {
-  // DefiLlama moved historical perps volume to its Pro API. Do not use a
-  // visual approximation when the key is absent: the retained observations
-  // and the 30-day bootstrap are safer than inventing historical values.
-  if (!process.env.DEFILLAMA_API_KEY) return [];
-
-  const response = await fetch(DEFILLAMA_VOLUME_URL, {
-    next: { revalidate: 60 * 60 },
-  });
-  if (!response.ok) throw new Error(`DefiLlama volume returned ${response.status}`);
-
-  const payload: unknown = await response.json();
-  if (!isRecord(payload) || !Array.isArray(payload.totalDataChart)) {
-    throw new Error("DefiLlama did not return a daily-volume history");
-  }
-
-  return chartPoints(payload.totalDataChart);
-}
-
 /**
- * `volume_24h_usd` is a rolling 24-hour figure.  We retain the final
- * snapshot for every UTC day rather than summing hourly samples, which would
- * multiply the same trading day many times over.
+ * Protocol-wide daily series from our own hourly snapshots (first-party, saved
+ * straight from Variational). `volume_24h_usd` and `open_interest_usd` are both
+ * point-in-time figures, so we keep the last snapshot per market per UTC day and
+ * sum across markets — never sum the hourly samples, which would multiply the
+ * same day many times over. `column` is a fixed literal, not user input.
  */
-async function getObservedDailyVolume(): Promise<ActivityPoint[]> {
+async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"): Promise<ActivityPoint[]> {
   const { rows } = await getPool().query<{ date: string; value: string | number }>(
     `WITH latest_market_snapshot AS (
        SELECT
          (snapshot.ts AT TIME ZONE 'UTC')::date AS day,
          snapshot.market_id,
-         snapshot.volume_24h_usd,
+         snapshot.${column} AS metric,
          ROW_NUMBER() OVER (
            PARTITION BY (snapshot.ts AT TIME ZONE 'UTC')::date, snapshot.market_id
            ORDER BY snapshot.ts DESC
@@ -149,11 +49,11 @@ async function getObservedDailyVolume(): Promise<ActivityPoint[]> {
        JOIN markets market ON market.id = snapshot.market_id
        JOIN venues venue ON venue.id = market.venue_id
        WHERE venue.slug = 'variational'
-         AND snapshot.ts >= now() - interval '30 days'
+         AND snapshot.ts >= now() - interval '180 days'
      )
-     SELECT day::text AS date, SUM(volume_24h_usd) AS value
+     SELECT day::text AS date, SUM(metric) AS value
      FROM latest_market_snapshot
-     WHERE row_number = 1 AND volume_24h_usd IS NOT NULL
+     WHERE row_number = 1 AND metric IS NOT NULL
      GROUP BY day
      ORDER BY day ASC`,
   );
@@ -161,8 +61,7 @@ async function getObservedDailyVolume(): Promise<ActivityPoint[]> {
   return rows
     .map((row) => ({ date: row.date, value: asNumber(row.value) }))
     .filter((point): point is ActivityPoint => point.value !== null)
-    .slice(-HISTORY_DAYS)
-    .map((point) => ({ date: point.date, value: point.value }));
+    .slice(-HISTORY_DAYS);
 }
 
 async function getCurrentVariationalStats(): Promise<{ volume24h: number | null; openInterest: number | null }> {
@@ -235,7 +134,7 @@ async function getDuneUniqueTraders(): Promise<ActivityPoint[] | null> {
       if (date !== null && value !== null && value >= 0) byDate.set(date, value);
     }
     const points = [...byDate].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
-  return points.length > 0 ? points.slice(-HISTORY_DAYS) : null;
+    return points.length > 0 ? points.slice(-HISTORY_DAYS) : null;
   } catch {
     return null;
   }
@@ -248,36 +147,22 @@ function withCurrentPoint(history: ActivityPoint[], value: number | null): Activ
   return [...withoutToday, { date: today, value }].sort((a, b) => a.date.localeCompare(b.date)).slice(-HISTORY_DAYS);
 }
 
-function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
-  const values = new Map<string, number>();
-  for (const source of sources) {
-    for (const point of source) values.set(point.date, point.value);
-  }
-  return [...values]
-    .map(([date, value]) => ({ date, value }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-HISTORY_DAYS);
-}
-
 export async function GET() {
-  const [oiResult, archivedVolumeResult, observedVolumeResult, liveResult, uniqueTradersResult, duneUniqueTradersResult] = await Promise.allSettled([
-    getDefiLlamaOpenInterest(),
-    getDefiLlamaDailyVolume(),
-    getObservedDailyVolume(),
-    getCurrentVariationalStats(),
-    getOfficialUniqueTraders(),
-    getDuneUniqueTraders(),
-  ]);
+  const [observedVolumeResult, observedOiResult, liveResult, uniqueTradersResult, duneUniqueTradersResult] =
+    await Promise.allSettled([
+      getObservedDaily("volume_24h_usd"),
+      getObservedDaily("open_interest_usd"),
+      getCurrentVariationalStats(),
+      getOfficialUniqueTraders(),
+      getDuneUniqueTraders(),
+    ]);
 
-  const openInterestHistory = oiResult.status === "fulfilled" ? oiResult.value : [];
-  const archivedVolumeHistory = archivedVolumeResult.status === "fulfilled" ? archivedVolumeResult.value : [];
   const observedVolumeHistory = observedVolumeResult.status === "fulfilled" ? observedVolumeResult.value : [];
+  const observedOiHistory = observedOiResult.status === "fulfilled" ? observedOiResult.value : [];
   const live = liveResult.status === "fulfilled" ? liveResult.value : { volume24h: null, openInterest: null };
-  const volumeHistory = withCurrentPoint(
-    mergeHistory(INITIAL_VARIATIONAL_VOLUME_HISTORY, archivedVolumeHistory, observedVolumeHistory),
-    live.volume24h,
-  );
-  const openInterest = withCurrentPoint(openInterestHistory, live.openInterest);
+  // Past days come from our own snapshots; today is the fresh Variational figure.
+  const volumeHistory = withCurrentPoint(observedVolumeHistory, live.volume24h);
+  const openInterest = withCurrentPoint(observedOiHistory, live.openInterest);
   const uniqueTraders = uniqueTradersResult.status === "fulfilled"
     ? uniqueTradersResult.value ?? OFFICIAL_UNIQUE_TRADERS_FLOOR
     : OFFICIAL_UNIQUE_TRADERS_FLOOR;
@@ -300,6 +185,7 @@ export async function GET() {
     },
     openInterest: {
       series: openInterest,
+      observedDays: observedOiHistory.length,
       latest: live.openInterest,
     },
     uniqueTraders: {
