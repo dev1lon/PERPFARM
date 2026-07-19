@@ -146,9 +146,7 @@ export function VariationalPairRankings({ accountVolumeUsd }: { accountVolumeUsd
                     {open && (
                       <div className="grid gap-3 border-t border-border bg-surface-2 px-4 py-3 text-sm text-text-muted sm:grid-cols-2">
                         <p className="font-medium text-text-primary sm:col-span-2">
-                          {limitLongFirst
-                            ? tr(locale, "Start with LIMIT LONG", "Начинайте с LIMIT LONG")
-                            : tr(locale, "Start with LIMIT SHORT", "Начинайте с LIMIT SHORT")}
+                          {tr(locale, "Example hedge sequence", "Пример последовательности хеджа")}
                         </p>
                         <div>
                           <p className="font-medium text-text-primary">{tr(locale, "Account A · LONG", "Аккаунт A · LONG")}</p>

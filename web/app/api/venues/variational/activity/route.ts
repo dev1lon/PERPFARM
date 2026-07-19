@@ -91,7 +91,7 @@ async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"):
        JOIN markets market ON market.id = snapshot.market_id
        JOIN venues venue ON venue.id = market.venue_id
        WHERE venue.slug = 'variational'
-         AND snapshot.ts >= now() - interval '180 days'
+         AND snapshot.ts >= now() - interval '${HISTORY_DAYS} days'
      )
      SELECT day::text AS date, SUM(metric) AS value
      FROM latest_market_snapshot

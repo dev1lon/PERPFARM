@@ -11,7 +11,9 @@ import * as fixtures from "./fixtures-source";
 import type { RouteDetail, RouteScoreRow, VenueDetail, VenueSummary } from "./types";
 import { isReadyVenue } from "./venue-status";
 
-export const usingFixtures = !process.env.DATABASE_URL;
+// Fall back to synthetic fixtures ONLY in dev. In production a missing
+// DATABASE_URL must surface as a real error, not silently serve fake data.
+export const usingFixtures = !process.env.DATABASE_URL && process.env.NODE_ENV !== "production";
 
 /**
  * Venues excluded from the public site everywhere: the two synthetic demo
