@@ -12,6 +12,18 @@ const OFFICIAL_UNIQUE_TRADERS_FLOOR = 50_000;
 const HISTORY_DAYS = 180;
 const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
 
+function defiLlamaUrl(path: string): string {
+  const apiKey = process.env.DEFILLAMA_API_KEY;
+  return apiKey ? `https://pro-api.llama.fi/${apiKey}${path}` : `https://api.llama.fi${path}`;
+}
+
+// DefiLlama's open-interest history is available on the free tier (unlike its
+// daily-volume history, which moved to Pro). We use it to backfill OI for the
+// days our own snapshots don't cover yet -- real figures, not a traced image.
+const DEFILLAMA_OPEN_INTEREST_URL = defiLlamaUrl(
+  "/overview/open-interest?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=false",
+);
+
 // Next.js requires a literal here; expressions such as `60 * 60` are not
 // accepted as route-segment config during the production build.
 export const revalidate = 3600;
@@ -25,6 +37,36 @@ function asNumber(value: unknown): number | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function utcDate(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+}
+
+function chartPoints(chart: unknown, breakdownKey?: string): ActivityPoint[] {
+  if (!Array.isArray(chart)) return [];
+  return chart
+    .map((row): ActivityPoint | null => {
+      if (!Array.isArray(row) || row.length < 2) return null;
+      const timestamp = asNumber(row[0]);
+      const rawValue = row[1];
+      const value = breakdownKey && isRecord(rawValue)
+        ? asNumber(rawValue[breakdownKey])
+        : asNumber(rawValue);
+      return timestamp === null || value === null ? null : { date: utcDate(timestamp), value };
+    })
+    .filter((point): point is ActivityPoint => point !== null)
+    .slice(-HISTORY_DAYS);
+}
+
+async function getDefiLlamaOpenInterest(): Promise<ActivityPoint[]> {
+  const response = await fetch(DEFILLAMA_OPEN_INTEREST_URL, { next: { revalidate: 60 * 60 } });
+  if (!response.ok) throw new Error(`DefiLlama returned ${response.status}`);
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || !Array.isArray(payload.totalDataChartBreakdown)) {
+    throw new Error("DefiLlama did not return an open-interest history");
+  }
+  return chartPoints(payload.totalDataChartBreakdown, "Variational");
 }
 
 /**
@@ -140,6 +182,19 @@ async function getDuneUniqueTraders(): Promise<ActivityPoint[] | null> {
   }
 }
 
+// Later sources win per date: DefiLlama forms the base OI history, our own
+// snapshots overwrite it on the days we have first-party data for.
+function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
+  const values = new Map<string, number>();
+  for (const source of sources) {
+    for (const point of source) values.set(point.date, point.value);
+  }
+  return [...values]
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-HISTORY_DAYS);
+}
+
 function withCurrentPoint(history: ActivityPoint[], value: number | null): ActivityPoint[] {
   if (value === null) return history;
   const today = new Date().toISOString().slice(0, 10);
@@ -148,8 +203,9 @@ function withCurrentPoint(history: ActivityPoint[], value: number | null): Activ
 }
 
 export async function GET() {
-  const [observedVolumeResult, observedOiResult, liveResult, uniqueTradersResult, duneUniqueTradersResult] =
+  const [defiLlamaOiResult, observedVolumeResult, observedOiResult, liveResult, uniqueTradersResult, duneUniqueTradersResult] =
     await Promise.allSettled([
+      getDefiLlamaOpenInterest(),
       getObservedDaily("volume_24h_usd"),
       getObservedDaily("open_interest_usd"),
       getCurrentVariationalStats(),
@@ -157,12 +213,14 @@ export async function GET() {
       getDuneUniqueTraders(),
     ]);
 
+  const defiLlamaOiHistory = defiLlamaOiResult.status === "fulfilled" ? defiLlamaOiResult.value : [];
   const observedVolumeHistory = observedVolumeResult.status === "fulfilled" ? observedVolumeResult.value : [];
   const observedOiHistory = observedOiResult.status === "fulfilled" ? observedOiResult.value : [];
   const live = liveResult.status === "fulfilled" ? liveResult.value : { volume24h: null, openInterest: null };
-  // Past days come from our own snapshots; today is the fresh Variational figure.
+  // Volume past days: our own snapshots only. OI past days: DefiLlama base,
+  // overwritten by our snapshots where we have them. Both: today from Variational.
   const volumeHistory = withCurrentPoint(observedVolumeHistory, live.volume24h);
-  const openInterest = withCurrentPoint(observedOiHistory, live.openInterest);
+  const openInterest = withCurrentPoint(mergeHistory(defiLlamaOiHistory, observedOiHistory), live.openInterest);
   const uniqueTraders = uniqueTradersResult.status === "fulfilled"
     ? uniqueTradersResult.value ?? OFFICIAL_UNIQUE_TRADERS_FLOOR
     : OFFICIAL_UNIQUE_TRADERS_FLOOR;
