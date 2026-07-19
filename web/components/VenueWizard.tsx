@@ -6,14 +6,6 @@ import type { Recipe, RecipesResponse, Strategy, VenueSummary } from "@/lib/type
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { VariationalPairRankings } from "@/components/VariationalPairRankings";
 
-function strategies(locale: "en" | "ru"): { id: Strategy; label: string; description: string }[] {
-  return [
-    { id: "cheapest", label: tr(locale, "Cheapest", "Дешевле"), description: tr(locale, "Lowest cost per point", "Минимальная цена поинта") },
-    { id: "max_points", label: tr(locale, "Max points", "Больше поинтов"), description: tr(locale, "More points, higher cost", "Больше поинтов, выше цена") },
-    { id: "balanced", label: tr(locale, "Balanced", "Баланс"), description: tr(locale, "Cost and points, weighted evenly", "Цена и поинты с равным весом") },
-  ];
-}
-
 interface HedgeOption {
   slug: string;
   name: string;
@@ -149,55 +141,6 @@ function HedgeSelect({
   );
 }
 
-function StrategyCards({ value, onChange, sidebar = false }: { value: Strategy; onChange: (s: Strategy) => void; sidebar?: boolean }) {
-  const locale = useLocale();
-  const availableStrategies = strategies(locale);
-  const refs = useRef<Array<HTMLButtonElement | null>>([]);
-
-  function onKeyDown(e: React.KeyboardEvent, index: number) {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowDown" && e.key !== "ArrowLeft" && e.key !== "ArrowUp") {
-      return;
-    }
-    e.preventDefault();
-    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
-    const next = (index + dir + availableStrategies.length) % availableStrategies.length;
-    onChange(availableStrategies[next].id);
-    refs.current[next]?.focus();
-  }
-
-  return (
-    <div role="radiogroup" aria-label={tr(locale, "Strategy", "Стратегия")} className={`grid grid-cols-1 gap-2 ${sidebar ? "" : "sm:grid-cols-3"}`}>
-      {availableStrategies.map((s, i) => {
-        const selected = s.id === value;
-        return (
-          <button
-            key={s.id}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(s.id)}
-            onKeyDown={(e) => onKeyDown(e, i)}
-            className={`pf-transition rounded-md border px-4 py-3 text-left ${
-              selected
-                ? "border-accent bg-accent/10"
-                : "border-border bg-surface-1 hover:bg-surface-hover"
-            }`}
-          >
-            <div className={`text-sm font-medium ${selected ? "text-accent" : "text-text-primary"}`}>
-              {s.label}
-            </div>
-            <div className="text-sm text-text-muted">{s.description}</div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -328,7 +271,9 @@ export function VenueWizard({
     [venueSlug, otherVenues]
   );
   const [hedge, setHedge] = useState(hedgeOptions[0]?.slug ?? "");
-  const [strategy, setStrategy] = useState<Strategy>("cheapest");
+  // Strategy variants were removed from the UI; the recipes path still sends
+  // the cheapest ranking and the Variational planner ignores it entirely.
+  const strategy: Strategy = "cheapest";
   const [status, setStatus] = useState<Status>("idle");
   const [response, setResponse] = useState<RecipesResponse | null>(null);
   const [expandedPair, setExpandedPair] = useState<string | null>(null);
@@ -427,7 +372,6 @@ export function VenueWizard({
             </span>
           </label>
         )}
-        <StrategyCards value={strategy} onChange={setStrategy} sidebar={sidebar} />
         <div className="flex flex-col gap-1.5">
           <button
             type="button"
@@ -467,24 +411,12 @@ export function VenueWizard({
 
           {response.venue === "variational" && response.hedge === "variational" ? (
             <VariationalPairRankings
-              key={`${response.strategy}-${response.notionalUsd}`}
-              strategy={response.strategy}
+              key={response.notionalUsd}
               accountVolumeUsd={response.notionalUsd}
             />
           ) : response.recipes.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
-              <p className="text-sm text-text-muted">{tr(locale, "No pairs fit this strategy right now.", "Сейчас нет пар, подходящих этой стратегии.")}</p>
-              {strategy !== "cheapest" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStrategy("cheapest");
-                  }}
-                  className="pf-transition rounded-md border border-border px-4 py-2 text-sm text-text-primary hover:bg-surface-hover"
-                >
-                  {tr(locale, "Try Cheapest", "Выбрать дешевле")}
-                </button>
-              )}
+              <p className="text-sm text-text-muted">{tr(locale, "No pairs available right now.", "Сейчас нет доступных пар.")}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
