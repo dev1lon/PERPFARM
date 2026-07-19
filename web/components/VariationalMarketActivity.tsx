@@ -227,7 +227,7 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
     ? tr(locale, "Unique traders", "Уникальные трейдеры")
     : isVolume
     ? tr(locale, "Volume (24h)", "Объём (24ч)")
-    : tr(locale, "Open interest (24h)", "Открытый интерес (24ч)");
+    : tr(locale, "Open interest", "Открытый интерес");
   const series = useMemo(() => {
     const raw = data
       ? isUniqueTraders

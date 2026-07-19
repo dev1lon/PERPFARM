@@ -7,9 +7,9 @@ from perpfarm.adapters.registry import REGISTRY, build_adapter, get_registration
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "data" / "fixtures"
 
 
-def test_registry_has_fifteen_unique_venues():
-    assert len(REGISTRY) == 15
-    assert len({r.slug for r in REGISTRY}) == 15
+def test_registry_has_sixteen_unique_venues():
+    assert len(REGISTRY) == 16
+    assert len({r.slug for r in REGISTRY}) == 16
 
 
 def test_real_adapter_stub_raises_not_implemented():
