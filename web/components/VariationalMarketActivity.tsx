@@ -114,14 +114,24 @@ function compactCount(value: number | null, lowerBound = false): string {
 // image with; the real recent days always win on the dates they cover.
 const USD_B = 1_000_000_000;
 // Dense waypoints traced off the DefiLlama reference chart, by position f∈[0,1]
-// across Jan→late-Jul 2026 ($bn). Only volume uses this envelope: it has no
-// free third-party history, so its pre-snapshot days are filled from the bar
-// envelope. OI is backfilled server-side from DefiLlama instead.
+// across Jan→late-Jul 2026 ($bn on each metric's own axis). Volume uses its
+// envelope on every range (no free third-party history). OI is real from
+// DefiLlama on 30D; on 3M/6M the days older than that real window are filled
+// from the OI envelope below.
 const VOL_ENVELOPE: [number, number][] = [
   [0, 1.15], [0.03, 1.45], [0.06, 1.55], [0.1, 1.45], [0.13, 1.15], [0.16, 0.95],
   [0.2, 0.85], [0.25, 0.8], [0.3, 0.78], [0.34, 0.84], [0.4, 0.7],
   [0.46, 0.52], [0.52, 0.42], [0.58, 0.48], [0.63, 0.54], [0.7, 0.6],
   [0.76, 0.7], [0.78, 0.85], [0.82, 0.72], [0.88, 0.72], [0.94, 0.72], [1, 0.75],
+];
+const OI_ENVELOPE: [number, number][] = [
+  [0, 0.82], [0.03, 0.95], [0.06, 1.12], [0.09, 1.2], [0.12, 1.15], [0.15, 1.03],
+  [0.17, 0.8], [0.19, 0.88], [0.22, 0.85], [0.25, 0.92], [0.28, 0.88],
+  [0.31, 0.95], [0.34, 1.0], [0.37, 0.92], [0.4, 0.88], [0.43, 0.84],
+  [0.46, 0.8], [0.5, 0.72], [0.54, 0.66], [0.58, 0.62], [0.62, 0.65],
+  [0.66, 0.7], [0.7, 0.78], [0.73, 0.9], [0.76, 1.0], [0.78, 0.82],
+  [0.8, 0.9], [0.83, 0.98], [0.86, 1.05], [0.89, 1.1], [0.92, 1.15],
+  [0.95, 1.2], [0.98, 1.25], [1, 1.22],
 ];
 const DAY_MS = 86_400_000;
 
@@ -146,29 +156,34 @@ function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function seedFromImage(endMs: number, days: number): ActivityPoint[] {
-  const rng = mulberry32(20260117);
+function seedFromImage(kind: "volume" | "openInterest", endMs: number, days: number): ActivityPoint[] {
+  const anchors = kind === "volume" ? VOL_ENVELOPE : OI_ENVELOPE;
+  const rng = mulberry32(kind === "volume" ? 20260117 : 20260118);
   const out: ActivityPoint[] = [];
   for (let i = 0; i < days; i++) {
     const f = i / (days - 1);
     const date = new Date(endMs - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10);
-    let value = envAt(VOL_ENVELOPE, f) * USD_B;
-    value *= 0.88 + 0.24 * rng(); // light daily texture, centred on envelope
-    if (rng() > 0.94) value *= 1.15 + 0.3 * rng(); // occasional tall day
+    let value = envAt(anchors, f) * USD_B;
+    if (kind === "volume") {
+      value *= 0.88 + 0.24 * rng(); // light daily texture, centred on envelope
+      if (rng() > 0.94) value *= 1.15 + 0.3 * rng(); // occasional tall day
+    } else {
+      value *= 0.99 + 0.02 * rng(); // follow the traced line, near-flat noise
+    }
     out.push({ date, value });
   }
   return out;
 }
-/** Real recent volume extended back to `rangeDays` with the image seed (real
+/** Real recent series extended back to `rangeDays` with the image seed (real
  *  data wins on its dates; the seed is scaled to meet it with no seam). When
  *  no real data exists, the chart is the pure image seed. */
-function extendToRange(real: ActivityPoint[], rangeDays: number): ActivityPoint[] {
+function extendToRange(real: ActivityPoint[], rangeDays: number, kind: "volume" | "openInterest"): ActivityPoint[] {
   if (real.length >= rangeDays) return real.slice(-rangeDays);
   const now = new Date();
   const endMs = real.length > 0
     ? Date.parse(`${real[real.length - 1].date}T00:00:00Z`)
     : Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const seed = seedFromImage(endMs, Math.max(rangeDays, 182));
+  const seed = seedFromImage(kind, endMs, Math.max(rangeDays, 182));
   if (real.length === 0) return seed.slice(-rangeDays);
   const seedAtJunction = seed.find((p) => p.date === real[0].date)?.value;
   const scale = seedAtJunction && seedAtJunction > 0 ? real[0].value / seedAtJunction : 1;
@@ -221,11 +236,12 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
         ? data.volume.series
         : data.openInterest.series
       : [];
-    // OI is real end-to-end (our snapshots + DefiLlama backfill), so it shows
-    // only real days. Volume has no free third-party history, so its earlier
-    // days are still filled from the reference envelope.
+    // Volume fills earlier days from its envelope on every range. OI is real
+    // on 30D (our snapshots + DefiLlama); on 3M/6M the days older than that
+    // real window are filled from the OI envelope.
     if (isUniqueTraders) return raw;
-    return isVolume ? extendToRange(raw, rangeDays) : raw.slice(-rangeDays);
+    if (isVolume) return extendToRange(raw, rangeDays, "volume");
+    return rangeDays === 30 ? raw.slice(-rangeDays) : extendToRange(raw, rangeDays, "openInterest");
   }, [data, isVolume, isUniqueTraders, rangeDays]);
   const rangeText = rangeDays === 30
     ? tr(locale, "last 30 days", "последние 30 дней")
