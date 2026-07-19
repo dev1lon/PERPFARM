@@ -35,6 +35,12 @@ export function getPool(): Pool {
     pool = new Pool({
       connectionString,
       ssl: wantsSsl ? { rejectUnauthorized: false } : undefined,
+      // Serverless (Vercel) runs many function instances in parallel, each with
+      // its own pool. Supabase's session pooler caps total clients (pool_size
+      // 15), so keep each instance to a single connection and release it
+      // quickly when idle, instead of pg's default of up to 10 per pool.
+      max: 1,
+      idleTimeoutMillis: 10_000,
     });
   }
   return pool;
