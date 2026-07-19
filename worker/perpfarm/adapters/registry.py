@@ -34,6 +34,11 @@ class VenueRegistration:
     name: str
     api_status: str  # 'live' | 'stub'
     build: Callable[[Path], VenueAdapter]
+    # Synthetic dev/test venues (venue_alpha/venue_beta). Their manual YAML
+    # rows still power the offline `print-routes` demo and scoring tests, but
+    # they must NEVER be seeded into a real DB -- the catalog/ingest seed path
+    # skips them by this flag.
+    is_fixture: bool = False
 
 
 def _real(
@@ -50,6 +55,7 @@ def _fixture(slug: str, name: str) -> VenueRegistration:
         name=name,
         api_status="stub",
         build=lambda fixtures_dir: FixtureAdapter(slug, fixtures_dir),
+        is_fixture=True,
     )
 
 
@@ -75,6 +81,9 @@ REGISTRY: list[VenueRegistration] = [
 ]
 
 _BY_SLUG = {reg.slug: reg for reg in REGISTRY}
+
+# Slugs that must be excluded from any real-DB seed (see is_fixture above).
+FIXTURE_SLUGS = frozenset(reg.slug for reg in REGISTRY if reg.is_fixture)
 
 
 def get_registration(slug: str) -> VenueRegistration:

@@ -13,6 +13,7 @@ import yaml
 from sqlalchemy import Engine, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from perpfarm.adapters.registry import FIXTURE_SLUGS
 from perpfarm.ingest.schemas import (
     CONFIDENCE_VALUES,
     ExecutionRuleRow,
@@ -76,6 +77,13 @@ def ingest_manual(engine: Engine, data_dir: Path, *, dry_run: bool = False) -> I
     rule_rows = [
         ExecutionRuleRow(**r) for r in _load_yaml(data_dir / "execution_rules.yaml", "execution_rules")
     ]
+
+    # Fixtures (venue_alpha/venue_beta) keep their YAML rows for the offline
+    # print-routes demo and scoring tests, but are never seeded into a real DB.
+    points_rows = [r for r in points_rows if r.venue not in FIXTURE_SLUGS]
+    weight_rows = [r for r in weight_rows if r.venue not in FIXTURE_SLUGS]
+    meta_rows = [r for r in meta_rows if r.venue not in FIXTURE_SLUGS]
+    rule_rows = [r for r in rule_rows if r.venue not in FIXTURE_SLUGS]
 
     for r in points_rows:
         _check_confidence(r.confidence, file="points_programs.yaml")

@@ -17,6 +17,10 @@ def bootstrap_venues(engine: Engine, *, dry_run: bool = False) -> int:
     count = 0
     with engine.begin() as conn:
         for reg in REGISTRY:
+            # Fixtures (venue_alpha/venue_beta) are dev/test only -- never seed
+            # them into a real DB.
+            if reg.is_fixture:
+                continue
             stmt = pg_insert(venues).values(slug=reg.slug, name=reg.name, api_status=reg.api_status)
             stmt = stmt.on_conflict_do_update(
                 index_elements=[venues.c.slug],

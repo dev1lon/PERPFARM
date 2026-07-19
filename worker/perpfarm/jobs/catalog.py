@@ -44,6 +44,8 @@ def _sync_all_markets(
     """
     overrides_path = data_dir / "symbol_overrides.yaml"
     for reg in REGISTRY:
+        if reg.is_fixture:
+            continue
         try:
             count = sync_markets(
                 engine, reg.slug, fixtures_dir=fixtures_dir, overrides_path=overrides_path
