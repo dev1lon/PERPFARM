@@ -5,7 +5,10 @@ import { VariationalLayoutPreview } from "@/components/VariationalLayoutPreview"
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { isReadyVenue } from "@/lib/venue-status";
 
-export const dynamic = "force-dynamic";
+// ISR: the page shell (layout, venue list, static copy) is cached and
+// regenerated at most hourly. Live numbers (Run, activity chart) are fetched
+// client-side from API routes, so they stay fresh regardless of this window.
+export const revalidate = 3600;
 
 export async function generateMetadata({
   params,
