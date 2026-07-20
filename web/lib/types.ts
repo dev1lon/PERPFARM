@@ -121,21 +121,6 @@ export interface VenueDetail {
   markets: { symbol: string; symbolCanonical: string; isActive: boolean }[];
 }
 
-export interface SnapshotPoint {
-  ts: string;
-  value: number;
-}
-
-export interface RouteDetail {
-  symbolCanonical: string;
-  long: { slug: string; name: string };
-  short: { slug: string; name: string };
-  latest: RouteScoreRow | null;
-  history: { ts: string; costPerPointUsd: number | null; isComplete: boolean }[];
-  fundingHistory: { long: SnapshotPoint[]; short: SnapshotPoint[] };
-  spreadHistory: { long: SnapshotPoint[]; short: SnapshotPoint[] };
-}
-
 // ---- /api/venues/[slug]/recipes ----
 
 export type Strategy = "cheapest" | "max_points" | "balanced";

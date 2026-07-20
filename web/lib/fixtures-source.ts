@@ -16,7 +16,6 @@ import { load as loadYaml } from "js-yaml";
 import { recomputeRoute, SELF_MATCH_IMPACT_FACTOR, type LegInputs } from "./scoring";
 import type {
   CostBreakdown,
-  RouteDetail,
   RouteScoreRow,
   VenueDetail,
   VenueSummary,
@@ -308,29 +307,6 @@ export function fixtureRoutesForVenuePair(venueSlug: string, hedgeSlug: string):
       (r.longVenueSlug === venueSlug && r.shortVenueSlug === hedgeSlug) ||
       (r.longVenueSlug === hedgeSlug && r.shortVenueSlug === venueSlug)
   );
-}
-
-export function fixtureRouteDetail(
-  symbolCanonical: string,
-  longSlug: string,
-  shortSlug: string
-): RouteDetail | null {
-  const route = fixtureRoutes().find(
-    (r) =>
-      r.symbolCanonical === symbolCanonical &&
-      r.longVenueSlug === longSlug &&
-      r.shortVenueSlug === shortSlug
-  );
-  if (!route) return null;
-  return {
-    symbolCanonical,
-    long: { slug: longSlug, name: VENUE_NAMES[longSlug] ?? longSlug },
-    short: { slug: shortSlug, name: VENUE_NAMES[shortSlug] ?? shortSlug },
-    latest: route,
-    history: [{ ts: route.ts, costPerPointUsd: route.costPerPointUsd, isComplete: true }],
-    fundingHistory: { long: [], short: [] },
-    spreadHistory: { long: [], short: [] },
-  };
 }
 
 export function fixtureVenues(): VenueSummary[] {

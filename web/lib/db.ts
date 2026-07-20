@@ -4,9 +4,7 @@ import type {
   DataFreshness,
   FeeScheduleEntry,
   RecommendedExecution,
-  RouteDetail,
   RouteScoreRow,
-  SnapshotPoint,
   VenueDetail,
   VenueSummary,
 } from "./types";
@@ -68,82 +66,6 @@ function mapRouteRow(row: DbRow): RouteScoreRow {
   };
 }
 
-export type RouteSort = "cost_per_point" | "points_roi" | "funding" | "season_ending";
-
-export interface RouteFilters {
-  venue?: string;
-  pair?: string;
-  hideRumor?: boolean;
-  sort?: RouteSort;
-}
-
-// Bare column/expression names, matching the flattened `scored` CTE below --
-// never string-interpolate the sort choice itself, only select from this map.
-const SORT_EXPR: Record<RouteSort, string> = {
-  cost_per_point: "cost_per_point_usd",
-  points_roi: "points_per_1m_volume",
-  funding: "(cost_breakdown_json->>'funding_cost_usd')::numeric",
-  season_ending: "season_ending_days",
-};
-
-const SORT_DIRECTION: Record<RouteSort, "ASC" | "DESC"> = {
-  cost_per_point: "ASC",
-  points_roi: "DESC",
-  funding: "ASC",
-  season_ending: "ASC",
-};
-
-/** Latest route_scores row per (pair, long venue, short venue), most recently scored first. */
-export async function getLatestRouteScores(filters: RouteFilters = {}): Promise<RouteScoreRow[]> {
-  const sort = filters.sort ?? "cost_per_point";
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-
-  if (filters.venue) {
-    params.push(filters.venue);
-    conditions.push(`(long_slug = $${params.length} OR short_slug = $${params.length})`);
-  }
-  if (filters.pair) {
-    params.push(filters.pair);
-    conditions.push(`symbol_canonical = $${params.length}`);
-  }
-  if (filters.hideRumor) {
-    conditions.push(`(data_freshness_json->>'min_confidence') IS DISTINCT FROM 'rumor'`);
-  }
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
-  const sql = `
-    WITH latest AS (
-      SELECT DISTINCT ON (symbol_canonical, long_venue_id, short_venue_id) *
-      FROM route_scores
-      ORDER BY symbol_canonical, long_venue_id, short_venue_id, ts DESC
-    ),
-    scored AS (
-      SELECT
-        r.*,
-        lv.slug AS long_slug, lv.name AS long_name,
-        sv.slug AS short_slug, sv.name AS short_name,
-        LEAST(
-          COALESCE((lvm.season_end_date - CURRENT_DATE), 999999),
-          COALESCE((svm.season_end_date - CURRENT_DATE), 999999)
-        ) AS season_ending_days
-      FROM latest r
-      JOIN venues lv ON lv.id = r.long_venue_id
-      JOIN venues sv ON sv.id = r.short_venue_id
-      LEFT JOIN venue_meta lvm ON lvm.venue_id = r.long_venue_id
-      LEFT JOIN venue_meta svm ON svm.venue_id = r.short_venue_id
-    )
-    SELECT * FROM scored
-    ${where}
-    ORDER BY ${SORT_EXPR[sort]} ${SORT_DIRECTION[sort]} NULLS LAST,
-             cost_per_point_usd ASC NULLS LAST
-    LIMIT 200
-  `;
-
-  const { rows } = await getPool().query(sql, params);
-  return rows.map(mapRouteRow);
-}
-
 /** Every latest route_scores row connecting `venueSlug` and `hedgeSlug`, in
  * both directions (or the single same-venue direction when they're equal --
  * `hedgeSlug === venueSlug` collapses both conditions to one row per pair).
@@ -170,117 +92,6 @@ export async function getRoutesForVenuePair(
   `;
   const { rows } = await getPool().query(sql, [venueSlug, hedgeSlug]);
   return rows.map(mapRouteRow);
-}
-
-async function getVenueIdBySlug(slug: string): Promise<number | null> {
-  const { rows } = await getPool().query<{ id: number }>(
-    "SELECT id FROM venues WHERE slug = $1",
-    [slug]
-  );
-  return rows[0]?.id ?? null;
-}
-
-async function getMarketId(venueId: number, symbolCanonical: string): Promise<number | null> {
-  const { rows } = await getPool().query<{ id: number }>(
-    `SELECT id FROM markets WHERE venue_id = $1 AND symbol_canonical = $2
-     ORDER BY is_active DESC LIMIT 1`,
-    [venueId, symbolCanonical]
-  );
-  return rows[0]?.id ?? null;
-}
-
-async function getSnapshotSeries(
-  table: "funding_snapshots" | "book_snapshots",
-  valueColumn: string,
-  marketId: number,
-  sinceDays: number
-): Promise<SnapshotPoint[]> {
-  const { rows } = await getPool().query<{ ts: Date; value: string | number }>(
-    `SELECT ts, ${valueColumn} AS value FROM ${table}
-     WHERE market_id = $1 AND ts >= now() - ($2 || ' days')::interval
-     ORDER BY ts ASC`,
-    [marketId, sinceDays]
-  );
-  return rows
-    .filter((r) => r.value !== null)
-    .map((r) => ({ ts: new Date(r.ts).toISOString(), value: Number(r.value) }));
-}
-
-export async function getRouteDetail(
-  symbolCanonical: string,
-  longSlug: string,
-  shortSlug: string
-): Promise<RouteDetail | null> {
-  const longVenueId = await getVenueIdBySlug(longSlug);
-  const shortVenueId = await getVenueIdBySlug(shortSlug);
-  if (longVenueId === null || shortVenueId === null) return null;
-
-  const { rows: venueRows } = await getPool().query<{ slug: string; name: string; id: number }>(
-    "SELECT id, slug, name FROM venues WHERE id = ANY($1)",
-    [[longVenueId, shortVenueId]]
-  );
-  const longVenue = venueRows.find((v) => v.id === longVenueId);
-  const shortVenue = venueRows.find((v) => v.id === shortVenueId);
-  if (!longVenue || !shortVenue) return null;
-
-  const { rows: historyRows } = await getPool().query<DbRow>(
-    `SELECT ts, is_complete, cost_per_point_usd FROM route_scores
-     WHERE symbol_canonical = $1 AND long_venue_id = $2 AND short_venue_id = $3
-     ORDER BY ts DESC LIMIT 60`,
-    [symbolCanonical, longVenueId, shortVenueId]
-  );
-  const history = historyRows
-    .map((r) => ({
-      ts: new Date(r.ts).toISOString(),
-      costPerPointUsd: toNumberOrNull(r.cost_per_point_usd),
-      isComplete: r.is_complete as boolean,
-    }))
-    .reverse();
-
-  let latest: RouteScoreRow | null = null;
-  if (historyRows[0]) {
-    const { rows: latestRows } = await getPool().query<DbRow>(
-      `SELECT r.*, lv.slug AS long_slug, lv.name AS long_name,
-              sv.slug AS short_slug, sv.name AS short_name
-       FROM route_scores r
-       JOIN venues lv ON lv.id = r.long_venue_id
-       JOIN venues sv ON sv.id = r.short_venue_id
-       WHERE r.symbol_canonical = $1 AND r.long_venue_id = $2 AND r.short_venue_id = $3
-       ORDER BY r.ts DESC LIMIT 1`,
-      [symbolCanonical, longVenueId, shortVenueId]
-    );
-    latest = latestRows[0] ? mapRouteRow(latestRows[0]) : null;
-  }
-
-  const longMarketId = await getMarketId(longVenueId, symbolCanonical);
-  const shortMarketId = await getMarketId(shortVenueId, symbolCanonical);
-
-  const fundingHistory = {
-    long: longMarketId
-      ? await getSnapshotSeries("funding_snapshots", "funding_rate_annualized", longMarketId, 30)
-      : [],
-    short: shortMarketId
-      ? await getSnapshotSeries("funding_snapshots", "funding_rate_annualized", shortMarketId, 30)
-      : [],
-  };
-  const spreadHistory = {
-    long: longMarketId
-      ? await getSnapshotSeries("book_snapshots", "spread_bps", longMarketId, 30)
-      : [],
-    short: shortMarketId
-      ? await getSnapshotSeries("book_snapshots", "spread_bps", shortMarketId, 30)
-      : [],
-  };
-
-  return {
-    symbolCanonical,
-    long: { slug: longVenue.slug, name: longVenue.name },
-    short: { slug: shortVenue.slug, name: shortVenue.name },
-    latest,
-    history,
-    fundingHistory,
-    spreadHistory,
-  };
 }
 
 export async function getVenues(): Promise<VenueSummary[]> {

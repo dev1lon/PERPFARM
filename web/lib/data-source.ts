@@ -8,7 +8,7 @@
 
 import * as db from "./db";
 import * as fixtures from "./fixtures-source";
-import type { RouteDetail, RouteScoreRow, VenueDetail, VenueSummary } from "./types";
+import type { RouteScoreRow, VenueDetail, VenueSummary } from "./types";
 import { isReadyVenue } from "./venue-status";
 
 // Fall back to synthetic fixtures ONLY in dev. In production a missing
@@ -37,33 +37,6 @@ function visibleRoutes(routes: RouteScoreRow[]): RouteScoreRow[] {
       isReadyVenue(r.shortVenueSlug) &&
       r.longVenueSlug !== r.shortVenueSlug
   );
-}
-
-export async function getLatestRouteScores(
-  filters: db.RouteFilters = {}
-): Promise<RouteScoreRow[]> {
-  const routes = usingFixtures
-    ? fixtures.fixtureRoutes()
-    : await db.getLatestRouteScores(filters);
-  return visibleRoutes(routes);
-}
-
-export async function getRouteDetail(
-  symbolCanonical: string,
-  longSlug: string,
-  shortSlug: string
-): Promise<RouteDetail | null> {
-  if (
-    isHidden(longSlug) ||
-    isHidden(shortSlug) ||
-    !isReadyVenue(longSlug) ||
-    !isReadyVenue(shortSlug) ||
-    longSlug === shortSlug
-  ) {
-    return null;
-  }
-  if (usingFixtures) return fixtures.fixtureRouteDetail(symbolCanonical, longSlug, shortSlug);
-  return db.getRouteDetail(symbolCanonical, longSlug, shortSlug);
 }
 
 export async function getVenues(): Promise<VenueSummary[]> {
@@ -95,5 +68,3 @@ export async function getRoutesForVenuePair(
     : await db.getRoutesForVenuePair(venueSlug, hedgeSlug);
   return visibleRoutes(routes);
 }
-
-export type { RouteSort, RouteFilters } from "./db";
