@@ -25,7 +25,7 @@ from pathlib import Path
 from sqlalchemy import Engine, select
 
 from perpfarm.adapters.base import MarketUnavailable, VenueAdapter
-from perpfarm.adapters.registry import build_adapter
+from perpfarm.adapters.registry import FIXTURE_SLUGS, build_adapter
 from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
 
 
@@ -45,6 +45,10 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
             select(venues.c.slug, markets.c.id, markets.c.symbol)
             .select_from(markets.join(venues, markets.c.venue_id == venues.c.id))
             .where(markets.c.is_active.is_(True))
+            # Never snapshot fixture venues: they should never be in a real DB,
+            # but if a stale row survives a cleanup this keeps the cron from
+            # choking on it (and from resurrecting fixture book data).
+            .where(venues.c.slug.not_in(FIXTURE_SLUGS))
         ).all()
 
     # One adapter per venue for the whole run, not per market: real adapters
