@@ -196,14 +196,31 @@ function ProtocolActivityPreview({ className = "" }: { className?: string }) {
   );
 }
 
-function HedgeRecommendationsPreview({ className = "" }: { className?: string }) {
+function HedgeRecommendationsPreview({ otherVenues, className = "" }: { otherVenues: VenueSummary[]; className?: string }) {
   const locale = useLocale();
+  // Cheapest card: partner auto-computed (self-match usually wins). Defaults to
+  // "Variational" so the card looks unchanged before/without the fetch.
+  const [cheapestSlug, setCheapestSlug] = useState<string>("variational");
+  useEffect(() => {
+    let active = true;
+    fetch("/api/venues/variational/cheapest-route")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (active && data?.partnerSlug) setCheapestSlug(data.partnerSlug);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+  const nameOf = (slug: string): string =>
+    slug === "variational" ? "Variational" : otherVenues.find((v) => v.slug === slug)?.name ?? slug;
   return (
     <section className={`rounded-[1.75rem] border border-border bg-surface-1 p-6 ${className}`}>
       <h2 className="text-xl font-semibold tracking-tight text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <article className="rounded-xl bg-surface-2 p-5">
-          <h3 className="text-lg font-medium text-text-primary">Variational × Variational</h3>
+          <h3 className="text-lg font-medium text-text-primary">Variational × {nameOf(cheapestSlug)}</h3>
           <p className="mt-2 text-base leading-7 text-text-muted">{tr(locale, "Approved delta-neutral setup with two accounts, lowest-cost route.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами — самый дешёвый маршрут.")}</p>
         </article>
         <article className="rounded-xl bg-surface-2 p-5">
@@ -249,7 +266,7 @@ export function VariationalLayoutPreview({
             <div className="flex flex-col gap-7">
               <FactorsAffectingPoints />
               <ProtocolActivityPreview />
-              <HedgeRecommendationsPreview />
+              <HedgeRecommendationsPreview otherVenues={otherVenues} />
             </div>
             <div className="flex flex-col gap-7">
               <PreviewPointsDistribution />

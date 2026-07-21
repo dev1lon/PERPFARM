@@ -239,16 +239,43 @@ export async function computeCrossRankings(
 }
 
 /**
- * Cheapest partner venue for `slug`: for every other venue that has snapshot
- * data, take the single cheapest common pair, and return the venue whose best
- * pair is cheapest overall. Powers the "cheapest hedge" window (which shows
- * only the partner protocol name). Reference volume, since the window has no
- * volume input.
+ * Cheapest same-venue (self-match) pair for `slug`: two accounts on the same
+ * book. Two market legs (the two limit legs are free), funding nets to zero at
+ * equal long/short size. Usually THE cheapest hedge, so it's a candidate in
+ * cheapestPartner below.
+ */
+export async function selfMatchCheapest(slug: string, accountVolumeUsd: number): Promise<number | null> {
+  const rows = await loadVenueMarkets([slug]);
+  const fillNotionalUsd = accountVolumeUsd / 2;
+  let cheapest: number | null = null;
+  for (const r of rows) {
+    const vol = asNumber(r.volume_24h_usd);
+    const oi = asNumber(r.open_interest_usd);
+    const bps = legBps(r, fillNotionalUsd);
+    if (vol === null || oi === null || bps === null || oi <= 0 || vol < MIN_VOLUME_USD) continue;
+    const cost = (accountVolumeUsd * bps) / 10_000; // 2 market legs
+    if (cheapest === null || cost < cheapest) cheapest = cost;
+  }
+  return cheapest;
+}
+
+/**
+ * Cheapest hedge partner for `slug`, INCLUDING self-match: compares the
+ * same-venue route against every other venue that has snapshot data, and
+ * returns whichever is cheapest overall (often the venue itself). Powers the
+ * "cheapest hedge" window, which shows only the partner protocol name.
+ * Reference volume, since the window has no volume input.
  */
 export async function cheapestPartner(
   slug: string,
   referenceVolumeUsd: number,
 ): Promise<{ partnerSlug: string; cycleCostUsd: number } | null> {
+  let best: { partnerSlug: string; cycleCostUsd: number } | null = null;
+
+  // Self-match candidate (usually the cheapest -- no cross fees, limit legs).
+  const selfCost = await selfMatchCheapest(slug, referenceVolumeUsd);
+  if (selfCost !== null) best = { partnerSlug: slug, cycleCostUsd: selfCost };
+
   const { rows } = await getPool().query<{ slug: string }>(
     `SELECT DISTINCT v.slug
      FROM venues v
@@ -257,7 +284,6 @@ export async function cheapestPartner(
      WHERE v.slug <> $1 AND b.ts >= now() - interval '2 days'`,
     [slug],
   );
-  let best: { partnerSlug: string; cycleCostUsd: number } | null = null;
   for (const { slug: partner } of rows) {
     const ranking = await computeCrossRankings(slug, partner, referenceVolumeUsd);
     const cheapest = ranking.bands
