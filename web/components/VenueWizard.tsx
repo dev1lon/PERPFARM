@@ -5,6 +5,7 @@ import { formatUsd } from "@/lib/format";
 import type { VenueSummary } from "@/lib/types";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { VariationalPairRankings } from "@/components/VariationalPairRankings";
+import { CrossPairRankings } from "@/components/CrossPairRankings";
 
 interface HedgeOption {
   slug: string;
@@ -145,16 +146,19 @@ type Status = "idle" | "loading" | "loaded" | "error";
 
 export function VenueWizard({
   venueSlug,
+  venueName,
   otherVenues,
   layout = "default",
   allowCustomAccountVolume = false,
 }: {
   venueSlug: string;
+  venueName?: string;
   otherVenues: VenueSummary[];
   layout?: "default" | "sidebar" | "sidebar-wide";
   /** Kept local to the Variational preview until the planner design is final. */
   allowCustomAccountVolume?: boolean;
 }) {
+  const homeName = venueName ?? venueSlug;
   const locale = useLocale();
   const hedgeOptions: HedgeOption[] = useMemo(
     () => [
@@ -172,7 +176,9 @@ export function VenueWizard({
   // The only wired calculation is the same-protocol pair Run (Variational).
   // The live cross-protocol Hedge-with calc is added separately.
   const isSameVenueRun = venueSlug === "variational" && hedge === "variational";
-  const customAccountVolumeEnabled = allowCustomAccountVolume && isSameVenueRun;
+  const isCrossRun = hedge !== "" && hedge !== venueSlug;
+  const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
+  const customAccountVolumeEnabled = allowCustomAccountVolume && (isSameVenueRun || isCrossRun);
   const requestedAccountVolumeUsd = Number(accountVolumeInput);
   const validAccountVolume = Number.isFinite(requestedAccountVolumeUsd)
     && requestedAccountVolumeUsd >= 1_000
@@ -270,9 +276,18 @@ export function VenueWizard({
 
           {isSameVenueRun ? (
             <VariationalPairRankings key={notionalUsd} accountVolumeUsd={notionalUsd} />
+          ) : isCrossRun ? (
+            <CrossPairRankings
+              key={`${hedge}-${notionalUsd}`}
+              venueSlug={venueSlug}
+              hedgeSlug={hedge}
+              homeName={homeName}
+              hedgeName={hedgeName}
+              accountVolumeUsd={notionalUsd}
+            />
           ) : (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
-              <p className="text-sm text-text-muted">{tr(locale, "Cross-protocol calculations are coming soon.", "Кросс-протокольные расчёты скоро появятся.")}</p>
+              <p className="text-sm text-text-muted">{tr(locale, "Select a hedge protocol to compute.", "Выберите протокол для хеджа.")}</p>
             </div>
           )}
 

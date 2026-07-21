@@ -253,7 +253,7 @@ export function VariationalLayoutPreview({
             </div>
             <div className="flex flex-col gap-7">
               <PreviewPointsDistribution />
-              <VenueWizard venueSlug="variational" otherVenues={otherVenues} layout="sidebar-wide" allowCustomAccountVolume />
+              <VenueWizard venueSlug="variational" venueName="Variational" otherVenues={otherVenues} layout="sidebar-wide" allowCustomAccountVolume />
             </div>
           </div>
         </div>

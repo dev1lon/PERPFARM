@@ -223,7 +223,7 @@ export function VenuePageClient({ venue, otherVenues, ready }: { venue: VenueDet
           {isVariational && <VariationalPointsStatus />}
           {isVariational && <VariationalFarmingFocus />}
           <PointsFactorsPanel isVariational={isVariational} />
-          <VenueWizard venueSlug={venue.slug} otherVenues={otherVenues} />
+          <VenueWizard venueSlug={venue.slug} venueName={venue.name} otherVenues={otherVenues} />
         </>}
       </div>
     </div>
