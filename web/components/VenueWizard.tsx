@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatCostPerPoint, formatUsd } from "@/lib/format";
-import type { Recipe, RecipesResponse, Strategy, VenueSummary } from "@/lib/types";
+import { formatUsd } from "@/lib/format";
+import type { VenueSummary } from "@/lib/types";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { VariationalPairRankings } from "@/components/VariationalPairRankings";
 
@@ -141,113 +141,6 @@ function HedgeSelect({
   );
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function recipeLine(recipe: Recipe, homeSlug: string, hedgeName: string): string {
-  const isSelfMatch = recipe.legs[0].venue === recipe.legs[1].venue;
-  if (isSelfMatch) {
-    return `${capitalize(recipe.legs[0].side)} account A as ${recipe.legs[0].orderType}, ${recipe.legs[1].side} account B as ${recipe.legs[1].orderType}.`;
-  }
-  const homeLeg = recipe.legs.find((l) => l.venue === homeSlug) ?? recipe.legs[0];
-  const otherLeg = recipe.legs.find((l) => l.venue !== homeSlug) ?? recipe.legs[1];
-  return `${capitalize(homeLeg.side)} here as ${homeLeg.orderType}, ${otherLeg.side} ${hedgeName} as ${otherLeg.orderType}.`;
-}
-
-function RecipeCard({
-  recipe,
-  homeSlug,
-  hedgeName,
-  isTopPick,
-  expanded,
-  onToggle,
-}: {
-  recipe: Recipe;
-  homeSlug: string;
-  hedgeName: string;
-  isTopPick: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const isSelfMatch = recipe.legs[0].venue === recipe.legs[1].venue;
-  const otherLeg = recipe.legs.find((l) => l.venue !== homeSlug);
-  const line = recipeLine(recipe, homeSlug, hedgeName);
-
-  return (
-    <div
-      className={`rounded-lg border bg-surface-1 ${
-        isTopPick ? "border-border border-l-2 border-l-accent" : "border-border"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="pf-transition flex w-full flex-col gap-2 rounded-lg px-5 py-4 text-left hover:bg-surface-hover sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-      >
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono-num text-sm font-medium text-text-primary">{recipe.pair}</span>
-            {recipe.chips.map((chip) => (
-              <span
-                key={chip}
-                className="rounded-sm bg-surface-2 px-1.5 py-0.5 text-sm uppercase tracking-wide text-text-muted"
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-          <p className="text-sm text-text-muted">{line}</p>
-          {!isSelfMatch && otherLeg && (
-            <span className="text-sm text-accent">View {hedgeName} →</span>
-          )}
-        </div>
-        <span
-          key={`${recipe.pair}-${recipe.costPerPointUsd}`}
-          className="pf-value-pulse shrink-0 self-end font-mono-num text-base font-semibold text-text-primary sm:self-start"
-        >
-          {formatCostPerPoint(recipe.costPerPointUsd)}
-          <span className="font-normal text-text-muted">/pt</span>
-        </span>
-      </button>
-      {expanded && (
-        <div className="flex flex-col gap-2 border-t border-border px-5 py-4 text-sm text-text-muted">
-          <p>{recipe.legs[0].why}</p>
-          <p>{recipe.legs[1].why}</p>
-          {recipe.breakevenUsd !== null && (
-            <p>Works best up to ~{formatUsd(recipe.breakevenUsd, { decimals: 0 })} per entry.</p>
-          )}
-          {recipe.risks.washRisk && (
-            <p className="text-negative">
-              Two accounts on the same perp-dex -- modeled as mostly filling each other, an
-              approximation, not a measurement.
-            </p>
-          )}
-          {recipe.risks.fillRisk && (
-            <p className="text-negative">Resting size may be large relative to book depth on one leg.</p>
-          )}
-          {recipe.risks.beyondMeasuredDepth && (
-            <p className="text-negative">
-              Size exceeds measured book depth on one leg -- the impact estimate is a rough clamp.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ResultsSkeleton() {
-  return (
-    <div className="flex flex-col gap-2">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="pf-skeleton h-20 rounded-lg border border-border bg-surface-1" />
-      ))}
-    </div>
-  );
-}
-
 type Status = "idle" | "loading" | "loaded" | "error";
 
 export function VenueWizard({
@@ -271,18 +164,15 @@ export function VenueWizard({
     [venueSlug, otherVenues]
   );
   const [hedge, setHedge] = useState(hedgeOptions[0]?.slug ?? "");
-  // Strategy variants were removed from the UI; the recipes path still sends
-  // the cheapest ranking and the Variational planner ignores it entirely.
-  const strategy: Strategy = "cheapest";
   const [status, setStatus] = useState<Status>("idle");
-  const [response, setResponse] = useState<RecipesResponse | null>(null);
-  const [expandedPair, setExpandedPair] = useState<string | null>(null);
+  const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accountVolumeInput, setAccountVolumeInput] = useState("100000");
 
-  const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
-  const isVariationalStatistics = venueSlug === "variational" && hedge === "variational";
-  const customAccountVolumeEnabled = allowCustomAccountVolume && isVariationalStatistics;
+  // The only wired calculation is the same-protocol pair Run (Variational).
+  // The live cross-protocol Hedge-with calc is added separately.
+  const isSameVenueRun = venueSlug === "variational" && hedge === "variational";
+  const customAccountVolumeEnabled = allowCustomAccountVolume && isSameVenueRun;
   const requestedAccountVolumeUsd = Number(accountVolumeInput);
   const validAccountVolume = Number.isFinite(requestedAccountVolumeUsd)
     && requestedAccountVolumeUsd >= 1_000
@@ -295,52 +185,27 @@ export function VenueWizard({
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-6 text-center">
         <p className="font-mono-num text-3xl font-semibold tracking-[0.2em] text-text-primary">SOON</p>
         <p className="text-sm text-text-muted">
-          {tr(locale, "A neutral hedge needs a second verified perp-dex. We will enable recipes once one is live.", "Нейтральному хеджу нужен второй проверенный perp-dex. Рецепты появятся после его подключения.")}
+          {tr(locale, "A neutral hedge needs a second verified perp-dex. Calculations appear once one is live.", "Нейтральному хеджу нужен второй проверенный perp-dex. Расчёты появятся после его подключения.")}
         </p>
       </section>
     );
   }
 
-  async function run() {
+  function run() {
     setStatus("loading");
     setErrorMessage(null);
-    if (isVariationalStatistics) {
-      if (customAccountVolumeEnabled && !validAccountVolume) {
-        setErrorMessage(tr(locale, "Enter volume from $1,000 to $200,000 per account.", "Введите объём от $1 000 до $200 000 на один аккаунт."));
-        setStatus("error");
-        return;
-      }
-      setResponse({
-        venue: venueSlug,
-        hedge,
-        strategy,
-        notionalUsd: customAccountVolumeEnabled ? requestedAccountVolumeUsd : 100_000,
-        holdHours: 24,
-        recipes: [],
-      });
-      setExpandedPair(null);
-      setStatus("loaded");
+    if (customAccountVolumeEnabled && !validAccountVolume) {
+      setErrorMessage(tr(locale, "Enter volume from $1,000 to $200,000 per account.", "Введите объём от $1 000 до $200 000 на один аккаунт."));
+      setStatus("error");
       return;
     }
-    try {
-      const res = await fetch(
-        `/api/venues/${venueSlug}/recipes?hedge=${encodeURIComponent(hedge)}&strategy=${strategy}`
-      );
-      if (!res.ok) throw new Error(`request failed (${res.status})`);
-      const data: RecipesResponse = await res.json();
-      setResponse(data);
-      setExpandedPair(null);
-      setStatus("loaded");
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "failed to load recipes");
-      setStatus("error");
-    }
+    setNotionalUsd(customAccountVolumeEnabled ? requestedAccountVolumeUsd : 100_000);
+    setStatus("loaded");
   }
 
   function reset() {
-    setResponse(null);
+    setNotionalUsd(null);
     setStatus("idle");
-    setExpandedPair(null);
   }
 
   return (
@@ -384,22 +249,16 @@ export function VenueWizard({
         </div>
       </div>
 
-      {status === "loading" && (wideSidebar ? <div className="lg:col-span-2"><ResultsSkeleton /></div> : <ResultsSkeleton />)}
-
       {status === "error" && (
         <div className={`rounded-lg border border-negative/40 bg-negative/10 p-4 text-sm text-negative ${wideSidebar ? "lg:col-span-2" : ""}`}>
-          {tr(locale, "Couldn’t compute recipes:", "Не удалось рассчитать рецепты:")} {errorMessage}
+          {tr(locale, "Couldn’t compute:", "Не удалось рассчитать:")} {errorMessage}
         </div>
       )}
 
-      {status === "loaded" && response && (
+      {status === "loaded" && notionalUsd !== null && (
         <div className={`flex flex-col gap-4 ${wideSidebar ? "lg:col-span-2" : ""}`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-text-primary">
-              {response.venue === "variational" && response.hedge === "variational"
-                ? tr(locale, "Planning statistics", "Плановая статистика")
-                : tr(locale, `${response.recipes.length} recipe${response.recipes.length === 1 ? "" : "s"}`, `${response.recipes.length} рецепт(ов)`)}
-            </h2>
+            <h2 className="text-sm font-medium text-text-primary">{tr(locale, "Planning statistics", "Плановая статистика")}</h2>
             <button
               type="button"
               onClick={reset}
@@ -409,28 +268,11 @@ export function VenueWizard({
             </button>
           </div>
 
-          {response.venue === "variational" && response.hedge === "variational" ? (
-            <VariationalPairRankings
-              key={response.notionalUsd}
-              accountVolumeUsd={response.notionalUsd}
-            />
-          ) : response.recipes.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
-              <p className="text-sm text-text-muted">{tr(locale, "No pairs available right now.", "Сейчас нет доступных пар.")}</p>
-            </div>
+          {isSameVenueRun ? (
+            <VariationalPairRankings key={notionalUsd} accountVolumeUsd={notionalUsd} />
           ) : (
-            <div className="flex flex-col gap-2">
-              {response.recipes.map((recipe, i) => (
-                <RecipeCard
-                  key={recipe.pair}
-                  recipe={recipe}
-                  homeSlug={venueSlug}
-                  hedgeName={hedgeName}
-                  isTopPick={i === 0}
-                  expanded={expandedPair === recipe.pair}
-                  onToggle={() => setExpandedPair(expandedPair === recipe.pair ? null : recipe.pair)}
-                />
-              ))}
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-1 px-6 py-12 text-center">
+              <p className="text-sm text-text-muted">{tr(locale, "Cross-protocol calculations are coming soon.", "Кросс-протокольные расчёты скоро появятся.")}</p>
             </div>
           )}
 

@@ -8,12 +8,6 @@ export function formatUsd(value: number | null, opts: { decimals?: number } = {}
   })}`;
 }
 
-/** cost_per_point is often a small fraction of a cent -- needs more decimals than a normal $ amount. */
-export function formatCostPerPoint(value: number | null): string {
-  if (value === null || Number.isNaN(value)) return "n/a";
-  return formatUsd(value, { decimals: 6 });
-}
-
 export function formatNumber(value: number | null, decimals = 0): string {
   if (value === null || Number.isNaN(value)) return "n/a";
   return value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
