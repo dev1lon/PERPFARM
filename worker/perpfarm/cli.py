@@ -130,7 +130,19 @@ def refresh_catalog_cmd(fixtures_dir: Path, data_dir: Path) -> None:
     show_default=True,
     help="Used by fee-watch/sync-snapshots to build fixture-venue adapters.",
 )
-def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
+@click.option(
+    "--data-dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=DEFAULT_DATA_DIR,
+    show_default=True,
+    help="Manual-YAML dir; used by the catalog refresh that runs before sync-snapshots.",
+)
+@click.option(
+    "--skip-refresh",
+    is_flag=True,
+    help="Skip the catalog refresh that runs before sync-snapshots.",
+)
+def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: bool) -> None:
     """Run a scheduled job (production, DB-backed)."""
     engine = make_engine()
     as_of_date = as_of.date() if as_of else None
@@ -145,6 +157,14 @@ def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
         if summary.errors:
             raise click.ClickException(f"{len(summary.errors)} venue(s) failed")
     elif name == "sync-snapshots":
+        # Refresh the catalog first so new listings enter the DB and get
+        # collected this same hour. Non-fatal: a catalog hiccup (one venue's
+        # market-list API down) must never stop snapshot collection.
+        if not skip_refresh:
+            try:
+                _do_refresh_catalog(engine, fixtures_dir, data_dir)
+            except (IngestError, click.ClickException) as exc:
+                click.echo(f"  refresh-catalog skipped: {exc}", err=True)
         summary = run_sync_snapshots(engine, fixtures_dir=fixtures_dir)
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
