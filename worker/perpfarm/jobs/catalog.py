@@ -67,12 +67,7 @@ def refresh_catalog(
     summary.venues = bootstrap_venues(engine)
 
     ingest_summary = ingest_manual(engine, data_dir)
-    summary.manual_rows = (
-        ingest_summary.points_programs
-        + ingest_summary.pair_weights
-        + ingest_summary.venue_meta
-        + ingest_summary.execution_rules
-    )
+    summary.manual_rows = ingest_summary.venue_meta + ingest_summary.execution_rules
 
     _sync_all_markets(engine, fixtures_dir=fixtures_dir, data_dir=data_dir, summary=summary)
     return summary

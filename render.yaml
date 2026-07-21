@@ -39,17 +39,19 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
 
-  # Recomputes route_scores. worker/perpfarm/jobs/nightly.py reads already-
-  # populated snapshot/manual tables -- it does not fetch from venue APIs.
+  # Daily catalog refresh (worker/perpfarm/jobs/catalog.py): registers new
+  # venues/markets + ingests manual YAML so new listings enter the DB and
+  # sync-snapshots starts collecting them. No scoring/points -- execution cost
+  # is computed live from snapshots, the point price is manual.
   - type: cron
-    name: perpfarm-nightly
+    name: perpfarm-refresh-catalog
     runtime: python
     rootDir: worker
     plan: starter
     region: oregon
     schedule: "0 6 * * *" # 06:00 UTC daily
     buildCommand: pip install -e .
-    startCommand: perpfarm job nightly
+    startCommand: perpfarm refresh-catalog
     envVars:
       - key: DATABASE_URL
         sync: false

@@ -1,9 +1,0 @@
-# See points_programs.yaml for the note on venue_alpha/venue_beta being
-# synthetic fixture venues.
-
-pair_weights:
-  - venue: venue_alpha
-    symbol_canonical: PEPE
-    weight_multiplier: 2.0
-    confidence: confirmed
-    last_verified: 2026-07-01

@@ -116,51 +116,7 @@ fee_schedules = Table(
     Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
 )
 
-points_distributions = Table(
-    "points_distributions",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("venue_id", Integer, ForeignKey("venues.id"), nullable=False),
-    Column("ts", TIMESTAMP(timezone=True), nullable=False),
-    Column("points_distributed_week", Numeric),
-    # nullable: not every venue publishes total outstanding
-    Column("total_points_outstanding", Numeric),
-    UniqueConstraint("venue_id", "ts", name="uq_points_dist_venue_ts"),
-)
-
 # ========== manual tables (YAML -> CLI ingest) ==========
-
-points_programs = Table(
-    "points_programs",
-    metadata,
-    Column("venue_id", Integer, ForeignKey("venues.id"), primary_key=True),
-    Column("description_md", Text, nullable=False),
-    Column("points_per_usd_volume_estimate", Numeric),
-    Column("weight_notes", Text),
-    Column("confidence", Text, nullable=False),
-    Column("last_verified", Date, nullable=False),
-    Column("source", Text),
-    Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
-    CheckConstraint(
-        "confidence IN ('confirmed', 'estimated', 'rumor')", name="ck_points_programs_confidence"
-    ),
-)
-
-pair_weights = Table(
-    "pair_weights",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("venue_id", Integer, ForeignKey("venues.id"), nullable=False),
-    # keyed by canonical symbol, not the venue's native ticker
-    Column("symbol_canonical", Text, nullable=False),
-    Column("weight_multiplier", Numeric, nullable=False, server_default="1"),
-    Column("confidence", Text, nullable=False),
-    Column("last_verified", Date, nullable=False),
-    UniqueConstraint("venue_id", "symbol_canonical", name="uq_pair_weights_venue_symbol"),
-    CheckConstraint(
-        "confidence IN ('confirmed', 'estimated', 'rumor')", name="ck_pair_weights_confidence"
-    ),
-)
 
 venue_meta = Table(
     "venue_meta",
@@ -188,35 +144,6 @@ execution_rules = Table(
     Column("maker_boost_multiplier", Numeric, nullable=False, server_default="1"),
     Column("notes", Text),
     Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
-)
-
-# ========== computed table (nightly) ==========
-
-route_scores = Table(
-    "route_scores",
-    metadata,
-    Column("id", BigInteger, primary_key=True),
-    Column("symbol_canonical", Text, nullable=False),
-    Column("long_venue_id", Integer, ForeignKey("venues.id"), nullable=False),
-    Column("short_venue_id", Integer, ForeignKey("venues.id"), nullable=False),
-    Column("ts", TIMESTAMP(timezone=True), nullable=False),
-    # false if manual data is missing/stale for either leg; cost_per_point_usd
-    # must be NULL in that case -- never silently score with placeholders
-    Column("is_complete", Boolean, nullable=False, server_default="false"),
-    Column("cost_per_point_usd", Numeric),
-    Column("points_per_1m_volume", Numeric),
-    Column("cost_breakdown_json", JSONB, nullable=False),
-    Column("recommended_execution_json", JSONB, nullable=False),
-    Column("dilution_score", Numeric),
-    Column("data_freshness_json", JSONB, nullable=False),
-    UniqueConstraint(
-        "symbol_canonical", "long_venue_id", "short_venue_id", "ts", name="uq_route_scores_key"
-    ),
-)
-Index(
-    "idx_routes_latest",
-    route_scores.c.ts.desc(),
-    route_scores.c.cost_per_point_usd.asc(),
 )
 
 # ========== alerts (written starting Phase 4, table exists from Phase 1) ==========

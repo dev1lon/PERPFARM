@@ -8,11 +8,7 @@ from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.catalog import refresh_catalog
 from perpfarm.jobs.fee_watch import run_fee_watch
-from perpfarm.jobs.nightly import run_nightly
 from perpfarm.jobs.sync_snapshots import run_sync_snapshots
-from perpfarm.scoring.engine import score_route
-from perpfarm.scoring.fixture_loader import load_common_routes
-from perpfarm.scoring.types import ScoringParams
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = REPO_ROOT / "data" / "manual"
@@ -49,7 +45,6 @@ def ingest_manual_cmd(data_dir: Path, dry_run: bool) -> None:
     except IngestError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(
-        f"points_programs={summary.points_programs} pair_weights={summary.pair_weights} "
         f"venue_meta={summary.venue_meta} execution_rules={summary.execution_rules}"
         f"{' (dry run)' if dry_run else ''}"
     )
@@ -83,73 +78,6 @@ def sync_markets_cmd(slug: str, fixtures_dir: Path, data_dir: Path, dry_run: boo
     click.echo(f"synced {count} market(s) for '{slug}'{' (dry run)' if dry_run else ''}")
 
 
-@cli.command("print-routes")
-@click.option(
-    "--fixtures-dir",
-    type=click.Path(path_type=Path, exists=True, file_okay=False),
-    default=DEFAULT_FIXTURES_DIR,
-    show_default=True,
-)
-@click.option(
-    "--data-dir",
-    type=click.Path(path_type=Path, exists=True, file_okay=False),
-    default=DEFAULT_DATA_DIR,
-    show_default=True,
-)
-@click.option("--notional", type=float, default=10_000.0, show_default=True, help="Notional per leg, USD.")
-@click.option("--hold-hours", type=float, default=24.0, show_default=True, help="Hold time H, hours.")
-def print_routes_cmd(fixtures_dir: Path, data_dir: Path, notional: float, hold_hours: float) -> None:
-    """Score every route from the fixture venues and print a ranked table.
-
-    No DB required -- reads data/fixtures/*/*.json + data/manual/*.yaml
-    directly. Dev/demo tool only; production scores come from `job nightly`.
-    """
-    params = ScoringParams(notional_usd=notional, hold_hours=hold_hours)
-    routes = load_common_routes(fixtures_dir, data_dir)
-    scored = [
-        (symbol, long_slug, short_slug, score_route(long_leg, short_leg, params))
-        for symbol, long_slug, short_slug, long_leg, short_leg in routes
-    ]
-    scored.sort(
-        key=lambda item: (
-            item[3].cost_per_point_usd is None,
-            item[3].cost_per_point_usd if item[3].cost_per_point_usd is not None else 0.0,
-        )
-    )
-
-    header = (
-        f"{'PAIR':<6} {'ROUTE':<24} {'COST/PT':>12} {'PTS/$1M':>10} "
-        f"{'LONG':<6} {'SHORT':<6} {'WEEKLY $':>10}  OK"
-    )
-    click.echo(header)
-    click.echo("-" * len(header))
-    for symbol, long_slug, short_slug, result in scored:
-        route_label = f"{long_slug}->{short_slug}"
-        if result.is_complete:
-            cost_per_point = (
-                f"${result.cost_per_point_usd:.6f}" if result.cost_per_point_usd is not None else "n/a"
-            )
-            pts_1m = (
-                f"{result.points_per_1m_volume:,.0f}" if result.points_per_1m_volume is not None else "n/a"
-            )
-            long_type = result.recommended_execution["long"]["order_type"]
-            short_type = result.recommended_execution["short"]["order_type"]
-            weekly = f"${result.weekly_cost_usd:,.2f}" if result.weekly_cost_usd is not None else "n/a"
-            ok = "yes"
-        else:
-            cost_per_point = pts_1m = long_type = short_type = weekly = "-"
-            ok = "no"
-        click.echo(
-            f"{symbol:<6} {route_label:<24} {cost_per_point:>12} {pts_1m:>10} "
-            f"{long_type:<6} {short_type:<6} {weekly:>10}  {ok}"
-        )
-
-    incomplete = [r for _, _, _, r in scored if not r.is_complete]
-    if incomplete:
-        click.echo("")
-        click.echo(f"{len(incomplete)} route(s) incomplete -- see data_freshness.incomplete_reasons")
-
-
 def _do_refresh_catalog(engine, fixtures_dir: Path, data_dir: Path) -> None:
     """Shared by the `refresh-catalog` command and the auto-refresh at the
     start of the nightly job. Echoes a summary; raises ClickException if any
@@ -181,9 +109,9 @@ def _do_refresh_catalog(engine, fixtures_dir: Path, data_dir: Path) -> None:
 def refresh_catalog_cmd(fixtures_dir: Path, data_dir: Path) -> None:
     """Register venues + ingest manual data + sync all market lists (one shot).
 
-    Idempotent. Everything the nightly job needs to know a venue exists;
-    nightly runs this automatically, so a manual run is only for seeing the
-    result immediately after adding a venue.
+    Idempotent -- safe to run on a schedule (the daily cron runs this). Picks
+    up any venue/market/manual change so new listings enter the DB and
+    sync-snapshots starts collecting them.
     """
     engine = make_engine()
     try:
@@ -193,42 +121,20 @@ def refresh_catalog_cmd(fixtures_dir: Path, data_dir: Path) -> None:
 
 
 @cli.command("job")
-@click.argument("name", type=click.Choice(["nightly", "fee-watch", "sync-snapshots"]))
+@click.argument("name", type=click.Choice(["fee-watch", "sync-snapshots"]))
 @click.option("--as-of", type=click.DateTime(formats=["%Y-%m-%d"]), default=None)
 @click.option(
     "--fixtures-dir",
     type=click.Path(path_type=Path, exists=True, file_okay=False),
     default=DEFAULT_FIXTURES_DIR,
     show_default=True,
-    help="Used by fee-watch/sync-snapshots/nightly-refresh to build fixture-venue adapters.",
+    help="Used by fee-watch/sync-snapshots to build fixture-venue adapters.",
 )
-@click.option(
-    "--data-dir",
-    type=click.Path(path_type=Path, exists=True, file_okay=False),
-    default=DEFAULT_DATA_DIR,
-    show_default=True,
-    help="Manual-YAML dir; used by nightly's auto catalog refresh.",
-)
-@click.option(
-    "--skip-refresh",
-    is_flag=True,
-    help="Skip nightly's auto catalog refresh (assume the catalog is already current).",
-)
-def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: bool) -> None:
+def job_cmd(name: str, as_of, fixtures_dir: Path) -> None:
     """Run a scheduled job (production, DB-backed)."""
     engine = make_engine()
     as_of_date = as_of.date() if as_of else None
-    if name == "nightly":
-        # Auto-register any venue/market/manual-data change since the last
-        # run, so adding a venue needs no per-venue shell step -- just deploy.
-        if not skip_refresh:
-            try:
-                _do_refresh_catalog(engine, fixtures_dir, data_dir)
-            except IngestError as exc:
-                raise click.ClickException(str(exc)) from exc
-        count = run_nightly(engine, as_of=as_of_date)
-        click.echo(f"nightly: wrote {count} route_scores row(s)")
-    elif name == "fee-watch":
+    if name == "fee-watch":
         summary = run_fee_watch(engine, fixtures_dir=fixtures_dir, as_of=as_of_date)
         click.echo(
             f"fee-watch: {summary.updated} updated, {summary.alerted} alert(s), "

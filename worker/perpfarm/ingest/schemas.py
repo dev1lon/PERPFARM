@@ -21,28 +21,6 @@ class VenueRow(BaseModel):
     name: str
 
 
-class PointsProgramRow(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    venue: str
-    description_md: str
-    points_per_usd_volume_estimate: float | None = None
-    weight_notes: str | None = None
-    confidence: str
-    last_verified: date
-    source: str | None = None
-
-
-class PairWeightRow(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    venue: str
-    symbol_canonical: str
-    weight_multiplier: float = 1.0
-    confidence: str
-    last_verified: date
-
-
 class VenueMetaRow(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

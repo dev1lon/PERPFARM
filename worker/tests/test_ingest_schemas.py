@@ -2,13 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from perpfarm.ingest.schemas import (
-    CONFIDENCE_VALUES,
-    ExecutionRuleRow,
-    PairWeightRow,
-    PointsProgramRow,
-    VenueMetaRow,
-)
+from perpfarm.ingest.schemas import ExecutionRuleRow, VenueMetaRow
 from perpfarm.ingest.symbol_overrides import load_symbol_overrides
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "manual"
@@ -17,17 +11,6 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "manual"
 def _load(filename: str, key: str) -> list[dict]:
     with (DATA_DIR / filename).open(encoding="utf-8") as f:
         return yaml.safe_load(f)[key]
-
-
-def test_points_programs_validate():
-    rows = [PointsProgramRow(**r) for r in _load("points_programs.yaml", "points_programs")]
-    assert {r.venue for r in rows} >= {"venue_alpha", "venue_beta", "hibachi"}
-    assert all(r.confidence in CONFIDENCE_VALUES for r in rows)
-
-
-def test_pair_weights_validate():
-    rows = [PairWeightRow(**r) for r in _load("pair_weights.yaml", "pair_weights")]
-    assert rows[0].symbol_canonical == "PEPE"
 
 
 def test_venue_meta_validate():
