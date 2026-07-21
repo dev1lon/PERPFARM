@@ -18,12 +18,14 @@
 # https://render.com/docs/blueprint-spec before deploying.
 
 services:
-  # Hourly market-data sync (worker/perpfarm/jobs/sync_snapshots.py) --
-  # writes book_snapshots/funding_snapshots/volume_snapshots per active market
-  # (the live Run reads these). It ALSO runs refresh-catalog first each hour
-  # (register new venues/markets + ingest manual YAML), so new listings enter
-  # the DB and get collected the same hour -- no separate daily cron needed.
-  # The refresh is non-fatal: a catalog hiccup never blocks snapshot writes.
+  # The one cron. Hourly market-data sync
+  # (worker/perpfarm/jobs/sync_snapshots.py) writes
+  # book_snapshots/funding_snapshots/volume_snapshots per active market (the
+  # live Run reads these). Folded in so nothing else needs its own cron:
+  #  - refresh-catalog runs first EACH hour (new venues/markets + manual YAML),
+  #    so new listings enter the DB and get collected the same hour;
+  #  - fee-watch runs once a day (06:xx UTC) to diff fee pages.
+  # Both are non-fatal: a hiccup in either never blocks snapshot writes.
   - type: cron
     name: perpfarm-sync-snapshots
     runtime: python
@@ -33,25 +35,6 @@ services:
     schedule: "0 * * * *" # hourly
     buildCommand: pip install -e .
     startCommand: perpfarm job sync-snapshots
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: PYTHON_VERSION
-        value: "3.11.9"
-
-  # Fee-page diff watcher (worker/perpfarm/jobs/fee_watch.py). Skips venues
-  # whose adapter still raises NotImplementedError -- see docs/deploy.md.
-  # Writes `alerts` rows on a detected change but does not deliver them
-  # anywhere yet; no notification channel is wired up.
-  - type: cron
-    name: perpfarm-fee-watch
-    runtime: python
-    rootDir: worker
-    plan: starter
-    region: oregon
-    schedule: "0 0 * * 0" # weekly, Sunday 00:00 UTC
-    buildCommand: pip install -e .
-    startCommand: perpfarm job fee-watch
     envVars:
       - key: DATABASE_URL
         sync: false

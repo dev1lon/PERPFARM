@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -165,6 +166,17 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
                 _do_refresh_catalog(engine, fixtures_dir, data_dir)
             except (IngestError, click.ClickException) as exc:
                 click.echo(f"  refresh-catalog skipped: {exc}", err=True)
+        # Fee check, folded in so fees don't need their own cron. Fees change
+        # rarely, so only actually run it once a day (06:xx UTC); non-fatal.
+        if datetime.now(timezone.utc).hour == 6:
+            try:
+                fw = run_fee_watch(engine, fixtures_dir=fixtures_dir, as_of=as_of_date)
+                click.echo(
+                    f"fee-watch: {fw.updated} updated, {fw.alerted} alert(s), "
+                    f"{fw.unchanged} unchanged, {fw.skipped} skipped"
+                )
+            except Exception as exc:  # noqa: BLE001 -- fee check must not stop snapshots
+                click.echo(f"  fee-watch skipped: {exc}", err=True)
         summary = run_sync_snapshots(engine, fixtures_dir=fixtures_dir)
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
