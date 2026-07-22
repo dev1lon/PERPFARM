@@ -239,7 +239,10 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
     // Volume fills earlier days from its envelope on every range. OI is real
     // on 30D (our snapshots + DefiLlama); on 3M/6M the days older than that
     // real window are filled from the OI envelope.
-    if (isUniqueTraders) return raw;
+    // Users has no daily-history source yet -- keep the chart empty (no lone
+    // dot) until a real series (>1 point) is connected; the current number
+    // still shows in the header above.
+    if (isUniqueTraders) return raw.length > 1 ? raw : [];
     if (isVolume) return extendToRange(raw, rangeDays, "volume");
     return rangeDays === 30 ? raw.slice(-rangeDays) : extendToRange(raw, rangeDays, "openInterest");
   }, [data, isVolume, isUniqueTraders, rangeDays]);
@@ -328,7 +331,7 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
             </>
           ) : (
             <div className="flex h-80 items-center justify-center text-center text-sm text-text-muted">
-              {isUniqueTraders ? tr(locale, "Unique-trader data is not available right now.", "Данные по уникальным трейдерам сейчас недоступны.") : isVolume
+              {isUniqueTraders ? tr(locale, "Current figure shown above · daily history is being recorded and will fill the chart over time.", "Текущее значение показано выше · дневная история записывается и со временем заполнит график.") : isVolume
                 ? tr(locale, "Historical volume is collecting; new daily API observations are saved automatically.", "История объёма собирается; новые дневные наблюдения API сохраняются автоматически.")
                 : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
             </div>
