@@ -142,6 +142,7 @@ export async function GET(request: NextRequest) {
     const fillNotionalUsd = accountVolumeUsd / 2;
     const totalCycleVolumeUsd = accountVolumeUsd * 2;
     const competitionActive = competitionIsActive();
+    const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
     const rows = await loadMarkets();
 
@@ -179,16 +180,24 @@ export async function GET(request: NextRequest) {
       })
       .filter((value): value is PairRanking => value !== null);
 
-    if (candidates.length === 0) throw new Error("No liquid Variational markets in the latest snapshot");
+    // "Only TradFi" toggle: rank just the competition-eligible (TradFi) pairs.
+    const filtered = tradfiOnly ? candidates.filter((c) => c.competitionEligible) : candidates;
+    if (filtered.length === 0) {
+      throw new Error(
+        tradfiOnly
+          ? "No liquid TradFi markets in the latest snapshot"
+          : "No liquid Variational markets in the latest snapshot",
+      );
+    }
 
     let grouped: boolean;
     let bands: Band[];
-    if (candidates.length < MIN_PAIRS_FOR_BANDS) {
+    if (filtered.length < MIN_PAIRS_FOR_BANDS) {
       grouped = false;
-      bands = [bandFrom("all", candidates, candidates.length)];
+      bands = [bandFrom("all", filtered, filtered.length)];
     } else {
       grouped = true;
-      const byOi = [...candidates].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
+      const byOi = [...filtered].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
       const size = Math.ceil(byOi.length / 3);
       bands = [
         bandFrom("high", byOi.slice(0, size), 10),
@@ -206,6 +215,7 @@ export async function GET(request: NextRequest) {
         holdHours: HOLD_HOURS,
         minVolumeUsd: MIN_VOLUME_USD,
         competition: { active: competitionActive, name: "TradFi Trading Competition #5" },
+        tradfiOnly,
         grouped,
         bands,
       },

@@ -47,7 +47,13 @@ function bandTitle(locale: "en" | "ru", key: Band["key"]): string {
   return tr(locale, "All liquid pairs", "Все ликвидные пары");
 }
 
-export function VariationalPairRankings({ accountVolumeUsd }: { accountVolumeUsd: number }) {
+export function VariationalPairRankings({
+  accountVolumeUsd,
+  tradfiOnly = false,
+}: {
+  accountVolumeUsd: number;
+  tradfiOnly?: boolean;
+}) {
   const locale = useLocale();
   const [data, setData] = useState<RankingResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +61,7 @@ export function VariationalPairRankings({ accountVolumeUsd }: { accountVolumeUsd
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/venues/variational/pair-rankings?accountVolumeUsd=${accountVolumeUsd}`)
+    fetch(`/api/venues/variational/pair-rankings?accountVolumeUsd=${accountVolumeUsd}&tradfiOnly=${tradfiOnly}`)
       .then(async (response) => {
         if (!response.ok) throw new Error((await response.json()).error ?? "request failed");
         return response.json() as Promise<RankingResponse>;
@@ -69,7 +75,7 @@ export function VariationalPairRankings({ accountVolumeUsd }: { accountVolumeUsd
     return () => {
       active = false;
     };
-  }, [accountVolumeUsd]);
+  }, [accountVolumeUsd, tradfiOnly]);
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-5">

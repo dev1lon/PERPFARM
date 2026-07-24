@@ -172,6 +172,7 @@ export function VenueWizard({
   const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accountVolumeInput, setAccountVolumeInput] = useState("100000");
+  const [tradfiOnly, setTradfiOnly] = useState(false);
 
   // The only wired calculation is the same-protocol pair Run (Variational).
   // The live cross-protocol Hedge-with calc is added separately.
@@ -243,6 +244,17 @@ export function VenueWizard({
             </span>
           </label>
         )}
+        {isSameVenueRun && (
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3">
+            <span className="text-sm text-text-primary">{tr(locale, "Only TradFi pairs", "Только TradFi-пары")}</span>
+            <input
+              type="checkbox"
+              checked={tradfiOnly}
+              onChange={(event) => setTradfiOnly(event.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+          </label>
+        )}
         <div className="flex flex-col gap-1.5">
           <button
             type="button"
@@ -275,7 +287,7 @@ export function VenueWizard({
           </div>
 
           {isSameVenueRun ? (
-            <VariationalPairRankings key={notionalUsd} accountVolumeUsd={notionalUsd} />
+            <VariationalPairRankings key={notionalUsd} accountVolumeUsd={notionalUsd} tradfiOnly={tradfiOnly} />
           ) : isCrossRun ? (
             <CrossPairRankings
               key={`${hedge}-${notionalUsd}`}
