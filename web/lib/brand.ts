@@ -173,12 +173,22 @@ export const BRAND: Record<string, BrandAssets> = {
     // flat navy sampled 1:1 from the brand's wordmark background
     backgroundCss: "#232F43",
   },
+  // Single square logos (400x400) used as the mark; name shows as text.
+  // markScale bumps them to match the trimmed marks of the other perps
+  // (these ship with internal padding, so they read small at scale 1).
+  bullet: {
+    mark: "logos/bullet/logo.jpg",
+    markScale: 1.4,
+  },
   ondo: {
-    // single square logo (400x400) used as the mark; name shows as text
+    // black square removed -> white logo on transparent; flip to black on light
     mark: "logos/ondo/logo.png",
+    markScale: 1.4,
+    invertMarkOnLight: true,
   },
   qfex: {
     mark: "logos/qfex/logo.jpg",
+    markScale: 1.4,
   },
 };
 
