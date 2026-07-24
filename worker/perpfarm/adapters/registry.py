@@ -18,6 +18,7 @@ from perpfarm.adapters.fixture import FixtureAdapter
 from perpfarm.adapters.hibachi import HibachiAdapter
 from perpfarm.adapters.hotstuff import HotStuffAdapter
 from perpfarm.adapters.nado import NadoAdapter
+from perpfarm.adapters.ondo import OndoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
 from perpfarm.adapters.perpl import PerplAdapter
 from perpfarm.adapters.polymarket import PolymarketAdapter
@@ -76,6 +77,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("polymarket", "Polymarket", PolymarketAdapter),
     _real("reya", "Reya", ReyaAdapter),
     _real("bullet", "Bullet", BulletAdapter),
+    _real("ondo", "Ondo", OndoAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]

@@ -35,6 +35,7 @@ const tiers: Array<{ label: string; venues: PreviewVenue[] }> = [
       { slug: "nado", name: "Nado" },
       { slug: "perpl", name: "Perpl" },
       { slug: "reya", name: "Reya" },
+      { slug: "ondo", name: "Ondo" },
     ],
   },
 ];
