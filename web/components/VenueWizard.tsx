@@ -245,15 +245,19 @@ export function VenueWizard({
           </label>
         )}
         {isSameVenueRun && (
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={tradfiOnly}
+            disabled={status !== "loaded"}
+            onClick={() => setTradfiOnly((v) => !v)}
+            className="pf-transition flex items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-left hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-1"
+          >
             <span className="text-sm text-text-primary">{tr(locale, "Only TradFi", "Только TradFi")}</span>
-            <input
-              type="checkbox"
-              checked={tradfiOnly}
-              onChange={(event) => setTradfiOnly(event.target.checked)}
-              className="h-4 w-4 accent-accent"
-            />
-          </label>
+            <span className={`pf-transition relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${tradfiOnly ? "bg-accent" : "border border-border bg-surface-2"}`}>
+              <span className={`pf-transition inline-block h-5 w-5 rounded-full bg-white ${tradfiOnly ? "translate-x-5" : "translate-x-0.5"}`} />
+            </span>
+          </button>
         )}
         <div className="flex flex-col gap-1.5">
           <button
