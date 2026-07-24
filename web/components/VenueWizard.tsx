@@ -172,7 +172,10 @@ export function VenueWizard({
   const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accountVolumeInput, setAccountVolumeInput] = useState("100000");
+  // `tradfiOnly` is the free-to-toggle switch; `appliedTradfiOnly` is captured
+  // on Run -- flipping the switch alone doesn't change the list, only Run does.
   const [tradfiOnly, setTradfiOnly] = useState(false);
+  const [appliedTradfiOnly, setAppliedTradfiOnly] = useState(false);
 
   // The only wired calculation is the same-protocol pair Run (Variational).
   // The live cross-protocol Hedge-with calc is added separately.
@@ -207,6 +210,7 @@ export function VenueWizard({
       return;
     }
     setNotionalUsd(customAccountVolumeEnabled ? requestedAccountVolumeUsd : 100_000);
+    setAppliedTradfiOnly(tradfiOnly);
     setStatus("loaded");
   }
 
@@ -249,9 +253,8 @@ export function VenueWizard({
             type="button"
             role="switch"
             aria-checked={tradfiOnly}
-            disabled={status !== "loaded"}
             onClick={() => setTradfiOnly((v) => !v)}
-            className="pf-transition flex items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-left hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-1"
+            className="pf-transition flex items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3 text-left hover:bg-surface-hover"
           >
             <span className="text-sm text-text-primary">{tr(locale, "Only TradFi", "Только TradFi")}</span>
             <span className={`pf-transition relative inline-flex h-6 w-11 shrink-0 items-center rounded-full ${tradfiOnly ? "bg-accent" : "border border-border bg-surface-2"}`}>
@@ -291,7 +294,7 @@ export function VenueWizard({
           </div>
 
           {isSameVenueRun ? (
-            <VariationalPairRankings key={notionalUsd} accountVolumeUsd={notionalUsd} tradfiOnly={tradfiOnly} />
+            <VariationalPairRankings key={`${notionalUsd}-${appliedTradfiOnly}`} accountVolumeUsd={notionalUsd} tradfiOnly={appliedTradfiOnly} />
           ) : isCrossRun ? (
             <CrossPairRankings
               key={`${hedge}-${notionalUsd}`}
