@@ -105,3 +105,8 @@ venue_meta:
 
   - venue: ondo
     twitter_url: "https://x.com/Ondo"
+    docs_url: "https://docs.ondoperps.xyz/"
+
+  - venue: qfex
+    twitter_url: "https://x.com/QFEX"
+    docs_url: "https://docs.qfex.com/qfex/about"

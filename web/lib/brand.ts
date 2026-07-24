@@ -173,6 +173,13 @@ export const BRAND: Record<string, BrandAssets> = {
     // flat navy sampled 1:1 from the brand's wordmark background
     backgroundCss: "#232F43",
   },
+  ondo: {
+    // single square logo (400x400) used as the mark; name shows as text
+    mark: "logos/ondo/logo.png",
+  },
+  qfex: {
+    mark: "logos/qfex/logo.jpg",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {

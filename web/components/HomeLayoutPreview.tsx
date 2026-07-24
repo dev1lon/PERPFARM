@@ -36,6 +36,7 @@ const tiers: Array<{ label: string; venues: PreviewVenue[] }> = [
       { slug: "perpl", name: "Perpl" },
       { slug: "reya", name: "Reya" },
       { slug: "ondo", name: "Ondo" },
+      { slug: "qfex", name: "QFEX" },
     ],
   },
 ];

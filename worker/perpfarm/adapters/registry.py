@@ -22,6 +22,7 @@ from perpfarm.adapters.ondo import OndoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
 from perpfarm.adapters.perpl import PerplAdapter
 from perpfarm.adapters.polymarket import PolymarketAdapter
+from perpfarm.adapters.qfex import QfexAdapter
 from perpfarm.adapters.reya import ReyaAdapter
 from perpfarm.adapters.risex import RiseXAdapter
 from perpfarm.adapters.tradexyz import TradexyzAdapter
@@ -78,6 +79,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("reya", "Reya", ReyaAdapter),
     _real("bullet", "Bullet", BulletAdapter),
     _real("ondo", "Ondo", OndoAdapter),
+    _real("qfex", "QFEX", QfexAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
