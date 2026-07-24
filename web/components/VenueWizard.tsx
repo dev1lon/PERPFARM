@@ -246,7 +246,7 @@ export function VenueWizard({
         )}
         {isSameVenueRun && (
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-surface-1 px-4 py-3">
-            <span className="text-sm text-text-primary">{tr(locale, "Only TradFi pairs", "Только TradFi-пары")}</span>
+            <span className="text-sm text-text-primary">{tr(locale, "Only TradFi", "Только TradFi")}</span>
             <input
               type="checkbox"
               checked={tradfiOnly}
