@@ -7,7 +7,7 @@ import { brandAssets } from "@/lib/brand";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
-import { LocaleSwitch, ThemeSwitch } from "@/components/v2/HeaderToggles";
+import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import {
   TIER_S,
   EARLY,
@@ -94,44 +94,7 @@ function StatusBadge({ status }: { status: PointsStatus }) {
 }
 
 /* ---------------------------------------------------------------------------
-   Header
-   -------------------------------------------------------------------------- */
-
-function Header() {
-  const locale = useLocale();
-  const link =
-    "pf-transition text-sm font-medium text-text-muted hover:text-text-primary";
-  return (
-    <div className="sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur-md">
-      <div className="mx-auto flex h-[68px] max-w-[1240px] items-center justify-between px-5 sm:px-10">
-        <Link href="/v2" className="flex items-center gap-2.5">
-          <Image src="/icon.svg" alt="" aria-hidden width={26} height={26} className="h-[26px] w-[26px] rounded-lg" />
-          <span className="text-base font-bold tracking-tight text-text-primary">
-            PerpFarm
-          </span>
-        </Link>
-        <div className="flex items-center gap-5 sm:gap-7">
-          <a href="#protocols" className={`hidden sm:inline ${link}`}>
-            {tr(locale, "Protocols", "Протоколы")}
-          </a>
-          <a href="#how" className={`hidden sm:inline ${link}`}>
-            {tr(locale, "How it works", "Как это работает")}
-          </a>
-          <Link href="/methodology" className={`hidden sm:inline ${link}`}>
-            {tr(locale, "Methodology", "Методология")}
-          </Link>
-          <div className="flex items-center gap-2">
-            <LocaleSwitch />
-            <ThemeSwitch />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------------
-   Hero + route-map placeholder
+   Hero + route-map
    -------------------------------------------------------------------------- */
 
 function Hero() {
@@ -330,7 +293,7 @@ function TierSCard({ p }: { p: HomeProtocol }) {
   return (
     <div className="group h-full">
       <Link
-        href={`/${p.slug}`}
+        href={`/v2/${p.slug}`}
         className="flex h-full flex-col gap-[18px] rounded-[18px] border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
       >
         <div className="flex items-center justify-between">
@@ -359,7 +322,7 @@ function EarlyCard({ p }: { p: HomeProtocol }) {
   return (
     <div className="group h-full">
       <Link
-        href={`/${p.slug}`}
+        href={`/v2/${p.slug}`}
         className="flex h-full items-center justify-between rounded-[18px] border border-border bg-surface-1 px-5 py-[18px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
       >
         <div className="flex items-center gap-3.5">
@@ -375,7 +338,7 @@ function EarlyCard({ p }: { p: HomeProtocol }) {
 function RadarTile({ p }: { p: HomeProtocol }) {
   return (
     <Link
-      href={`/${p.slug}`}
+      href={`/v2/${p.slug}`}
       className="pf-transition flex items-center gap-2.5 rounded-xl border border-border bg-bg px-3 py-2.5 hover:border-text-muted/40 hover:bg-surface-1"
     >
       <ProtocolMark slug={p.slug} name={p.name} size={24} radius={7} />
@@ -579,7 +542,7 @@ export function HomeV2() {
           "radial-gradient(1100px 520px at 78% -6%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%)",
       }}
     >
-      <Header />
+      <SiteHeaderV2 />
       <div className="mx-auto max-w-[1240px] px-5 sm:px-10">
         <Hero />
         <HowItWorks />
