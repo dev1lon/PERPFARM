@@ -328,44 +328,50 @@ function TierSCard({ p }: { p: HomeProtocol }) {
       <div className="font-mono-num text-[15px] text-text-primary">{value ?? "—"}</div>
     </div>
   );
+  // Hover-detection lives on the static wrapper; only the inner card lifts, so
+  // the pointer never falls out of the hit area at the border (no jitter loop).
   return (
-    <Link
-      href={`/${p.slug}`}
-      className="flex flex-col gap-[18px] rounded-[18px] border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 hover:border-accent/40 motion-safe:hover:-translate-y-0.5"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
-          <ProtocolMark slug={p.slug} name={p.name} size={38} radius={11} />
-          <div className="flex flex-col gap-1">
-            <div className="text-[17px] font-semibold text-text-primary">{p.name}</div>
-            {p.season ? (
-              <div className="font-mono-num text-[12px] text-text-muted">{p.season}</div>
-            ) : null}
+    <div className="group h-full">
+      <Link
+        href={`/${p.slug}`}
+        className="flex h-full flex-col gap-[18px] rounded-[18px] border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <ProtocolMark slug={p.slug} name={p.name} size={38} radius={11} />
+            <div className="flex flex-col gap-1">
+              <div className="text-[17px] font-semibold text-text-primary">{p.name}</div>
+              {p.season ? (
+                <div className="font-mono-num text-[12px] text-text-muted">{p.season}</div>
+              ) : null}
+            </div>
           </div>
+          {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
-        {p.status ? <StatusBadge status={p.status} /> : null}
-      </div>
-      <div className="grid grid-cols-3 gap-2.5">
-        {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate)}
-        {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc)}
-        {cell(tr(locale, "Next drop", "След. дроп"), p.nextDrop)}
-      </div>
-    </Link>
+        <div className="grid grid-cols-3 gap-2.5">
+          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate)}
+          {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc)}
+          {cell(tr(locale, "Next drop", "След. дроп"), p.nextDrop)}
+        </div>
+      </Link>
+    </div>
   );
 }
 
 function EarlyCard({ p }: { p: HomeProtocol }) {
   return (
-    <Link
-      href={`/${p.slug}`}
-      className="flex items-center justify-between rounded-[18px] border border-border bg-surface-1 px-5 py-[18px] transition-[transform,border-color] duration-200 hover:border-accent/40 motion-safe:hover:-translate-y-0.5"
-    >
-      <div className="flex items-center gap-3.5">
-        <ProtocolMark slug={p.slug} name={p.name} size={34} radius={10} />
-        <div className="text-[16px] font-semibold text-text-primary">{p.name}</div>
-      </div>
-      {p.status ? <StatusBadge status={p.status} /> : null}
-    </Link>
+    <div className="group h-full">
+      <Link
+        href={`/${p.slug}`}
+        className="flex h-full items-center justify-between rounded-[18px] border border-border bg-surface-1 px-5 py-[18px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
+      >
+        <div className="flex items-center gap-3.5">
+          <ProtocolMark slug={p.slug} name={p.name} size={34} radius={10} />
+          <div className="text-[16px] font-semibold text-text-primary">{p.name}</div>
+        </div>
+        {p.status ? <StatusBadge status={p.status} /> : null}
+      </Link>
+    </div>
   );
 }
 
@@ -407,13 +413,14 @@ function Protocols() {
             )}
           </div>
         </div>
-        <div className="flex w-full items-center gap-2 rounded-xl border border-border bg-surface-1 px-3.5 py-2.5 sm:w-[260px]">
+        <div className="pf-transition flex w-full items-center gap-2 rounded-xl border border-border bg-surface-1 px-3.5 py-2.5 focus-within:border-accent/60 sm:w-[260px]">
           <span className="text-[13px] text-text-dim">⌕</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={tr(locale, "Search protocols", "Поиск протоколов")}
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-text-primary outline-none placeholder:text-text-dim"
+            style={{ outline: "none" }}
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-text-primary placeholder:text-text-dim"
           />
         </div>
       </div>
