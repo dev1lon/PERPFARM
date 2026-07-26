@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 interface Prices {
   btc: number | null;
@@ -18,6 +19,10 @@ function formatUsd(n: number | null): string {
 
 export function SiteFooter() {
   const [prices, setPrices] = useState<Prices>({ btc: null, eth: null });
+  // On the redesigned /v2 pages, scope the v2 tokens onto the bar so it reads in
+  // the redesign palette (matching the page) instead of the legacy chrome navy.
+  const pathname = usePathname();
+  const v2 = pathname?.startsWith("/v2") ? "pf-v2 " : "";
 
   useEffect(() => {
     let alive = true;
@@ -46,7 +51,7 @@ export function SiteFooter() {
     // Fixed to the viewport bottom (always visible), a thin single-line bar.
     // main gets matching bottom padding in app/layout.tsx so nothing hides
     // behind it.
-    <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-1">
+    <footer className={`${v2}fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-1`}>
       {/* Full-bleed: prices hard-left, credit hard-right (no centred max-width). */}
       <div className="flex items-center justify-between gap-3 whitespace-nowrap px-4 py-1.5 text-xs sm:px-6">
         <div className="flex items-center gap-4 font-mono-num">

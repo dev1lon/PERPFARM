@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useState } from "react";
 import { brandAssets } from "@/lib/brand";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
+import { RouteMap } from "@/components/v2/RouteMap";
 import { LocaleToggle, tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
@@ -103,9 +105,7 @@ function Header() {
     <div className="sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-[68px] max-w-[1240px] items-center justify-between px-5 sm:px-10">
         <Link href="/v2" className="flex items-center gap-2.5">
-          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-lg bg-gradient-to-br from-accent to-[#2a5fc4] font-mono-num text-[13px] font-medium text-white">
-            P
-          </span>
+          <Image src="/icon.svg" alt="" aria-hidden width={26} height={26} className="h-[26px] w-[26px] rounded-lg" />
           <span className="text-base font-bold tracking-tight text-text-primary">
             PerpFarm
           </span>
@@ -133,64 +133,6 @@ function Header() {
 /* ---------------------------------------------------------------------------
    Hero + route-map placeholder
    -------------------------------------------------------------------------- */
-
-/** Static stand-in for the Three.js route-map (network mode). The real port
- *  lands next; this keeps the hero frame reviewable and on-palette. */
-function RouteMapPlaceholder() {
-  // A handful of nodes; two are "on the route" (accent) with a curve + pulse.
-  const nodes = [
-    { x: 120, y: 90, on: true },
-    { x: 300, y: 210, on: true },
-    { x: 210, y: 60, on: false },
-    { x: 70, y: 190, on: false },
-    { x: 360, y: 110, on: false },
-    { x: 250, y: 300, on: false },
-    { x: 110, y: 300, on: false },
-    { x: 400, y: 250, on: false },
-    { x: 180, y: 160, on: false },
-    { x: 330, y: 340, on: false },
-  ];
-  return (
-    <svg viewBox="0 0 460 432" className="h-[432px] w-full" preserveAspectRatio="xMidYMid meet">
-      {/* faint links between neighbouring nodes */}
-      <g stroke="currentColor" className="text-border" strokeWidth="1">
-        <line x1="210" y1="60" x2="120" y2="90" />
-        <line x1="70" y1="190" x2="180" y2="160" />
-        <line x1="360" y1="110" x2="300" y2="210" />
-        <line x1="180" y1="160" x2="120" y2="90" />
-        <line x1="250" y1="300" x2="300" y2="210" />
-        <line x1="330" y1="340" x2="400" y2="250" />
-        <line x1="110" y1="300" x2="70" y2="190" />
-      </g>
-      {/* the route curve LONG -> SHORT */}
-      <path
-        d="M120 90 C 200 120, 220 180, 300 210"
-        fill="none"
-        className="text-accent"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      {/* other nodes */}
-      {nodes
-        .filter((n) => !n.on)
-        .map((n, i) => (
-          <circle key={i} cx={n.x} cy={n.y} r="4" className="fill-text-dim" />
-        ))}
-      {/* on-route nodes */}
-      {nodes
-        .filter((n) => n.on)
-        .map((n, i) => (
-          <g key={i}>
-            <circle cx={n.x} cy={n.y} r="10" className="fill-accent/20" />
-            <circle cx={n.x} cy={n.y} r="5" className="fill-accent" />
-          </g>
-        ))}
-      {/* travelling pulse mid-curve */}
-      <circle cx="215" cy="150" r="3.5" className="fill-white/90" />
-    </svg>
-  );
-}
 
 function Hero() {
   const locale = useLocale();
@@ -237,26 +179,37 @@ function Hero() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[20px] border border-border bg-gradient-to-b from-surface-1 to-bg">
-        <div className="flex items-center justify-between border-b border-border px-[18px] py-3.5">
-          <div className="font-mono-num text-[11px] uppercase tracking-[0.1em] text-text-muted">
+      {/* The 3D route panel stays a fixed dark "device" in both themes so the
+          WebGL scene and its overlay labels always read (like the brand cards). */}
+      <div
+        className="overflow-hidden rounded-[20px] border"
+        style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}
+      >
+        <div
+          className="flex items-center justify-between px-[18px] py-3.5"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
             {tr(locale, "Route map", "Карта маршрута")}
           </div>
-          <div className="font-mono-num text-[11px] text-text-dim">
+          <div className="font-mono-num text-[11px]" style={{ color: "#78849c" }}>
             {tr(locale, "example", "пример")} · Variational × TxFlow
           </div>
         </div>
-        <RouteMapPlaceholder />
-        <div className="flex items-center gap-5 border-t border-border px-[18px] py-3.5 text-[12px] text-text-muted">
+        <RouteMap mode="network" pair="XAU" height={432} />
+        <div
+          className="flex items-center gap-5 px-[18px] py-3.5 text-[12px]"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#8b96ad" }}
+        >
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4d8dff" }} />
             {tr(locale, "On the route", "На маршруте")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-text-dim" />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#64708a" }} />
             {tr(locale, "Other protocols", "Другие протоколы")}
           </span>
-          <span className="ml-auto hidden text-text-dim sm:inline">
+          <span className="ml-auto hidden sm:inline" style={{ color: "#78849c" }}>
             {tr(locale, "Hover a node for its name", "Наведите на узел для имени")}
           </span>
         </div>
@@ -402,9 +355,9 @@ function Protocols() {
   const q = query.trim().toLowerCase();
   const match = (p: HomeProtocol) => !q || p.name.toLowerCase().includes(q);
 
-  const tierS = useMemo(() => TIER_S.filter(match), [q]);
-  const early = useMemo(() => EARLY.filter(match), [q]);
-  const radar = useMemo(() => RADAR.filter(match), [q]);
+  const tierS = TIER_S.filter(match);
+  const early = EARLY.filter(match);
+  const radar = RADAR.filter(match);
   const empty = tierS.length + early.length + radar.length === 0;
 
   return (
@@ -558,9 +511,7 @@ function InlineFooter() {
   return (
     <div className="mt-[76px] flex flex-col items-start justify-between gap-4 border-t border-border pb-16 pt-7 sm:flex-row sm:items-center">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[7px] bg-gradient-to-br from-accent to-[#2a5fc4] font-mono-num text-[11px] text-white">
-          P
-        </span>
+        <Image src="/icon.svg" alt="" aria-hidden width={22} height={22} className="h-[22px] w-[22px] rounded-[7px]" />
         <div className="text-[13px] text-text-muted">
           {tr(
             locale,
