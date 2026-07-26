@@ -222,6 +222,34 @@ function Hero() {
    How it works
    -------------------------------------------------------------------------- */
 
+// Little step diagrams, 1:1 with the design (150×30 viewBox). Accent + dim
+// parts use CSS vars so they adapt to light/dark.
+const accent = { fill: "var(--accent)" } as const;
+const StepDiagram1 = () => (
+  <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
+    <circle cx="14" cy="15" r="5" style={accent} />
+    <circle cx="14" cy="15" r="10" fill="none" strokeWidth="1" style={{ stroke: "var(--accent)", opacity: 0.35 }} />
+    <circle cx="58" cy="15" r="3.5" style={{ fill: "var(--text-dim)", opacity: 0.5 }} />
+    <circle cx="98" cy="15" r="3.5" style={{ fill: "var(--text-dim)", opacity: 0.5 }} />
+    <circle cx="134" cy="15" r="3.5" style={{ fill: "var(--text-dim)", opacity: 0.5 }} />
+  </svg>
+);
+const StepDiagram2 = () => (
+  <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
+    <path d="M18 15 H 128" strokeWidth="1.2" strokeDasharray="3 4" style={{ stroke: "var(--text-dim)", opacity: 0.5 }} />
+    <circle cx="14" cy="15" r="5" style={accent} />
+    <circle cx="132" cy="15" r="5" style={accent} />
+  </svg>
+);
+const StepDiagram3 = () => (
+  <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
+    <path d="M14 23 C 52 23, 52 6, 90 6 S 122 23, 134 23" fill="none" strokeWidth="1.6" style={{ stroke: "var(--accent)" }} />
+    <circle cx="14" cy="23" r="5" style={accent} />
+    <circle cx="134" cy="23" r="5" style={accent} />
+    <circle cx="90" cy="6" r="3" style={{ fill: "var(--accent)", opacity: 0.7 }} />
+  </svg>
+);
+
 function HowItWorks() {
   const locale = useLocale();
   const steps = [
@@ -233,6 +261,7 @@ function HowItWorks() {
         "Open the protocol whose points you want to farm and read how it awards them.",
         "Откройте протокол, чьи поинты хотите фармить, и прочитайте, как он их начисляет.",
       ),
+      diagram: <StepDiagram1 />,
     },
     {
       n: "2",
@@ -242,6 +271,7 @@ function HowItWorks() {
         "Pick the protocol for the opposite leg — the same one or a different one.",
         "Выберите протокол для встречной ноги — тот же или другой.",
       ),
+      diagram: <StepDiagram2 />,
     },
     {
       n: "3",
@@ -251,6 +281,7 @@ function HowItWorks() {
         "Enter volume per account and get the cheapest route with its full cycle cost.",
         "Введите объём на аккаунт и получите самый дешёвый маршрут с полной стоимостью цикла.",
       ),
+      diagram: <StepDiagram3 />,
     },
   ];
   return (
@@ -267,6 +298,7 @@ function HowItWorks() {
             <div className="text-[15px] font-semibold text-text-primary">{s.title}</div>
           </div>
           <div className="text-[14px] leading-[1.6] text-text-muted">{s.body}</div>
+          {s.diagram}
         </div>
       ))}
     </div>

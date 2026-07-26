@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import * as THREE from "three";
 
 /**
@@ -17,22 +18,22 @@ import * as THREE from "three";
 const ACCENT = 0x4d8dff;
 const IDLE = 0x64708a;
 
-const NETWORK: { name: string; p: [number, number, number]; role?: "long" | "short" }[] = [
-  { name: "Variational", p: [-1.55, 0.34, 0.62], role: "long" },
-  { name: "TxFlow", p: [1.52, -0.26, -0.42], role: "short" },
-  { name: "TradeXYZ", p: [-0.62, -1.12, -0.35] },
-  { name: "RiseX", p: [0.3, -0.92, 0.95] },
-  { name: "Polymarket", p: [-1.35, -0.62, -1.25] },
-  { name: "N1", p: [1.68, 0.86, 0.55] },
-  { name: "Hibachi", p: [-1.92, -0.05, -0.7] },
-  { name: "Extended", p: [0.3, 0.52, 1.3] },
-  { name: "Pacifica", p: [-0.3, 0.02, -1.55] },
-  { name: "Bullet", p: [1.9, -1.06, 0.85] },
-  { name: "Reya", p: [1.05, 1.18, -1.35] },
-  { name: "Nado", p: [0.68, -0.34, 0.05] },
-];
+type NodeData = { name: string; p: [number, number, number]; role?: "long" | "short"; slug?: string };
 
-type NodeData = { name: string; p: [number, number, number]; role?: "long" | "short" };
+const NETWORK: NodeData[] = [
+  { name: "Variational", slug: "variational", p: [-1.55, 0.34, 0.62], role: "long" },
+  { name: "TxFlow", slug: "txflow", p: [1.52, -0.26, -0.42], role: "short" },
+  { name: "TradeXYZ", slug: "tradexyz", p: [-0.62, -1.12, -0.35] },
+  { name: "RiseX", slug: "risex", p: [0.3, -0.92, 0.95] },
+  { name: "Polymarket", slug: "polymarket", p: [-1.35, -0.62, -1.25] },
+  { name: "N1", slug: "01exchange", p: [1.68, 0.86, 0.55] },
+  { name: "Hibachi", slug: "hibachi", p: [-1.92, -0.78, -0.7] },
+  { name: "Extended", slug: "extended", p: [0.3, 0.52, 1.3] },
+  { name: "Pacifica", slug: "pacifica", p: [-0.3, 0.02, -1.55] },
+  { name: "Bullet", slug: "bullet", p: [1.9, -1.06, 0.85] },
+  { name: "Reya", slug: "reya", p: [1.05, 1.18, -1.35] },
+  { name: "Nado", slug: "nado", p: [0.68, -0.34, 0.05] },
+];
 
 interface NodeRec {
   d: NodeData;
@@ -78,6 +79,13 @@ export function RouteMap({
   height?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // Held in a ref so navigation works from the scene's click handler without
+  // rebuilding the whole WebGL scene when the router identity changes.
+  const routerRef = useRef(router);
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -286,8 +294,22 @@ export function RouteMap({
       pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
     const onLeave = () => pointer.set(-10, -10);
+    // Click a protocol node -> open its page.
+    const onClick = (e: MouseEvent) => {
+      const r = host.getBoundingClientRect();
+      const pc = new THREE.Vector2(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        -((e.clientY - r.top) / r.height) * 2 + 1,
+      );
+      ray.setFromCamera(pc, camera);
+      const hitObj = ray.intersectObjects(nodes.map((n) => n.core))[0];
+      if (!hitObj) return;
+      const rec = nodes.find((n) => n.core === hitObj.object);
+      if (rec?.d.slug) routerRef.current.push(`/${rec.d.slug}`);
+    };
     host.addEventListener("pointermove", onMove);
     host.addEventListener("pointerleave", onLeave);
+    host.addEventListener("click", onClick);
 
     function resize() {
       const w = host!.clientWidth || 600;
@@ -415,6 +437,7 @@ export function RouteMap({
       ro.disconnect();
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
+      host.removeEventListener("click", onClick);
       renderer.dispose();
       scene.traverse((obj) => {
         const m = obj as THREE.Mesh;
