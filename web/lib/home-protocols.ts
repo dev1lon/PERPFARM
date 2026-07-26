@@ -56,3 +56,13 @@ export const RADAR: HomeProtocol[] = [
 
 /** Total tracked protocols, for the hero badge. */
 export const TRACKED_COUNT = TIER_S.length + EARLY.length + RADAR.length;
+
+/** The full listed catalog (all tiers). Doubles as the web-side slug catalog:
+ *  a slug here is a real protocol page even if the DB has no row for it yet
+ *  (e.g. venues added after the staging DB was seeded) — the page then shows
+ *  the SOON placeholder instead of 404. */
+export const ALL_PROTOCOLS: HomeProtocol[] = [...TIER_S, ...EARLY, ...RADAR];
+
+export function findProtocol(slug: string): HomeProtocol | undefined {
+  return ALL_PROTOCOLS.find((p) => p.slug === slug);
+}
