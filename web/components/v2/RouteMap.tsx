@@ -1,22 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import * as THREE from "three";
 
 /**
- * WebGL protocol route navigator — React port of the design's <route-map>
- * custom element (route-map.js). `three` is bundled (not the CDN UMD), so it
- * works under the app's CSP. Two modes:
- *   - "network" (hero): the full protocol cloud with a LONG→SHORT route curve,
- *     hover-to-name labels, a travelling pulse and slow camera drift.
- *   - "result": a compact two-node route (long-label × short-label, pair at the
- *     apex) for the calculation result summary.
- * Respects prefers-reduced-motion (no drift, no pulse travel).
+ * WebGL protocol route navigator — React port of the design's <route-map>.
+ * `three` is bundled (not the CDN UMD) so it works under the app's CSP.
+ *   - "network" (hero): the full protocol cloud with a LONG→SHORT route curve.
+ *     The route is INTERACTIVE — grab either endpoint and drag it onto another
+ *     protocol node to re-route; the arc follows and snaps magnetically.
+ *   - "result": a compact, fixed two-node route (long-label × short-label, pair
+ *     at the apex) for the calculation result summary.
+ * Respects prefers-reduced-motion (no camera drift, no pulse travel).
  */
 
 const ACCENT = 0x4d8dff;
 const IDLE = 0x64708a;
+const SNAP_PX = 58; // magnet radius when dragging an endpoint onto a node
 
 type NodeData = { name: string; p: [number, number, number]; role?: "long" | "short"; slug?: string };
 
@@ -41,20 +41,15 @@ interface NodeRec {
   coreMat: THREE.MeshBasicMaterial;
   halo: THREE.Mesh;
   haloMat: THREE.MeshBasicMaterial;
-  outer: THREE.Mesh | null;
-  outerMat: THREE.MeshBasicMaterial | null;
-  active: boolean;
+  outer: THREE.Mesh;
+  outerMat: THREE.MeshBasicMaterial;
   label: HTMLDivElement;
-  side: HTMLDivElement | null;
   hover: number;
   depth: number;
   lx: number;
   ly: number;
   lw: number;
   lh: number;
-  sy: number;
-  sw: number;
-  sh: number;
   labelOpacity: number | undefined;
 }
 
@@ -79,13 +74,6 @@ export function RouteMap({
   height?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  // Held in a ref so navigation works from the scene's click handler without
-  // rebuilding the whole WebGL scene when the router identity changes.
-  const routerRef = useRef(router);
-  useEffect(() => {
-    routerRef.current = router;
-  }, [router]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -94,25 +82,14 @@ export function RouteMap({
     const result = mode === "result";
 
     const canvas = document.createElement("canvas");
-    Object.assign(canvas.style, {
-      position: "absolute",
-      inset: "0",
-      width: "100%",
-      height: "100%",
-      display: "block",
-    });
+    Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", display: "block" });
     host.appendChild(canvas);
 
     const overlay = document.createElement("div");
-    Object.assign(overlay.style, {
-      position: "absolute",
-      inset: "0",
-      pointerEvents: "none",
-      overflow: "hidden",
-    });
+    Object.assign(overlay.style, { position: "absolute", inset: "0", pointerEvents: "none", overflow: "hidden" });
     host.appendChild(overlay);
 
-    function label(text: string, kind: "venue" | "idle" | "side" | "pair"): HTMLDivElement {
+    function label(text: string, kind: "idle" | "side" | "pair"): HTMLDivElement {
       const el = document.createElement("div");
       el.textContent = text;
       const base: Partial<CSSStyleDeclaration> = {
@@ -125,8 +102,6 @@ export function RouteMap({
         transform: "translate(-50%,-50%)",
         willChange: "transform",
       };
-      if (kind === "venue")
-        Object.assign(base, { fontSize: "12px", fontWeight: "600", letterSpacing: "0.01em", color: "#e8ecf5" });
       if (kind === "idle") Object.assign(base, { fontSize: "11px", fontWeight: "500", color: "#8b96ad" });
       if (kind === "side")
         Object.assign(base, {
@@ -177,12 +152,7 @@ export function RouteMap({
       for (let i = 1; i <= 3; i++) {
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(i * 0.95, i * 0.95 + 0.005, 128),
-          new THREE.MeshBasicMaterial({
-            color: 0x3a465e,
-            transparent: true,
-            opacity: 0.34 - i * 0.08,
-            side: THREE.DoubleSide,
-          }),
+          new THREE.MeshBasicMaterial({ color: 0x3a465e, transparent: true, opacity: 0.34 - i * 0.08, side: THREE.DoubleSide }),
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = -1.35;
@@ -190,73 +160,50 @@ export function RouteMap({
       }
     }
 
-    const nodes: NodeRec[] = [];
     const group = new THREE.Group();
     scene.add(group);
 
-    data.forEach((d) => {
-      const active = !!d.role;
-      const color = active ? ACCENT : IDLE;
-      const coreMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: active ? 1 : 0.62 });
-      const core = new THREE.Mesh(new THREE.SphereGeometry(active ? 0.075 : 0.045, 20, 20), coreMat);
+    // Every node is created identically; LONG/SHORT emphasis is applied per
+    // frame based on which two are the current route endpoints (so endpoints
+    // can change at runtime by dragging).
+    const nodes: NodeRec[] = data.map((d) => {
+      const coreMat = new THREE.MeshBasicMaterial({ color: IDLE, transparent: true, opacity: 0.62 });
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.05, 20, 20), coreMat);
       core.position.set(d.p[0], d.p[1], d.p[2]);
       group.add(core);
 
-      const haloMat = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: active ? 0.75 : 0.26,
-        side: THREE.DoubleSide,
-      });
-      const halo = new THREE.Mesh(
-        new THREE.RingGeometry(active ? 0.16 : 0.11, active ? 0.168 : 0.115, 48),
-        haloMat,
-      );
+      const haloMat = new THREE.MeshBasicMaterial({ color: IDLE, transparent: true, opacity: 0.26, side: THREE.DoubleSide });
+      const halo = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.138, 48), haloMat);
       halo.position.copy(core.position);
       group.add(halo);
 
-      let outer: THREE.Mesh | null = null;
-      let outerMat: THREE.MeshBasicMaterial | null = null;
-      if (active) {
-        outerMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
-        outer = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.303, 64), outerMat);
-        outer.position.copy(core.position);
-        group.add(outer);
-      }
+      const outerMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0, side: THREE.DoubleSide });
+      const outer = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.303, 64), outerMat);
+      outer.position.copy(core.position);
+      group.add(outer);
 
-      nodes.push({
-        d,
-        core,
-        coreMat,
-        halo,
-        haloMat,
-        outer,
-        outerMat,
-        active,
-        label: label(d.name, active ? "venue" : "idle"),
-        side: d.role ? label(d.role === "long" ? "LONG" : "SHORT", "side") : null,
-        hover: 0,
-        depth: 1,
-        lx: 0,
-        ly: 0,
-        lw: 0,
-        lh: 0,
-        sy: 0,
-        sw: 0,
-        sh: 0,
-        labelOpacity: undefined,
-      });
+      return {
+        d, core, coreMat, halo, haloMat, outer, outerMat,
+        label: label(d.name, "idle"),
+        hover: 0, depth: 1, lx: 0, ly: 0, lw: 0, lh: 0, labelOpacity: undefined,
+      };
     });
 
-    // route curve between the two role nodes
+    // Current route endpoints (mutable — drag reassigns them).
+    let longRec = nodes.find((n) => n.d.role === "long") ?? nodes[0];
+    let shortRec = nodes.find((n) => n.d.role === "short") ?? nodes[1];
+
+    // route curve (tube + additive glow), rebuilt on endpoint / drag change.
+    const tubeMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.95 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false });
+    const tube = new THREE.Mesh(new THREE.BufferGeometry(), tubeMat);
+    const glow = new THREE.Mesh(new THREE.BufferGeometry(), glowMat);
+    group.add(tube);
+    group.add(glow);
     let curve: THREE.CubicBezierCurve3 | null = null;
-    let pulse: THREE.Mesh | null = null;
-    let midLabel: HTMLDivElement | null = null;
-    const a = nodes.find((n) => n.d.role === "long");
-    const b = nodes.find((n) => n.d.role === "short");
-    if (a && b) {
-      const pa = a.core.position;
-      const pb = b.core.position;
+    let curveDirty = true;
+
+    function buildCurve(pa: THREE.Vector3, pb: THREE.Vector3) {
       const lift = result ? 0.95 : 1.15;
       curve = new THREE.CubicBezierCurve3(
         pa.clone(),
@@ -264,52 +211,96 @@ export function RouteMap({
         pa.clone().lerp(pb, 0.7).add(new THREE.Vector3(0, lift * 0.72, result ? 0.5 : 0.9)),
         pb.clone(),
       );
-      group.add(
-        new THREE.Mesh(
-          new THREE.TubeGeometry(curve, 120, 0.014, 10, false),
-          new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.95 }),
-        ),
-      );
-      group.add(
-        new THREE.Mesh(
-          new THREE.TubeGeometry(curve, 120, 0.055, 10, false),
-          new THREE.MeshBasicMaterial({
-            color: ACCENT,
-            transparent: true,
-            opacity: 0.11,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-          }),
-        ),
-      );
-      pulse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshBasicMaterial({ color: 0xbcd6ff }));
-      group.add(pulse);
-      midLabel = label(pair, "pair");
+      tube.geometry.dispose();
+      tube.geometry = new THREE.TubeGeometry(curve, 120, 0.014, 10, false);
+      glow.geometry.dispose();
+      glow.geometry = new THREE.TubeGeometry(curve, 120, 0.055, 10, false);
     }
 
+    const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshBasicMaterial({ color: 0xbcd6ff }));
+    group.add(pulse);
+
+    const longBadge = label("LONG", "side");
+    const shortBadge = label("SHORT", "side");
+    const midLabel = result ? label(pair, "pair") : null;
+
+    // ---- interaction (network only) ----
     const ray = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-10, -10);
+    let drag: { which: "long" | "short"; ndcZ: number } | null = null;
+    let dragPos: THREE.Vector3 | null = null;
+    let dragCandidate: NodeRec | null = null;
+
+    function ndc(e: PointerEvent | MouseEvent) {
+      const r = host!.getBoundingClientRect();
+      return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1, r };
+    }
+
     const onMove = (e: PointerEvent) => {
-      const r = host.getBoundingClientRect();
-      pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      const c = ndc(e);
+      pointer.set(c.x, c.y);
+      if (!drag) return;
+      const w = host!.clientWidth;
+      const h = host!.clientHeight;
+      const other = drag.which === "long" ? shortRec : longRec;
+      const px = e.clientX - c.r.left;
+      const py = e.clientY - c.r.top;
+      let best: NodeRec | null = null;
+      let bestD = Infinity;
+      for (const n of nodes) {
+        if (n === other) continue;
+        const pp = n.core.position.clone().project(camera);
+        const sx = (pp.x * 0.5 + 0.5) * w;
+        const sy = (-pp.y * 0.5 + 0.5) * h;
+        const d = Math.hypot(sx - px, sy - py);
+        if (d < bestD) {
+          bestD = d;
+          best = n;
+        }
+      }
+      if (best && bestD < SNAP_PX) {
+        dragCandidate = best;
+        dragPos = best.core.position.clone();
+      } else {
+        dragCandidate = null;
+        dragPos = new THREE.Vector3(c.x, c.y, drag.ndcZ).unproject(camera);
+      }
+      curveDirty = true;
     };
     const onLeave = () => pointer.set(-10, -10);
-    // Click a protocol node -> open its page.
-    const onClick = (e: MouseEvent) => {
-      const r = host.getBoundingClientRect();
-      const pc = new THREE.Vector2(
-        ((e.clientX - r.left) / r.width) * 2 - 1,
-        -((e.clientY - r.top) / r.height) * 2 + 1,
-      );
-      ray.setFromCamera(pc, camera);
-      const hitObj = ray.intersectObjects(nodes.map((n) => n.core))[0];
-      if (!hitObj) return;
-      const rec = nodes.find((n) => n.core === hitObj.object);
-      if (rec?.d.slug) routerRef.current.push(`/${rec.d.slug}`);
+    const onDown = (e: PointerEvent) => {
+      if (result) return;
+      const c = ndc(e);
+      ray.setFromCamera(new THREE.Vector2(c.x, c.y), camera);
+      const hit = ray.intersectObjects([longRec.core, shortRec.core])[0];
+      if (!hit) return;
+      const which = hit.object === longRec.core ? "long" : "short";
+      const rec = which === "long" ? longRec : shortRec;
+      drag = { which, ndcZ: rec.core.position.clone().project(camera).z };
+      dragPos = rec.core.position.clone();
+      dragCandidate = null;
+      try {
+        host!.setPointerCapture(e.pointerId);
+      } catch {
+        /* pointer capture unsupported -- drag still works via window listeners */
+      }
+      e.preventDefault();
+    };
+    const onUp = () => {
+      if (!drag) return;
+      if (dragCandidate) {
+        if (drag.which === "long") longRec = dragCandidate;
+        else shortRec = dragCandidate;
+      }
+      drag = null;
+      dragPos = null;
+      dragCandidate = null;
+      curveDirty = true;
     };
     host.addEventListener("pointermove", onMove);
     host.addEventListener("pointerleave", onLeave);
-    host.addEventListener("click", onClick);
+    host.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointerup", onUp);
 
     function resize() {
       const w = host!.clientWidth || 600;
@@ -326,10 +317,18 @@ export function RouteMap({
     const t0 = performance.now();
     let raf = 0;
 
+    function place(el: HTMLDivElement, pos: THREE.Vector3, dy: number, w: number, h: number) {
+      v.copy(pos).project(camera);
+      const x = (v.x * 0.5 + 0.5) * w;
+      const y = (-v.y * 0.5 + 0.5) * h + dy;
+      el.style.transform = `translate(-50%,-50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    }
+
     function frame(t: number) {
       const w = host!.clientWidth;
       const h = host!.clientHeight;
-      if (!REDUCED) {
+      // camera drift (frozen while dragging so the drag plane stays put)
+      if (!REDUCED && !drag) {
         camera.position.set(
           camBase.x + Math.sin(t * 0.17) * (result ? 0.16 : 0.3),
           camBase.y + Math.sin(t * 0.13 + 1.1) * (result ? 0.08 : 0.22),
@@ -338,52 +337,72 @@ export function RouteMap({
       }
       camera.lookAt(0, result ? 0.12 : 0.05, 0);
 
+      // rebuild the arc when an endpoint moved
+      if (curveDirty) {
+        const lp = drag && drag.which === "long" && dragPos ? dragPos : longRec.core.position;
+        const sp = drag && drag.which === "short" && dragPos ? dragPos : shortRec.core.position;
+        buildCurve(lp, sp);
+        curveDirty = false;
+      }
+
+      // hover (for cursor affordance on endpoints)
       ray.setFromCamera(pointer, camera);
       const hit = ray.intersectObjects(nodes.map((n) => n.core))[0];
-      const hovered = hit ? hit.object : null;
-      host!.style.cursor = hovered ? "pointer" : "";
+      const hovered = hit ? (hit.object as THREE.Mesh) : null;
+      const hoveredEnd = hovered === longRec.core || hovered === shortRec.core;
+      host!.style.cursor = drag ? "grabbing" : hoveredEnd ? "grab" : "";
 
       nodes.forEach((n) => {
+        const active = n === longRec || n === shortRec;
         const isHover = n.core === hovered;
         n.hover += ((isHover ? 1 : 0) - n.hover) * 0.14;
         const pv = REDUCED ? 0 : Math.sin(t * 1.4 + n.core.position.x * 2) * 0.5 + 0.5;
+
+        n.coreMat.color.setHex(active ? ACCENT : IDLE);
+        n.haloMat.color.setHex(active ? ACCENT : IDLE);
+        n.core.scale.setScalar(active ? 1.5 : 0.9);
+        n.halo.scale.setScalar(active ? 1.22 : 0.85);
         n.halo.quaternion.copy(camera.quaternion);
-        if (n.outer && n.outerMat) {
-          n.outer.quaternion.copy(camera.quaternion);
-          const s = 1 + (REDUCED ? 0 : pv * 0.16);
-          n.outer.scale.setScalar(s);
-          n.outerMat.opacity = 0.3 - (REDUCED ? 0 : pv * 0.14);
-        }
-        n.coreMat.opacity = (n.active ? 1 : 0.62) + n.hover * 0.35;
-        n.haloMat.opacity = (n.active ? 0.75 : 0.26) + n.hover * 0.5;
+        n.outer.quaternion.copy(camera.quaternion);
+        n.outer.scale.setScalar(1 + (REDUCED ? 0 : pv * 0.16));
+        n.outerMat.opacity = active ? 0.3 - (REDUCED ? 0 : pv * 0.14) : 0;
+        n.coreMat.opacity = (active ? 1 : 0.62) + n.hover * 0.35;
+        n.haloMat.opacity = (active ? 0.75 : 0.26) + n.hover * 0.5;
 
         v.copy(n.core.position).project(camera);
         const x = (v.x * 0.5 + 0.5) * w;
         const y = (-v.y * 0.5 + 0.5) * h;
         n.depth = THREE.MathUtils.clamp(1 - (v.z - 0.9) * 6, 0.25, 1);
         n.lx = x;
-        n.ly = y + (n.active ? 30 : 22);
+        n.ly = y + (active ? 30 : 22);
         if (!n.lw || !n.lh) {
           n.lw = n.label.offsetWidth;
           n.lh = n.label.offsetHeight;
         }
         n.label.style.transform = `translate(-50%,-50%) translate(${x.toFixed(1)}px, ${n.ly.toFixed(1)}px)`;
-        if (!n.active) n.label.style.color = n.hover > 0.4 ? "#e8ecf5" : "#8b96ad";
-        if (n.side) {
-          n.sy = y - 30;
-          if (!n.sw) {
-            n.sw = n.side.offsetWidth;
-            n.sh = n.side.offsetHeight;
-          }
-          n.side.style.transform = `translate(-50%,-50%) translate(${x.toFixed(1)}px, ${n.sy.toFixed(1)}px)`;
+        if (active) {
+          n.label.style.color = "#e8ecf5";
+          n.label.style.fontWeight = "600";
+          n.label.style.fontSize = "12px";
+        } else {
+          n.label.style.fontWeight = "500";
+          n.label.style.fontSize = "11px";
+          n.label.style.color = n.hover > 0.4 ? "#e8ecf5" : "#8b96ad";
         }
       });
 
+      // LONG / SHORT badges follow their endpoint (or the dragged position)
+      const lp = drag && drag.which === "long" && dragPos ? dragPos : longRec.core.position;
+      const sp = drag && drag.which === "short" && dragPos ? dragPos : shortRec.core.position;
+      place(longBadge, lp, -30, w, h);
+      place(shortBadge, sp, -30, w, h);
+
+      // travelling pulse + optional pair label at the apex
       let mx = 0;
       let my = 0;
       let mw = 0;
       let mh = 0;
-      if (pulse && curve) {
+      if (curve) {
         const p = REDUCED ? 0.5 : (t * 0.28) % 1;
         pulse.position.copy(curve.getPoint(p));
         if (midLabel) {
@@ -396,17 +415,16 @@ export function RouteMap({
         }
       }
 
-      // idle labels yield to the route's own labels
+      // idle labels yield to the route's own labels + badges
       const claimed: { x: number; y: number; w: number; h: number }[] = [];
       nodes.forEach((n) => {
-        if (!n.active) return;
+        if (n !== longRec && n !== shortRec) return;
         claimed.push({ x: n.lx, y: n.ly, w: n.lw, h: n.lh });
-        if (n.side) claimed.push({ x: n.lx, y: n.sy, w: n.sw, h: n.sh });
       });
-      if (midLabel && mw) claimed.push({ x: mx, y: my, w: mw, h: mh });
+      if (mw) claimed.push({ x: mx, y: my, w: mw, h: mh });
 
       nodes.forEach((n) => {
-        if (n.active) {
+        if (n === longRec || n === shortRec) {
           n.label.style.opacity = "1";
           return;
         }
@@ -414,7 +432,7 @@ export function RouteMap({
         let clash = claimed.some((c) => overlaps(r, c));
         if (!clash) {
           for (const o of nodes) {
-            if (o === n || o.active || !o.lw) continue;
+            if (o === n || o === longRec || o === shortRec || !o.lw) continue;
             if (o.core.position.z <= n.core.position.z) continue;
             if (overlaps(r, { x: o.lx, y: o.ly, w: o.lw, h: o.lh })) {
               clash = true;
@@ -437,7 +455,8 @@ export function RouteMap({
       ro.disconnect();
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
-      host.removeEventListener("click", onClick);
+      host.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp);
       renderer.dispose();
       scene.traverse((obj) => {
         const m = obj as THREE.Mesh;

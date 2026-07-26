@@ -192,9 +192,6 @@ function Hero() {
           <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
             {tr(locale, "Route map", "Карта маршрута")}
           </div>
-          <div className="font-mono-num text-[11px]" style={{ color: "#78849c" }}>
-            {tr(locale, "example", "пример")} · Variational × TxFlow
-          </div>
         </div>
         <RouteMap mode="network" pair="XAU" height={432} />
         <div
@@ -210,7 +207,7 @@ function Hero() {
             {tr(locale, "Other protocols", "Другие протоколы")}
           </span>
           <span className="ml-auto hidden sm:inline" style={{ color: "#78849c" }}>
-            {tr(locale, "Hover a node for its name", "Наведите на узел для имени")}
+            {tr(locale, "Drag an endpoint to reroute", "Перетащите конец маршрута")}
           </span>
         </div>
       </div>
@@ -481,6 +478,22 @@ function Compares() {
   const locale = useLocale();
   const factors = [
     {
+      title: tr(locale, "Reward mechanics", "Механики наград"),
+      body: tr(
+        locale,
+        "Everything that shapes how many points a protocol pays you, so you can see what actually moves the number.",
+        "Всё, что определяет, сколько поинтов начисляет протокол — чтобы видеть, что реально влияет на их количество.",
+      ),
+    },
+    {
+      title: tr(locale, "Activity", "Активность"),
+      body: tr(
+        locale,
+        "Any activity that grows your points or makes them cheaper — not only contests.",
+        "Любая активность, которая увеличит ваши поинты или сделает их дешевле — не только соревнования.",
+      ),
+    },
+    {
       title: tr(locale, "Entry & exit execution", "Вход и выход"),
       body: tr(locale, "Maker and taker fees on all four fills of the cycle.", "Maker- и taker-комиссии на всех четырёх исполнениях цикла."),
     },
@@ -503,22 +516,6 @@ function Compares() {
     {
       title: tr(locale, "Open interest", "Открытый интерес"),
       body: tr(locale, "Whether a market is deep enough to be worth farming.", "Достаточно ли рынок глубок, чтобы его фармить."),
-    },
-    {
-      title: tr(locale, "Reward mechanics", "Механики наград"),
-      body: tr(
-        locale,
-        "Everything that shapes how many points a protocol pays you, so you can see what actually moves the number.",
-        "Всё, что определяет, сколько поинтов начисляет протокол — чтобы видеть, что реально влияет на их количество.",
-      ),
-    },
-    {
-      title: tr(locale, "Activity", "Активность"),
-      body: tr(
-        locale,
-        "Any activity that grows your points or makes them cheaper — not only contests.",
-        "Любая активность, которая увеличит ваши поинты или сделает их дешевле — не только соревнования.",
-      ),
     },
   ];
   return (
