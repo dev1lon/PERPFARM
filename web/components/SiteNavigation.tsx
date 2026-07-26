@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { LocaleToggle, tr, useLocale } from "@/components/LocaleProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function SiteNavigation() {
   const locale = useLocale();
+  const pathname = usePathname();
+  // The redesigned pages under /v2 ship their own header; suppress the legacy
+  // chrome there so the preview isn't double-headed.
+  if (pathname?.startsWith("/v2")) return null;
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">

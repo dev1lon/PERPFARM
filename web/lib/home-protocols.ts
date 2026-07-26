@@ -1,0 +1,58 @@
+/**
+ * MANUAL home-page protocol config for the v2 redesign. These are hand-edited
+ * display fields — the site never computes point value or farm cost (that stays
+ * the user's manual/OTC knowledge). Live metrics (OI, volume, spread) come from
+ * the data source; only the values below are curated by hand here.
+ *
+ * Tier assignment, season label, farm-estimate range, OTC point price and the
+ * next-drop countdown are all manual. Leave a field undefined to render "—".
+ * `status` drives the badge (live = emerald, others = amber/neutral).
+ */
+
+export type PointsStatus = "live" | "teased" | "mainnet" | "ended";
+
+export interface HomeProtocol {
+  slug: string;
+  name: string;
+  /** Season / epoch label under the name on large cards. */
+  season?: string;
+  /** Manual farm-cost range, e.g. "$5–11/pt". Never computed. */
+  farmEstimate?: string;
+  /** Manual OTC point price, e.g. "$21". Never computed. */
+  otc?: string;
+  /** Manual next-drop countdown/date, e.g. "6d 17h" or "2026-09-01". */
+  nextDrop?: string;
+  /** Manual points-program status. */
+  status?: PointsStatus;
+}
+
+/** Tier S — the large two-up cards with the metric grid. */
+export const TIER_S: HomeProtocol[] = [
+  { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$21", status: "live" },
+  { slug: "tradexyz", name: "TradeXYZ", season: "Season 2", status: "teased" },
+];
+
+/** Early stage — medium cards with a status badge, no metric grid. */
+export const EARLY: HomeProtocol[] = [
+  { slug: "risex", name: "RiseX", status: "mainnet" },
+  { slug: "txflow", name: "TxFlow", status: "teased" },
+];
+
+/** Radar — compact tiles, name only. */
+export const RADAR: HomeProtocol[] = [
+  { slug: "polymarket", name: "Polymarket" },
+  { slug: "hotstuff", name: "HotStuff" },
+  { slug: "01exchange", name: "N1" },
+  { slug: "bullet", name: "Bullet" },
+  { slug: "hibachi", name: "Hibachi" },
+  { slug: "extended", name: "Extended" },
+  { slug: "pacifica", name: "Pacifica" },
+  { slug: "nado", name: "Nado" },
+  { slug: "perpl", name: "Perpl" },
+  { slug: "reya", name: "Reya" },
+  { slug: "ondo", name: "Ondo" },
+  { slug: "qfex", name: "QFEX" },
+];
+
+/** Total tracked protocols, for the hero badge. */
+export const TRACKED_COUNT = TIER_S.length + EARLY.length + RADAR.length;

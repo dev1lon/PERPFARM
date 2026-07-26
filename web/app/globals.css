@@ -17,6 +17,8 @@
   --accent-hover: #6690f7;
   --positive: #2fd181;
   --negative: #f05c5c;
+  --text-dim: #78849c; /* captions, timestamps (design token, used by .pf-v2) */
+  --warning: #f0b45a; /* early stage / caution (design token) */
 }
 
 :root[data-theme="light"] {
@@ -32,6 +34,47 @@
   --accent-hover: #1f4fca;
   --positive: #12a45f;
   --negative: #d23b3b;
+  --text-dim: #7a8598;
+  --warning: #c98a2e;
+}
+
+/* ---------------------------------------------------------------------------
+   v2 design-system tokens (new frontend restyle). SCOPED to `.pf-v2` so the
+   existing pages are untouched while the redesign is built page-by-page under
+   /v2/*. At switch-over these values move up to :root and the wrapper is
+   dropped. Overrides the same variable names the Tailwind utilities read
+   (bg-surface-1, text-accent, ...), so utilities pick up design colours with
+   no per-component change. Dark is default; light inverts to paper-white.
+   -------------------------------------------------------------------------- */
+.pf-v2 {
+  --bg: #070a12;
+  --surface-1: #0e1320;
+  --surface-2: #141b2b;
+  --surface-hover: #182236;
+  --border: rgba(255, 255, 255, 0.09);
+  --text-primary: #e8ecf5;
+  --text-muted: #8b96ad;
+  --text-dim: #78849c;
+  --accent: #4d8dff;
+  --accent-hover: #5e99ff;
+  --positive: #35d399;
+  --warning: #f0b45a;
+  --negative: #e5645f;
+}
+:root[data-theme="light"] .pf-v2 {
+  --bg: #f4f6fb;
+  --surface-1: #ffffff;
+  --surface-2: #eef2f8;
+  --surface-hover: #e6ecf5;
+  --border: rgba(15, 23, 42, 0.1);
+  --text-primary: #14203a;
+  --text-muted: #566178;
+  --text-dim: #7a8598;
+  --accent: #2f6bdb; /* darkened to hold contrast on paper-white */
+  --accent-hover: #255bc4;
+  --positive: #12a45f;
+  --warning: #c07f22;
+  --negative: #d23b3b;
 }
 
 @theme inline {
@@ -45,14 +88,18 @@
   --color-border: var(--border);
   --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-positive: var(--positive);
+  --color-warning: var(--warning);
   --color-negative: var(--negative);
 
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
 }
 
 body {
