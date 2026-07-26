@@ -48,7 +48,6 @@ interface NodeRec {
   haloMat: THREE.MeshBasicMaterial;
   outer: THREE.Mesh;
   outerMat: THREE.MeshBasicMaterial;
-  home: THREE.Vector3;
   label: HTMLDivElement;
   hover: number;
   depth: number;
@@ -190,7 +189,6 @@ export function RouteMap({
 
       return {
         d, core, coreMat, halo, haloMat, outer, outerMat,
-        home: core.position.clone(),
         label: label(d.name, "idle"),
         hover: 0, depth: 1, lx: 0, ly: 0, lw: 0, lh: 0, labelOpacity: undefined,
       };
@@ -342,12 +340,6 @@ export function RouteMap({
     };
     const onUp = () => {
       if (!drag) return;
-      // The grabbed node was lifted to the cursor; return it home before the
-      // endpoint (possibly) hands off to the drop-target node.
-      const origin = drag.which === "long" ? longRec : shortRec;
-      origin.core.position.copy(origin.home);
-      origin.halo.position.copy(origin.home);
-      origin.outer.position.copy(origin.home);
       if (dragCandidate) {
         if (drag.which === "long") longRec = dragCandidate;
         else shortRec = dragCandidate;
@@ -402,15 +394,6 @@ export function RouteMap({
       if (drag && dragPos && dragTarget) {
         dragPos.lerp(dragTarget, 0.22);
         curveDirty = true;
-      }
-
-      // carry the whole grabbed endpoint together: lift its node (sphere + rings)
-      // to the dragged position so node + name + badge + arc move as one unit.
-      const draggedRec = drag ? (drag.which === "long" ? longRec : shortRec) : null;
-      if (draggedRec && dragPos) {
-        draggedRec.core.position.copy(dragPos);
-        draggedRec.halo.position.copy(dragPos);
-        draggedRec.outer.position.copy(dragPos);
       }
 
       // rebuild the arc when an endpoint moved
@@ -504,11 +487,6 @@ export function RouteMap({
       nodes.forEach((n) => {
         if (n === longRec || n === shortRec) {
           n.label.style.opacity = "1";
-          return;
-        }
-        // hide the snap-target's own name while the grabbed endpoint sits on it
-        if (n === dragCandidate) {
-          n.label.style.opacity = "0";
           return;
         }
         const r = { x: n.lx, y: n.ly, w: n.lw, h: n.lh };
