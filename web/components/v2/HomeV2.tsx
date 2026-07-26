@@ -506,11 +506,19 @@ function Compares() {
     },
     {
       title: tr(locale, "Reward mechanics", "Механики наград"),
-      body: tr(locale, "Tiers, referral boosts and what each protocol counts.", "Тиры, реферальные бусты и что учитывает каждый протокол."),
+      body: tr(
+        locale,
+        "Everything that shapes how many points a protocol pays you, so you can see what actually moves the number.",
+        "Всё, что определяет, сколько поинтов начисляет протокол — чтобы видеть, что реально влияет на их количество.",
+      ),
     },
     {
-      title: tr(locale, "Active competitions", "Активные соревнования"),
-      body: tr(locale, "Extra weight on eligible markets while a contest runs.", "Доп. вес на подходящих рынках, пока идёт конкурс."),
+      title: tr(locale, "Activity", "Активность"),
+      body: tr(
+        locale,
+        "Any activity that grows your points or makes them cheaper — not only contests.",
+        "Любая активность, которая увеличит ваши поинты или сделает их дешевле — не только соревнования.",
+      ),
     },
   ];
   return (
@@ -557,9 +565,6 @@ function InlineFooter() {
             "Оценки по публичным данным · Не финансовый совет",
           )}
         </div>
-      </div>
-      <div className="font-mono-num text-[12px] text-text-dim">
-        {tr(locale, "data refreshed hourly", "данные обновляются ежечасно")}
       </div>
     </div>
   );
