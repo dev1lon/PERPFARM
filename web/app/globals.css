@@ -60,6 +60,7 @@
   --positive: #35d399;
   --warning: #f0b45a;
   --negative: #e5645f;
+  --v2-pulse: #dbe7ff; /* bright highlight dot (route pulse / diagram apex) */
 }
 :root[data-theme="light"] .pf-v2 {
   --bg: #f4f6fb;
@@ -75,6 +76,7 @@
   --positive: #12a45f;
   --warning: #c07f22;
   --negative: #d23b3b;
+  --v2-pulse: #2f6bdb; /* on paper-white the bright dot becomes the accent so it stays visible */
 }
 
 @theme inline {

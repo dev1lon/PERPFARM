@@ -246,7 +246,7 @@ const StepDiagram3 = () => (
     <path d="M14 23 C 52 23, 52 6, 90 6 S 122 23, 134 23" fill="none" strokeWidth="1.6" style={{ stroke: "var(--accent)" }} />
     <circle cx="14" cy="23" r="5" style={accent} />
     <circle cx="134" cy="23" r="5" style={accent} />
-    <circle cx="90" cy="6" r="3" style={{ fill: "var(--accent)", opacity: 0.7 }} />
+    <circle cx="90" cy="6" r="3" style={{ fill: "var(--v2-pulse)" }} />
   </svg>
 );
 
@@ -539,7 +539,6 @@ function Compares() {
 
 function InlineFooter() {
   const locale = useLocale();
-  const link = "pf-transition text-[13px] text-text-muted hover:text-text-primary";
   return (
     <div className="mt-[76px] flex flex-col items-start justify-between gap-4 border-t border-border pb-16 pt-7 sm:flex-row sm:items-center">
       <div className="flex items-center gap-2.5">
@@ -552,16 +551,8 @@ function InlineFooter() {
           )}
         </div>
       </div>
-      <div className="flex items-center gap-6">
-        <Link href="/methodology" className={link}>
-          {tr(locale, "Methodology", "Методология")}
-        </Link>
-        <a href="https://x.com/devilonnn" target="_blank" rel="noreferrer" className={link}>
-          Twitter
-        </a>
-        <div className="font-mono-num text-[12px] text-text-dim">
-          {tr(locale, "data refreshed hourly", "данные обновляются ежечасно")}
-        </div>
+      <div className="font-mono-num text-[12px] text-text-dim">
+        {tr(locale, "data refreshed hourly", "данные обновляются ежечасно")}
       </div>
     </div>
   );
