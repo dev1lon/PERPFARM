@@ -16,7 +16,11 @@ import * as THREE from "three";
 
 const ACCENT = 0x4d8dff;
 const IDLE = 0x64708a;
-const SNAP_PX = 58; // magnet radius when dragging an endpoint onto a node
+const LONG_COLOR = 0x35d399; // green — LONG leg (design "positive")
+const SHORT_COLOR = 0xe5645f; // red — SHORT leg (design "negative")
+const SNAP_PX = 62; // magnet radius when dragging an endpoint onto a node
+const TUBULAR = 80; // tube segments (down from 120 — rebuilt every drag frame)
+const RADIAL = 8;
 
 type NodeData = { name: string; p: [number, number, number]; role?: "long" | "short"; slug?: string };
 
@@ -193,9 +197,30 @@ export function RouteMap({
     let longRec = nodes.find((n) => n.d.role === "long") ?? nodes[0];
     let shortRec = nodes.find((n) => n.d.role === "short") ?? nodes[1];
 
+    // GREEN (LONG) -> RED (SHORT) gradient along the tube. Vertex count is
+    // constant for fixed segments, so the colour array is computed ONCE and
+    // reused on every rebuild (no per-frame recompute during a drag).
+    const vertsPerRing = RADIAL + 1;
+    const ringCount = TUBULAR + 1;
+    const gradArray = new Float32Array(ringCount * vertsPerRing * 3);
+    {
+      const ca = new THREE.Color(LONG_COLOR);
+      const cb = new THREE.Color(SHORT_COLOR);
+      const tmp = new THREE.Color();
+      for (let ring = 0; ring < ringCount; ring++) {
+        tmp.copy(ca).lerp(cb, ring / TUBULAR);
+        for (let j = 0; j < vertsPerRing; j++) {
+          const idx = (ring * vertsPerRing + j) * 3;
+          gradArray[idx] = tmp.r;
+          gradArray[idx + 1] = tmp.g;
+          gradArray[idx + 2] = tmp.b;
+        }
+      }
+    }
+
     // route curve (tube + additive glow), rebuilt on endpoint / drag change.
-    const tubeMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.95 });
-    const glowMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.11, blending: THREE.AdditiveBlending, depthWrite: false });
+    const tubeMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 });
+    const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false });
     const tube = new THREE.Mesh(new THREE.BufferGeometry(), tubeMat);
     const glow = new THREE.Mesh(new THREE.BufferGeometry(), glowMat);
     group.add(tube);
@@ -212,9 +237,13 @@ export function RouteMap({
         pb.clone(),
       );
       tube.geometry.dispose();
-      tube.geometry = new THREE.TubeGeometry(curve, 120, 0.014, 10, false);
+      const g1 = new THREE.TubeGeometry(curve, TUBULAR, 0.016, RADIAL, false);
+      g1.setAttribute("color", new THREE.BufferAttribute(gradArray, 3));
+      tube.geometry = g1;
       glow.geometry.dispose();
-      glow.geometry = new THREE.TubeGeometry(curve, 120, 0.055, 10, false);
+      const g2 = new THREE.TubeGeometry(curve, TUBULAR, 0.055, RADIAL, false);
+      g2.setAttribute("color", new THREE.BufferAttribute(gradArray, 3));
+      glow.geometry = g2;
     }
 
     const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshBasicMaterial({ color: 0xbcd6ff }));
@@ -222,13 +251,17 @@ export function RouteMap({
 
     const longBadge = label("LONG", "side");
     const shortBadge = label("SHORT", "side");
+    Object.assign(longBadge.style, { color: "#7ff0c6", borderColor: "rgba(53,211,153,0.5)" });
+    Object.assign(shortBadge.style, { color: "#f5a3a0", borderColor: "rgba(229,100,95,0.5)" });
     const midLabel = result ? label(pair, "pair") : null;
 
     // ---- interaction (network only) ----
+    const coreList = nodes.map((n) => n.core); // reused for the hover raycast
     const ray = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-10, -10);
     let drag: { which: "long" | "short"; ndcZ: number } | null = null;
-    let dragPos: THREE.Vector3 | null = null;
+    let dragPos: THREE.Vector3 | null = null; // eased current position of the dragged end
+    let dragTarget: THREE.Vector3 | null = null; // where it's heading (cursor or snapped node)
     let dragCandidate: NodeRec | null = null;
 
     function ndc(e: PointerEvent | MouseEvent) {
@@ -260,12 +293,11 @@ export function RouteMap({
       }
       if (best && bestD < SNAP_PX) {
         dragCandidate = best;
-        dragPos = best.core.position.clone();
+        dragTarget = best.core.position.clone();
       } else {
         dragCandidate = null;
-        dragPos = new THREE.Vector3(c.x, c.y, drag.ndcZ).unproject(camera);
+        dragTarget = new THREE.Vector3(c.x, c.y, drag.ndcZ).unproject(camera);
       }
-      curveDirty = true;
     };
     const onLeave = () => pointer.set(-10, -10);
     const onDown = (e: PointerEvent) => {
@@ -278,6 +310,7 @@ export function RouteMap({
       const rec = which === "long" ? longRec : shortRec;
       drag = { which, ndcZ: rec.core.position.clone().project(camera).z };
       dragPos = rec.core.position.clone();
+      dragTarget = rec.core.position.clone();
       dragCandidate = null;
       try {
         host!.setPointerCapture(e.pointerId);
@@ -294,6 +327,7 @@ export function RouteMap({
       }
       drag = null;
       dragPos = null;
+      dragTarget = null;
       dragCandidate = null;
       curveDirty = true;
     };
@@ -337,6 +371,12 @@ export function RouteMap({
       }
       camera.lookAt(0, result ? 0.12 : 0.05, 0);
 
+      // ease the dragged endpoint toward its target (smooth follow, gentle magnet)
+      if (drag && dragPos && dragTarget) {
+        dragPos.lerp(dragTarget, 0.22);
+        curveDirty = true;
+      }
+
       // rebuild the arc when an endpoint moved
       if (curveDirty) {
         const lp = drag && drag.which === "long" && dragPos ? dragPos : longRec.core.position;
@@ -347,19 +387,21 @@ export function RouteMap({
 
       // hover (for cursor affordance on endpoints)
       ray.setFromCamera(pointer, camera);
-      const hit = ray.intersectObjects(nodes.map((n) => n.core))[0];
+      const hit = ray.intersectObjects(coreList)[0];
       const hovered = hit ? (hit.object as THREE.Mesh) : null;
       const hoveredEnd = hovered === longRec.core || hovered === shortRec.core;
       host!.style.cursor = drag ? "grabbing" : hoveredEnd ? "grab" : "";
 
       nodes.forEach((n) => {
         const active = n === longRec || n === shortRec;
+        const col = n === longRec ? LONG_COLOR : n === shortRec ? SHORT_COLOR : IDLE;
         const isHover = n.core === hovered;
         n.hover += ((isHover ? 1 : 0) - n.hover) * 0.14;
         const pv = REDUCED ? 0 : Math.sin(t * 1.4 + n.core.position.x * 2) * 0.5 + 0.5;
 
-        n.coreMat.color.setHex(active ? ACCENT : IDLE);
-        n.haloMat.color.setHex(active ? ACCENT : IDLE);
+        n.coreMat.color.setHex(col);
+        n.haloMat.color.setHex(col);
+        n.outerMat.color.setHex(col);
         n.core.scale.setScalar(active ? 1.5 : 0.9);
         n.halo.scale.setScalar(active ? 1.22 : 0.85);
         n.halo.quaternion.copy(camera.quaternion);
