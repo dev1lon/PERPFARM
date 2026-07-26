@@ -36,24 +36,24 @@ export function tr(locale: Locale, en: string, ru: string): string {
   return locale === "ru" ? ru : en;
 }
 
+/** Set the active language (persisted + broadcast to all useLocale readers). */
+export function setLocale(next: Locale) {
+  document.documentElement.dataset.locale = next;
+  try {
+    localStorage.setItem("pf-locale", next);
+  } catch {
+    /* private mode / storage disabled -- language just won't persist */
+  }
+  window.dispatchEvent(new Event(LOCALE_EVENT));
+}
+
 export function LocaleToggle() {
   const locale = useLocale();
-
-  function toggle() {
-    const next: Locale = locale === "en" ? "ru" : "en";
-    document.documentElement.dataset.locale = next;
-    try {
-      localStorage.setItem("pf-locale", next);
-    } catch {
-      /* private mode / storage disabled -- language just won't persist */
-    }
-    window.dispatchEvent(new Event(LOCALE_EVENT));
-  }
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={() => setLocale(locale === "en" ? "ru" : "en")}
       aria-label={locale === "en" ? "Switch language to Russian" : "Переключить язык на английский"}
       title={locale === "en" ? "Русский" : "English"}
       className="pf-transition rounded-md px-2 py-1.5 text-xs font-semibold text-text-muted hover:bg-surface-2 hover:text-text-primary"

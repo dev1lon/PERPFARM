@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
 
 /** Inline script placed in <body> (see app/layout.tsx) BEFORE any content, so
  * the stored theme is applied before first paint -- no light/dark flash. */
@@ -26,18 +26,27 @@ function getServerSnapshot(): Theme {
   return "dark";
 }
 
+/** Read the active theme (server snapshot "dark" during hydration). */
+export function useTheme(): Theme {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/** Set the active theme (persisted + broadcast to all useTheme readers). */
+export function setTheme(next: Theme) {
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem("pf-theme", next);
+  } catch {
+    /* private mode / storage disabled -- theme just won't persist */
+  }
+  window.dispatchEvent(new Event(THEME_EVENT));
+}
+
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const theme = useTheme();
 
   function toggle() {
-    const next: Theme = theme === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("pf-theme", next);
-    } catch {
-      /* private mode / storage disabled -- theme just won't persist */
-    }
-    window.dispatchEvent(new Event(THEME_EVENT));
+    setTheme(theme === "light" ? "dark" : "light");
   }
 
   return (

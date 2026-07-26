@@ -6,8 +6,8 @@ import { useState } from "react";
 import { brandAssets } from "@/lib/brand";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
 import { RouteMap } from "@/components/v2/RouteMap";
-import { LocaleToggle, tr, useLocale, type Locale } from "@/components/LocaleProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
+import { LocaleSwitch, ThemeSwitch } from "@/components/v2/HeaderToggles";
 import {
   TIER_S,
   EARLY,
@@ -120,9 +120,9 @@ function Header() {
           <Link href="/methodology" className={`hidden sm:inline ${link}`}>
             {tr(locale, "Methodology", "Методология")}
           </Link>
-          <div className="flex items-center gap-1">
-            <LocaleToggle />
-            <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LocaleSwitch />
+            <ThemeSwitch />
           </div>
         </div>
       </div>
