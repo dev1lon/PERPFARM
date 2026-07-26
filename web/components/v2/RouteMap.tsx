@@ -19,6 +19,7 @@ const IDLE = 0x64708a;
 const LONG_COLOR = 0x35d399; // green — LONG leg (design "positive")
 const SHORT_COLOR = 0xe5645f; // red — SHORT leg (design "negative")
 const SNAP_PX = 62; // magnet radius when dragging an endpoint onto a node
+const GRAB_PX = 46; // forgiving screen radius for grabbing an endpoint
 const TUBULAR = 80; // tube segments (down from 120 — rebuilt every drag frame)
 const RADIAL = 8;
 
@@ -259,6 +260,24 @@ export function RouteMap({
     const coreList = nodes.map((n) => n.core); // reused for the hover raycast
     const ray = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-10, -10);
+    const pointerPx = { x: -1, y: -1 };
+
+    // Screen-space endpoint pick: grabbing uses a generous pixel radius (the
+    // core spheres are tiny, so a raw raycast felt like you had to "peel" them
+    // off). Returns the nearest endpoint within GRAB_PX, else null.
+    function endpointHit(px: number, py: number, w: number, h: number): "long" | "short" | null {
+      let which: "long" | "short" | null = null;
+      let bestD = GRAB_PX;
+      for (const cand of [["long", longRec] as const, ["short", shortRec] as const]) {
+        const pp = cand[1].core.position.clone().project(camera);
+        const d = Math.hypot((pp.x * 0.5 + 0.5) * w - px, (-pp.y * 0.5 + 0.5) * h - py);
+        if (d < bestD) {
+          bestD = d;
+          which = cand[0];
+        }
+      }
+      return which;
+    }
     let drag: { which: "long" | "short"; ndcZ: number } | null = null;
     let dragPos: THREE.Vector3 | null = null; // eased current position of the dragged end
     let dragTarget: THREE.Vector3 | null = null; // where it's heading (cursor or snapped node)
@@ -272,6 +291,8 @@ export function RouteMap({
     const onMove = (e: PointerEvent) => {
       const c = ndc(e);
       pointer.set(c.x, c.y);
+      pointerPx.x = e.clientX - c.r.left;
+      pointerPx.y = e.clientY - c.r.top;
       if (!drag) return;
       const w = host!.clientWidth;
       const h = host!.clientHeight;
@@ -303,10 +324,8 @@ export function RouteMap({
     const onDown = (e: PointerEvent) => {
       if (result) return;
       const c = ndc(e);
-      ray.setFromCamera(new THREE.Vector2(c.x, c.y), camera);
-      const hit = ray.intersectObjects([longRec.core, shortRec.core])[0];
-      if (!hit) return;
-      const which = hit.object === longRec.core ? "long" : "short";
+      const which = endpointHit(e.clientX - c.r.left, e.clientY - c.r.top, host!.clientWidth, host!.clientHeight);
+      if (!which) return;
       const rec = which === "long" ? longRec : shortRec;
       drag = { which, ndcZ: rec.core.position.clone().project(camera).z };
       dragPos = rec.core.position.clone();
@@ -389,8 +408,8 @@ export function RouteMap({
       ray.setFromCamera(pointer, camera);
       const hit = ray.intersectObjects(coreList)[0];
       const hovered = hit ? (hit.object as THREE.Mesh) : null;
-      const hoveredEnd = hovered === longRec.core || hovered === shortRec.core;
-      host!.style.cursor = drag ? "grabbing" : hoveredEnd ? "grab" : "";
+      const nearEnd = endpointHit(pointerPx.x, pointerPx.y, w, h);
+      host!.style.cursor = drag ? "grabbing" : nearEnd ? "grab" : "";
 
       nodes.forEach((n) => {
         const active = n === longRec || n === shortRec;
