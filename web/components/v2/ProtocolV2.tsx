@@ -137,8 +137,8 @@ function AwardsPanel() {
         <div className="max-w-[640px] text-[24px] font-semibold leading-[1.42] tracking-[-0.015em] text-text-primary">
           {tr(
             locale,
-            "Keep exposure in medium-OI markets first. Eligible volume is the secondary driver.",
-            "В первую очередь держите позицию в рынках со средним OI. Eligible-объём — вторичный фактор.",
+            "Keep exposure in medium-OI markets first. Volume is only the secondary driver.",
+            "В первую очередь держите позицию в рынках со средним OI. Объём — лишь вторичный фактор.",
           )}
         </div>
         <div className="max-w-[620px] text-[15px] leading-[1.65] text-text-muted">
@@ -158,7 +158,7 @@ function AwardsPanel() {
       </div>
       <div className="flex flex-col gap-2.5">
         {priority("PRIORITY 1", "1", tr(locale, "Medium OI, 12–24h hold", "Средний OI, удержание 12–24 ч"), tr(locale, "Hold a hedged position in a medium-depth market for at least half a day.", "Держите хеджированную позицию в рынке средней глубины минимум полдня."))}
-        {priority("PRIORITY 2", "2", tr(locale, "Eligible volume", "Eligible-объём"), tr(locale, "Turnover counts, but only on markets the season marks as eligible.", "Оборот считается, но только на рынках, отмеченных сезоном как eligible."))}
+        {priority("PRIORITY 2", "2", tr(locale, "Organic volume", "Органичный объём"), tr(locale, "Volume counts on every market and is only the secondary driver — there's no point stacking huge turnover, just trade organically.", "Объём считается на всех рынках и это лишь вторичный фактор — нет смысла набивать большой оборот, торгуйте органично."))}
       </div>
     </div>
   );
@@ -222,7 +222,7 @@ function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) 
         {card(
           "txflow",
           "Variational × TxFlow",
-          tr(locale, "Early RWA thesis: the hedge sits on a venue that has teased its own programme, so the short leg may earn a second reward later.", "Ранняя RWA-гипотеза: хедж на площадке, которая анонсировала свою программу, так что короткая нога может позже принести вторую награду."),
+          tr(locale, "Early perp-dex focused on RWA, like Variational. Potential retropoint farming.", "Ранний perp-dex с фокусом на RWA, как и Variational. Потенциальный фарм ретро-поинтов."),
           [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retropoints", "Фарм ретро-поинтов"), "neutral"]],
         )}
       </div>

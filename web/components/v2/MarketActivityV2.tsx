@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import {
   compactCount,
@@ -126,6 +126,8 @@ export function MarketActivityV2() {
 }
 
 function Chart({ series, fmt, locale }: { series: ActivityPoint[]; fmt: (v: number) => string; locale: "en" | "ru" }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [hi, setHi] = useState<number | null>(null);
   const n = series.length;
   const values = series.map((p) => p.value);
   const max = Math.max(...values) * 1.06;
@@ -136,28 +138,51 @@ function Chart({ series, fmt, locale }: { series: ActivityPoint[]; fmt: (v: numb
   const path = series.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(p.value).toFixed(1)}`).join(" ");
   const area = `${path} L1120 250 L0 250 Z`;
   const tickIdx = [0, Math.round((n - 1) * 0.25), Math.round((n - 1) * 0.5), Math.round((n - 1) * 0.75), n - 1];
+
+  const onMove = (e: MouseEvent<HTMLDivElement>) => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    setHi(Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) / r.width) * (n - 1)))));
+  };
+  const hx = hi !== null ? (X(hi) / 1120) * 100 : 0;
+  const hy = hi !== null ? (Y(series[hi].value) / 260) * 100 : 0;
+
   return (
     <>
-      <svg viewBox="0 0 1120 260" preserveAspectRatio="none" className="block h-[260px] w-full">
-        <defs>
-          <linearGradient id="pfActivityArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[10, 72, 134, 196].map((y) => (
-          <line key={y} x1="0" y1={y} x2="1120" y2={y} stroke="var(--border)" strokeWidth="1" />
-        ))}
-        <line x1="0" y1="252" x2="1120" y2="252" stroke="var(--border)" strokeWidth="1.5" />
-        <path d={area} fill="url(#pfActivityArea)" />
-        <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
+      <div ref={ref} className="relative h-[260px]" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
+        <svg viewBox="0 0 1120 260" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <defs>
+            <linearGradient id="pfActivityArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[10, 72, 134, 196].map((y) => (
+            <line key={y} x1="0" y1={y} x2="1120" y2={y} stroke="var(--border)" strokeWidth="1" />
+          ))}
+          <line x1="0" y1="252" x2="1120" y2="252" stroke="var(--border)" strokeWidth="1.5" />
+          <path d={area} fill="url(#pfActivityArea)" />
+          <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {hi !== null && (
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute bottom-2 top-0 w-px bg-text-dim/50" style={{ left: `${hx}%` }} />
+            <div className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-bg" style={{ left: `${hx}%`, top: `${hy}%` }} />
+            <div
+              className="absolute -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-[12px] shadow-lg"
+              style={{ left: `${Math.min(86, Math.max(14, hx))}%`, top: `${hy}%`, transform: "translate(-50%, calc(-100% - 12px))" }}
+            >
+              <span className="text-text-muted">{dayLabel(series[hi].date, locale)}</span>{" "}
+              <span className="font-mono-num text-text-primary">{fmt(series[hi].value)}</span>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="flex justify-between pt-2.5">
         {tickIdx.map((i, k) => (
           <div key={k} className="font-mono-num text-[11px] text-text-dim">{dayLabel(series[i].date, locale)}</div>
         ))}
       </div>
-      <div className="pt-1 text-right font-mono-num text-[11px] text-text-dim">{fmt(values[values.length - 1])}</div>
     </>
   );
 }
