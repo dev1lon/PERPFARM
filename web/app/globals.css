@@ -162,10 +162,39 @@ body {
   animation: pf-value-pulse 300ms ease;
 }
 
+/* Redesign result-panel motion: the summary rises in, and a scan bar sweeps
+   under the header while a Run is computing (see components/v2). */
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pf-rise {
+  animation: pf-rise 420ms ease both;
+}
+@keyframes pf-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+.pf-scan {
+  animation: pf-scan 900ms linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pf-transition,
   .pf-skeleton,
-  .pf-value-pulse {
+  .pf-value-pulse,
+  .pf-rise,
+  .pf-scan {
     transition: none !important;
     animation: none !important;
   }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
-import { VenueWizard } from "@/components/VenueWizard";
+import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { VariationalMarketActivity } from "@/components/VariationalMarketActivity";
 import type { VenueSummary } from "@/lib/types";
 
@@ -360,17 +360,9 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
         <Hero />
         <AwardsPanel />
 
-        {/* Live calculator + result + 10-pairs table. Temporarily the existing
-            VenueWizard (adopts the v2 palette); native design reskin is next. */}
-        <div className="mt-10">
-          <VenueWizard
-            venueSlug="variational"
-            venueName="Variational"
-            otherVenues={otherVenues}
-            layout="sidebar-wide"
-            allowCustomAccountVolume
-          />
-        </div>
+        {/* Live calculator + recommended route + 10-pairs table (native, wired
+            to the same pair-rankings / cross-rankings APIs). */}
+        <ProtocolCalculatorV2 otherVenues={otherVenues} />
 
         <HedgeRecommendations otherVenues={otherVenues} />
         <ActivityAndDistribution />
