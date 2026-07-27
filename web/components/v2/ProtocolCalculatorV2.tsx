@@ -442,8 +442,8 @@ function SameVenueResult({
               <div>
                 {tr(
                   locale,
-                  `Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}.`,
-                  `Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}.`,
+                  `24h estimated range: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}.`,
+                  `Диапазон оценки за 24ч: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}.`,
                 )}
               </div>
               <div className="mt-2">
