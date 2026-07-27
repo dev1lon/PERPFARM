@@ -403,15 +403,14 @@ function SameVenueResult({
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-4">
               {[
                 [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(best.cycleCostUsd), "text-positive"],
-                [tr(locale, "Hold", "Удержание"), "12–24h", "text-text-primary"],
-              ].map(([k, v, cls], index) => (
-                <div key={k} className={`flex flex-col gap-1.5 ${index === 4 ? "lg:pl-5" : ""}`}>
+              ].map(([k, v, cls]) => (
+                <div key={k} className="flex flex-col gap-1.5">
                   <div className="whitespace-nowrap text-[11px] text-text-muted">{k}</div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
                 </div>
