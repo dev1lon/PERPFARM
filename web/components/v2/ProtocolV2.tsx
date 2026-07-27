@@ -188,11 +188,11 @@ function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) 
         <div className="text-[16px] font-semibold text-text-primary">{title}</div>
       </div>
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2">
         {tags.map(([t, tone]) => (
           <span
             key={t}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
               tone === "ok"
                 ? "border-positive/30 bg-positive/10 text-positive"
                 : tone === "warn"
@@ -223,7 +223,7 @@ function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) 
           "txflow",
           "Variational × TxFlow",
           tr(locale, "Early RWA thesis: the hedge sits on a venue that has teased its own programme, so the short leg may earn a second reward later.", "Ранняя RWA-гипотеза: хедж на площадке, которая анонсировала свою программу, так что короткая нога может позже принести вторую награду."),
-          [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Possible second airdrop", "Возможен второй эйрдроп"), "neutral"]],
+          [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retropoints", "Фарм ретро-поинтов"), "neutral"]],
         )}
       </div>
     </div>

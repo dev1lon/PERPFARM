@@ -161,9 +161,14 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
 
   const runLabel = status === "running" ? tr(locale, "Running…", "Считаем…") : status === "loaded" ? tr(locale, "Run again", "Ещё раз") : tr(locale, "Run", "Рассчитать");
   const field = "flex flex-col gap-2.5";
-  const flatPairs = data ? [...data.bands.flatMap((b) => b.pairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd) : [];
-  const top = flatPairs.slice(0, 10);
-  const best = top[0];
+  const flatPairs = data ? data.bands.flatMap((b) => b.pairs) : [];
+  const top = [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
+  // Recommended = cheapest MEDIUM-OI pair (Priority 1 driver), NOT the global
+  // cheapest: high-OI majors are cheap to trade but not the best points target.
+  const byOi = [...flatPairs].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
+  const third = Math.max(1, Math.ceil(byOi.length / 3));
+  const medium = byOi.slice(third, third * 2);
+  const best = [...medium].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0] ?? top[0];
 
   return (
     <div className="mt-10">
@@ -225,16 +230,11 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
                 className="flex items-center gap-2.5"
               >
                 <span className={`pf-transition relative inline-flex h-5 w-9 shrink-0 items-center rounded-full ${tradfiOnly ? "bg-accent" : "border border-border bg-surface-2"}`}>
-                  <span className={`pf-transition inline-block h-4 w-4 rounded-full bg-white ${tradfiOnly ? "translate-x-4" : "translate-x-0.5"}`} />
+                  <span className={`pf-transition inline-block h-4 w-4 rounded-full bg-white ${tradfiOnly ? "translate-x-[18px]" : "translate-x-0.5"}`} />
                 </span>
                 <span className="text-[13px] text-text-muted">{tr(locale, "Only TradFi", "Только TradFi")}</span>
               </button>
             )}
-          </div>
-          <div className="font-mono-num text-[12px] text-text-dim">
-            {status === "loaded" && data
-              ? tr(locale, `${flatPairs.length} pairs scanned`, `просканировано пар: ${flatPairs.length}`)
-              : tr(locale, "PerpFarm always returns the cheapest route", "PerpFarm всегда выдаёт самый дешёвый маршрут")}
           </div>
         </div>
       </div>
@@ -324,7 +324,6 @@ function SameVenueResult({
               </span>
             )}
           </div>
-          <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, `cheapest of ${top.length} markets`, `дешевле всех из ${top.length}`)}</div>
         </div>
         <div className="grid lg:grid-cols-[1fr_400px]">
           <div className="px-6 py-6">
@@ -355,13 +354,20 @@ function SameVenueResult({
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Estimated cycle cost", "Оценка стоимости цикла"), formatUsd(best.cycleCostUsd), "text-positive"],
-                [tr(locale, "Hold", "Удержание"), `${data.holdHours}h`, "text-text-primary"],
+                [tr(locale, "Hold", "Удержание"), "12–24h", "text-text-primary"],
               ].map(([k, v, cls]) => (
                 <div key={k} className="flex flex-col gap-1.5">
                   <div className="text-[11px] text-text-muted">{k}</div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
+              {tr(
+                locale,
+                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
+                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
+              )}
             </div>
           </div>
           <div className="border-t border-border lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
@@ -409,7 +415,7 @@ function SameVenueResult({
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                       {p.competitionEligible && (
-                        <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CUP</span>
+                        <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                       )}
                     </div>
                     <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
@@ -428,6 +434,14 @@ function SameVenueResult({
                   </button>
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
+                      {p.competitionEligible && (
+                        <div className="pb-3">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                            <span className="h-[5px] w-[5px] rounded-full bg-positive" />
+                            {tr(locale, "Competition eligible", "Eligible для конкурса")}
+                          </span>
+                        </div>
+                      )}
                       <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Example hedge sequence", "Пример последовательности хеджа")} · {p.pair}</div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="rounded-xl bg-surface-1 p-4 text-[13px] text-text-muted">
