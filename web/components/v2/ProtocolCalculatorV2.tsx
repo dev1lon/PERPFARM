@@ -420,15 +420,21 @@ function SameVenueResult({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-4">
-              {[
+              {([
                 [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(best.cycleCostUsd), "text-positive"],
-              ].map(([k, v, cls]) => (
+                [
+                  tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"),
+                  formatUsd(best.cycleCostUsd),
+                  "text-positive",
+                  tr(locale, `Range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                ],
+              ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
                   <div className="whitespace-nowrap text-[11px] text-text-muted">{k}</div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
+                  {detail && <div className="font-mono-num text-[11px] text-text-muted">{detail}</div>}
                 </div>
               ))}
             </div>
@@ -436,8 +442,8 @@ function SameVenueResult({
               <div>
                 {tr(
                   locale,
-                  `24h estimated range: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}.`,
-                  `Диапазон оценки за 24ч: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}.`,
+                  `Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}.`,
+                  `Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}.`,
                 )}
               </div>
               <div className="mt-2">
