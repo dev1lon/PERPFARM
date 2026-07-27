@@ -147,8 +147,8 @@ export function RouteMap({
 
     const data: NodeData[] = result
       ? [
-          { name: longLabel, p: [-1.18, 0.05, 0.25], role: "long" },
-          { name: shortLabel, p: [1.72, -0.05, -0.25], role: "short" },
+          { name: longLabel, p: [-1.45, 0.05, 0.25], role: "long" },
+          { name: shortLabel, p: [1.45, -0.05, -0.25], role: "short" },
         ]
       : NETWORK;
 
@@ -237,17 +237,12 @@ export function RouteMap({
         pa.clone().lerp(pb, 0.7).add(new THREE.Vector3(0, lift * 0.72, result ? 0.5 : 0.9)),
         pb.clone(),
       );
-      // Trim the tube ends so the line stops at the node's edge instead of
-      // running under the sphere/halo (pulse still uses the full `curve`).
-      const trimPts: THREE.Vector3[] = [];
-      for (let i = 0; i <= 64; i++) trimPts.push(curve.getPoint(0.07 + 0.86 * (i / 64)));
-      const tubeCurve = new THREE.CatmullRomCurve3(trimPts);
       tube.geometry.dispose();
-      const g1 = new THREE.TubeGeometry(tubeCurve, TUBULAR, 0.016, RADIAL, false);
+      const g1 = new THREE.TubeGeometry(curve, TUBULAR, 0.016, RADIAL, false);
       g1.setAttribute("color", new THREE.BufferAttribute(gradArray, 3));
       tube.geometry = g1;
       glow.geometry.dispose();
-      const g2 = new THREE.TubeGeometry(tubeCurve, TUBULAR, 0.055, RADIAL, false);
+      const g2 = new THREE.TubeGeometry(curve, TUBULAR, 0.055, RADIAL, false);
       g2.setAttribute("color", new THREE.BufferAttribute(gradArray, 3));
       glow.geometry = g2;
     }
