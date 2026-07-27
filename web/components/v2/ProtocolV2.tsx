@@ -182,13 +182,13 @@ function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) 
   const nameOf = (slug: string) =>
     slug === "variational" ? "Variational" : otherVenues.find((v) => v.slug === slug)?.name ?? slug;
   const card = (slug: string, title: string, body: string, tags: [string, "ok" | "warn" | "neutral"][]) => (
-    <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
         <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
         <div className="text-[16px] font-semibold text-text-primary">{title}</div>
       </div>
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
-      <div className="flex gap-2">
+      <div className="mt-auto flex gap-2">
         {tags.map(([t, tone]) => (
           <span
             key={t}
