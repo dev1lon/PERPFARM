@@ -408,7 +408,6 @@ function SameVenueResult({
             {top.map((p, i) => {
               const o = orders(p.firstLimitSide);
               const open = expanded === p.pair;
-              const limitLongFirst = p.firstLimitSide === "long";
               return (
                 <div key={p.pair} className="border-b border-border last:border-b-0">
                   <button
@@ -486,21 +485,14 @@ function SameVenueResult({
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                         {(
                           [
-                            [tr(locale, "LONG entry", "LONG вход"), limitLongFirst ? "LIMIT" : "MARKET", limitLongFirst ? 0 : p.cycleCostUsd / 2],
-                            [tr(locale, "LONG exit", "LONG выход"), limitLongFirst ? "MARKET" : "LIMIT", limitLongFirst ? p.cycleCostUsd / 2 : 0],
-                            [tr(locale, "SHORT entry", "SHORT вход"), limitLongFirst ? "MARKET" : "LIMIT", limitLongFirst ? p.cycleCostUsd / 2 : 0],
-                            [tr(locale, "SHORT exit", "SHORT выход"), limitLongFirst ? "LIMIT" : "MARKET", limitLongFirst ? 0 : p.cycleCostUsd / 2],
-                            [tr(locale, "Spread", "Спред"), "", p.spreadCostUsd],
-                            [tr(locale, "Slippage", "Проскальзывание"), "", p.slippageCostUsd],
-                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), "", 0],
-                            [tr(locale, "Fees", "Комиссии"), "", 0],
-                          ] as [string, string, number][]
-                        ).map(([k, t, v]) => (
+                            [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
+                            [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
+                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), 0],
+                            [tr(locale, "Fees", "Комиссии"), 0],
+                          ] as [string, number][]
+                        ).map(([k, v]) => (
                           <div key={k} className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5">
-                            <span className="flex items-baseline gap-1.5">
-                              <span className="text-[12px] text-text-muted">{k}</span>
-                              {t && <span className="font-mono-num text-[10px] text-text-dim">{t}</span>}
-                            </span>
+                            <span className="text-[12px] text-text-muted">{k}</span>
                             <span className="font-mono-num text-[13px] text-text-primary">{formatUsd(v)}</span>
                           </div>
                         ))}
@@ -508,7 +500,6 @@ function SameVenueResult({
                       <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3.5 text-[13px] text-text-muted">
                         <span>{tr(locale, "Full cost per account", "Полная стоимость на аккаунт")} <span className="font-mono-num text-text-primary">{formatUsd(p.cycleCostUsd / 2)}</span></span>
                         <span>{tr(locale, "Combined hedge-cycle cost", "Полная стоимость хедж-цикла")} <span className="font-mono-num text-positive">{formatUsd(p.cycleCostUsd)}</span></span>
-                        <span>{tr(locale, "Two MARKET legs pay; two LIMIT legs are free.", "Платят две MARKET-ноги; две LIMIT-ноги бесплатны.")}</span>
                       </div>
                     </div>
                   )}

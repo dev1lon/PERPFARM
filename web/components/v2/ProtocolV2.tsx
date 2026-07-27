@@ -144,8 +144,8 @@ function AwardsPanel() {
         <div className="max-w-[620px] text-[15px] leading-[1.65] text-text-muted">
           {tr(
             locale,
-            "Passive LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders — you are paid for providing liquidity instead of paying to take it.",
-            "Пассивные LIMIT-ордера дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера — вам платят за ликвидность, а не вы платите за её изъятие.",
+            "Passive LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders.",
+            "Пассивные LIMIT-ордера дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера.",
           )}
         </div>
         <div className="max-w-[620px] rounded-xl px-3.5 py-3 text-[13px] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
@@ -158,7 +158,7 @@ function AwardsPanel() {
       </div>
       <div className="flex flex-col gap-2.5">
         {priority("PRIORITY 1", "1", tr(locale, "Medium OI, 12–24h hold", "Средний OI, удержание 12–24 ч"), tr(locale, "Hold a hedged position in a medium-depth market for at least half a day.", "Держите хеджированную позицию в рынке средней глубины минимум полдня."))}
-        {priority("PRIORITY 2", "2", tr(locale, "Organic volume", "Органичный объём"), tr(locale, "Volume counts on every market and is only the secondary driver — there's no point stacking huge turnover, just trade organically.", "Объём считается на всех рынках и это лишь вторичный фактор — нет смысла набивать большой оборот, торгуйте органично."))}
+        {priority("PRIORITY 2", "2", tr(locale, "Eligible volume", "Eligible-объём"), tr(locale, "Volume counts on every market and is only the secondary driver — there's no point stacking huge turnover, just trade organically.", "Объём считается на всех рынках и это лишь вторичный фактор — нет смысла набивать большой оборот, торгуйте органично."))}
       </div>
     </div>
   );
@@ -243,10 +243,7 @@ function ActivityAndDistribution() {
       <H2>{tr(locale, "Protocol activity", "Активность протокола")}</H2>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* competition */}
-        <div
-          className="flex flex-col gap-4 rounded-[18px] border p-[22px]"
-          style={{ borderColor: "rgba(53,211,153,0.24)", background: "linear-gradient(150deg, color-mix(in srgb, var(--positive) 8%, transparent), var(--surface-1) 60%)" }}
-        >
+        <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
           <div className="flex items-start justify-between gap-4">
             <div className="flex flex-col gap-1.5">
               <div className="text-[17px] font-semibold text-text-primary">TradFi Trading Competition #5</div>

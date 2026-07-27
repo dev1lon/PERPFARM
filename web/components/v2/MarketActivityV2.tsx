@@ -121,9 +121,6 @@ export function MarketActivityV2() {
           <div className="flex h-[260px] items-center justify-center text-[14px] text-text-muted">{fmt(series[0].value)}</div>
         ))}
       </div>
-      <div className="pt-2.5 text-[12px] text-text-dim">
-        {tr(locale, "Only ranges backed by real data are offered. Longer windows unlock as the season runs.", "Показываются только диапазоны с реальными данными. Более длинные окна открываются по ходу сезона.")}
-      </div>
     </div>
   );
 }
