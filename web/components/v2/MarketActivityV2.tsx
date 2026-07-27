@@ -47,8 +47,11 @@ export function MarketActivityV2() {
 
   const latest = data ? (isUsers ? data.uniqueTraders?.latest ?? null : isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
   const fmt = isUsers ? (v: number) => compactCount(v, true) : compactUsd;
-  const rangeLabel = rangeDays === 30 ? tr(locale, "last 30 days", "последние 30 дней") : rangeDays === 90 ? tr(locale, "last 3 months", "последние 3 месяца") : tr(locale, "last 6 months", "последние 6 месяцев");
-  const caption = isUsers ? tr(locale, "protocol-wide, last 30 days", "по всему протоколу, 30 дней") : `${isVolume ? tr(locale, "traded volume", "торговый объём") : tr(locale, "open interest", "открытый интерес")} · ${rangeLabel}`;
+  const caption = isUsers
+    ? tr(locale, "active accounts · protocol-wide", "активные аккаунты · по протоколу")
+    : isVolume
+      ? tr(locale, "traded volume · last 24h", "объём торгов · за 24ч")
+      : tr(locale, "open interest · current", "открытый интерес · сейчас");
 
   const values = series.map((p) => p.value);
   const delta = values.length > 1 && values[0] > 0 ? ((values[values.length - 1] - values[0]) / values[0]) * 100 : null;
