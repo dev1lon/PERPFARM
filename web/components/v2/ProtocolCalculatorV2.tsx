@@ -439,20 +439,11 @@ function SameVenueResult({
               ))}
             </div>
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
-              <div>
-                {tr(
-                  locale,
-                  `24h estimated range: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}.`,
-                  `Диапазон оценки за 24ч: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}.`,
-                )}
-              </div>
-              <div className="mt-2">
-                {tr(
-                  locale,
-                  "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
-                  "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
-                )}
-              </div>
+              {tr(
+                locale,
+                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
+                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
+              )}
             </div>
           </div>
           <div className="border-t border-border lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
