@@ -12,6 +12,9 @@ const MAX_ACCOUNT_VOLUME_USD = 200_000;
 const MIN_VOLUME_USD = 1_000;
 // Below this many live pairs the three-way OI split is noise; show one list.
 const MIN_PAIRS_FOR_BANDS = 15;
+// Fixed OI bands (gross OI, i.e. the doubled value) — approved for Variational.
+const HIGH_OI_USD = 20_000_000;
+const MEDIUM_OI_USD = 3_000_000;
 const HOLD_HOURS = 24;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
@@ -50,6 +53,9 @@ type PairRanking = {
   // MARKET legs carry the whole cost, half on each account.
   spreadCostUsd: number;
   slippageCostUsd: number;
+  // Execution-risk proxy (no price series yet): per-leg friction in bps stands in
+  // for how far in the red the hedge opens on thin/volatile books.
+  risk: "low" | "medium" | "high";
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
@@ -99,7 +105,7 @@ function round(value: PairRanking): PairRanking {
 function bandFrom(key: Band["key"], candidates: PairRanking[], limit: number): Band {
   const ois = candidates.map((c) => c.openInterestUsd);
   const pairs = [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, limit).map(round);
-  return { key, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs };
+  return { key, oiRangeUsd: [ois.length ? Math.min(...ois) : 0, ois.length ? Math.max(...ois) : 0], pairs };
 }
 
 async function loadMarkets(): Promise<MarketRow[]> {
@@ -174,6 +180,9 @@ export async function GET(request: NextRequest) {
         // accounts; funding nets to zero at equal long/short size.
         const legBps = spreadBps / 2 + impactBps;
         const cycleCostUsd = (2 * fillNotionalUsd * legBps) / 10_000;
+        // Risk proxy: per-leg friction (bps) at the fill size. Deep/tight books
+        // score low; thin/wide (more volatile) score high.
+        const risk: PairRanking["risk"] = legBps <= 2 ? "low" : legBps <= 6 ? "medium" : "high";
         return {
           pair: row.pair,
           // Omni displays gross OI (user side plus OLP counterparty); the
@@ -186,6 +195,7 @@ export async function GET(request: NextRequest) {
           // Two MARKET legs: each crosses half-spread + impact. Split the total.
           spreadCostUsd: (fillNotionalUsd * spreadBps) / 10_000,
           slippageCostUsd: (2 * fillNotionalUsd * impactBps) / 10_000,
+          risk,
         };
       })
       .filter((value): value is PairRanking => value !== null);
@@ -207,12 +217,11 @@ export async function GET(request: NextRequest) {
       bands = [bandFrom("all", filtered, filtered.length)];
     } else {
       grouped = true;
-      const byOi = [...filtered].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
-      const size = Math.ceil(byOi.length / 3);
+      // Fixed OI thresholds (gross OI). Bands may be uneven — that's fine.
       bands = [
-        bandFrom("high", byOi.slice(0, size), 10),
-        bandFrom("medium", byOi.slice(size, size * 2), 10),
-        bandFrom("low", byOi.slice(size * 2), 10),
+        bandFrom("high", filtered.filter((p) => p.openInterestUsd > HIGH_OI_USD), 10),
+        bandFrom("medium", filtered.filter((p) => p.openInterestUsd > MEDIUM_OI_USD && p.openInterestUsd <= HIGH_OI_USD), 10),
+        bandFrom("low", filtered.filter((p) => p.openInterestUsd <= MEDIUM_OI_USD), 10),
       ];
     }
 

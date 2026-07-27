@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/lib/format";
-import { tr, useLocale } from "@/components/LocaleProvider";
+import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
+type Risk = "low" | "medium" | "high";
 interface PairRanking {
   pair: string;
   openInterestUsd: number;
@@ -17,9 +18,11 @@ interface PairRanking {
   cycleCostUsd: number;
   spreadCostUsd: number;
   slippageCostUsd: number;
+  risk: Risk;
 }
+type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
-  key: "high" | "medium" | "low" | "all";
+  key: BandKey;
   pairs: PairRanking[];
 }
 interface RankingResponse {
@@ -30,6 +33,7 @@ interface RankingResponse {
   holdHours: number;
   minVolumeUsd: number;
   competition: { active: boolean; name: string };
+  grouped: boolean;
   bands: Band[];
 }
 
@@ -46,7 +50,26 @@ function orders(firstLimitSide: "long" | "short") {
   };
 }
 
-const GRID = "grid-cols-[40px_100px_104px_minmax(120px,1fr)_minmax(120px,1fr)_118px_118px_104px_28px]";
+const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
+
+const RISK_TONE: Record<Risk, string> = {
+  low: "border-positive/30 bg-positive/10 text-positive",
+  medium: "border-warning/30 bg-warning/10 text-warning",
+  high: "border-negative/30 bg-negative/10 text-negative",
+};
+const RISK_DOT: Record<Risk, string> = { low: "bg-positive", medium: "bg-warning", high: "bg-negative" };
+function riskLabel(locale: Locale, r: Risk): string {
+  return r === "low" ? tr(locale, "Low risk", "Низкий риск") : r === "medium" ? tr(locale, "Medium risk", "Средний риск") : tr(locale, "High risk", "Высокий риск");
+}
+function RiskBadge({ risk }: { risk: Risk }) {
+  const locale = useLocale();
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${RISK_TONE[risk]}`}>
+      <span className={`h-[5px] w-[5px] rounded-full ${RISK_DOT[risk]}`} />
+      {riskLabel(locale, risk)}
+    </span>
+  );
+}
 
 function HedgeDropdown({
   options,
@@ -120,6 +143,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [data, setData] = useState<RankingResponse | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [oiFilter, setOiFilter] = useState<BandKey>("all");
   const timer = useRef<number | null>(null);
 
   const requested = Number(accountVolumeInput);
@@ -163,18 +187,25 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
 
   const runLabel = status === "running" ? tr(locale, "Running…", "Считаем…") : status === "loaded" ? tr(locale, "Run again", "Ещё раз") : tr(locale, "Run", "Рассчитать");
   const field = "flex flex-col gap-2.5";
-  const flatPairs = data ? data.bands.flatMap((b) => b.pairs) : [];
-  const top = [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
-  // Recommended = cheapest MEDIUM-OI pair (Priority 1 driver), NOT the global
-  // cheapest: high-OI majors are cheap to trade but not the best points target.
-  const byOi = [...flatPairs].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
-  const third = Math.max(1, Math.ceil(byOi.length / 3));
-  const mediumByCost = byOi.slice(third, third * 2).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
-  // During an active competition, prefer the cheapest ELIGIBLE (TradFi) medium-OI
-  // pair — its volume counts double toward the competition. Otherwise the
-  // cheapest medium-OI pair (Priority 1), never the global cheapest.
+  const bands = data?.bands ?? [];
+  const grouped = data?.grouped ?? false;
+  const bandPairs = (key: BandKey) => bands.find((b) => b.key === key)?.pairs ?? [];
+  const flatPairs = bands.flatMap((b) => b.pairs);
+  // Table: the selected OI band (or all), cheapest-first, top 10.
+  const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
+    .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
+    .slice(0, 10);
+  // Recommended = cheapest MEDIUM-OI pair with GREEN (low) risk; relax to any
+  // medium-OI if none are green; during a live competition prefer the eligible
+  // (TradFi) one. Never just the global cheapest.
+  const mediumByCost = [...(grouped ? bandPairs("medium") : flatPairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
   const compActive = data?.competition?.active ?? false;
-  const best = (compActive ? mediumByCost.find((p) => p.competitionEligible) : undefined) ?? mediumByCost[0] ?? top[0];
+  const greenPool = mediumByCost.filter((p) => p.risk === "low");
+  const pool = greenPool.length ? greenPool : mediumByCost;
+  const best =
+    (compActive ? pool.find((p) => p.competitionEligible) : undefined) ??
+    pool[0] ??
+    [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
 
   return (
     <div className="mt-10">
@@ -269,12 +300,15 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
       {status === "loaded" && notionalUsd !== null && ranHedge === "variational" && (
         <SameVenueResult
           data={data}
-          top={top}
+          top={tablePairs}
           best={best}
           notionalUsd={notionalUsd}
           hedgeName="Variational"
           expanded={expanded}
           setExpanded={setExpanded}
+          grouped={grouped}
+          oiFilter={oiFilter}
+          setOiFilter={setOiFilter}
         />
       )}
 
@@ -302,6 +336,9 @@ function SameVenueResult({
   hedgeName,
   expanded,
   setExpanded,
+  grouped,
+  oiFilter,
+  setOiFilter,
 }: {
   data: RankingResponse | null;
   top: PairRanking[];
@@ -310,6 +347,9 @@ function SameVenueResult({
   hedgeName: string;
   expanded: string | null;
   setExpanded: (v: string | null) => void;
+  grouped: boolean;
+  oiFilter: BandKey;
+  setOiFilter: (v: BandKey) => void;
 }) {
   const locale = useLocale();
   if (!data || !best) {
@@ -323,6 +363,7 @@ function SameVenueResult({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
+            <RiskBadge risk={best.risk} />
             {best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -386,10 +427,26 @@ function SameVenueResult({
       <div className="pt-11">
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
           <div>
-            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest eligible pairs`, `${top.length} самых дешёвых пар`)}</h2>
+            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
             <div className="text-[14px] text-text-muted">{tr(locale, `Sorted by full hedge-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
           </div>
-          <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "snapshot", "снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
+          <div className="flex flex-col items-end gap-2">
+            {grouped && (
+              <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
+                {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setOiFilter(k)}
+                    className={`pf-transition rounded-[7px] px-3 py-1.5 text-[12px] font-semibold ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                  >
+                    {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "snapshot", "снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-[18px] border border-border bg-bg">
@@ -419,6 +476,7 @@ function SameVenueResult({
                     <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
+                      <span title={riskLabel(locale, p.risk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${RISK_DOT[p.risk]}`} />
                       {p.competitionEligible && (
                         <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                       )}
@@ -439,14 +497,15 @@ function SameVenueResult({
                   </button>
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
-                      {p.competitionEligible && (
-                        <div className="pb-3.5">
+                      <div className="flex flex-wrap items-center gap-2 pb-3.5">
+                        <RiskBadge risk={p.risk} />
+                        {p.competitionEligible && (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                             {tr(locale, "Competition eligible", "Eligible для конкурса")}
                           </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       {/* LONG / SHORT legs (compact recommended-route view, no 3D) */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-2 rounded-[12px] border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
