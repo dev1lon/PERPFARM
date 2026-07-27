@@ -1,8 +1,7 @@
 """Syncs `markets` rows for one venue by calling its adapter's get_markets().
 
-Separate from the hourly/daily/nightly jobs (Phase 2, worker/perpfarm/jobs/):
-this only maintains the market list, which changes rarely, not the
-price/funding/volume snapshot tables.
+This only maintains the market list, not the price/funding/volume snapshot
+tables populated by the hourly `sync-snapshots` job.
 """
 
 from pathlib import Path

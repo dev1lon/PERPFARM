@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
+import { chooseFirstLimitSide, type QuotePair } from "@/lib/variational-quotes";
 
 export const dynamic = "force-dynamic";
 
+const VARIATIONAL_STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
 // The requested volume is entry plus exit turnover on one account. The
 // two-account hedge has four equal fills and twice that volume in total.
 const DEFAULT_ACCOUNT_VOLUME_USD = 100_000;
@@ -10,6 +12,8 @@ const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
 // Pairs below this 24h volume are treated as dead and dropped from the bands.
 const MIN_VOLUME_USD = 1_000;
+// User-approved floor, expressed in the same gross-OI convention as Omni UI.
+const MIN_OPEN_INTEREST_USD = 50_000;
 // Below this many live pairs the three-way OI split is noise; show one list.
 const MIN_PAIRS_FOR_BANDS = 15;
 // Fixed OI bands (gross OI, i.e. the doubled value) — approved for Variational.
@@ -60,7 +64,7 @@ type PairRanking = {
   openInterestUsd: number;
   volume24hUsd: number;
   competitionEligible: boolean;
-  firstLimitSide: "long";
+  firstLimitSide: "long" | "short";
   quoteAsOf: string;
   cycleCostUsd: number;
   latestCycleCostUsd: number;
@@ -77,6 +81,12 @@ type PairRanking = {
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
+type LiveSideCost = {
+  firstLimitSide: "long" | "short";
+  marketImpactBps: number;
+  spreadBps: number | null;
+  quoteAsOf: string | null;
+};
 
 function asNumber(value: unknown): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -85,6 +95,47 @@ function asNumber(value: unknown): number | null {
 
 function competitionIsActive(now = Date.now()): boolean {
   return now >= TRADFI_COMPETITION_START_UTC && now < TRADFI_COMPETITION_END_UTC;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function quotePair(value: unknown): QuotePair | null {
+  if (!isRecord(value)) return null;
+  const bid = asNumber(value.bid);
+  const ask = asNumber(value.ask);
+  return bid !== null && ask !== null && bid > 0 && ask > 0 ? [bid, ask] : null;
+}
+
+/**
+ * The two MARKET fills have the same direction: LIMIT LONG first means two
+ * sells; LIMIT SHORT first means two buys. Pick the cheaper live side. The
+ * 24h median remains based on saved direction-averaged observations.
+ */
+async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, LiveSideCost>> {
+  const response = await fetch(VARIATIONAL_STATS_URL, { next: { revalidate: 60 } });
+  if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || !Array.isArray(payload.listings)) throw new Error("Invalid Variational stats");
+
+  const costs = new Map<string, LiveSideCost>();
+  for (const listing of payload.listings) {
+    if (!isRecord(listing) || typeof listing.ticker !== "string" || !isRecord(listing.quotes)) continue;
+    const base = quotePair(listing.quotes.base) ?? quotePair(listing.quotes.size_1k);
+    const oneK = quotePair(listing.quotes.size_1k);
+    const hundredK = quotePair(listing.quotes.size_100k);
+    const mark = asNumber(listing.mark_price);
+    if (!base || !oneK || !hundredK || mark === null || mark <= 0) continue;
+    const side = chooseFirstLimitSide({ notional: fillNotionalUsd, mark, base, oneK, hundredK });
+    costs.set(listing.ticker, {
+      firstLimitSide: side.firstLimitSide,
+      marketImpactBps: side.marketImpactBps,
+      spreadBps: asNumber(listing.base_spread_bps),
+      quoteAsOf: typeof listing.quotes.updated_at === "string" ? listing.quotes.updated_at : null,
+    });
+  }
+  return costs;
 }
 
 // Piecewise-linear impact at an arbitrary notional from the published buckets.
@@ -138,6 +189,7 @@ async function loadMarkets(): Promise<MarketRow[]> {
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        WHERE m.venue_id = (SELECT id FROM v)
+         AND b.ts >= now() - interval '7 days'
        ORDER BY b.market_id, b.ts DESC
      ),
      book_24h AS (
@@ -166,6 +218,7 @@ async function loadMarkets(): Promise<MarketRow[]> {
        FROM volume_snapshots s
        JOIN markets m ON m.id = s.market_id
        WHERE m.venue_id = (SELECT id FROM v)
+         AND s.ts >= now() - interval '7 days'
        ORDER BY s.market_id, s.ts DESC
      )
      SELECT book.book_ts, m.symbol_canonical AS pair,
@@ -203,18 +256,23 @@ export async function GET(request: NextRequest) {
     const competitionActive = competitionIsActive();
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
-    const rows = await loadMarkets();
+    const [rows, liveSideCosts] = await Promise.all([
+      loadMarkets(),
+      loadLiveSideCosts(fillNotionalUsd).catch(() => new Map<string, LiveSideCost>()),
+    ]);
 
     const candidates = rows
       .map((row): PairRanking | null => {
         const spreadBps = asNumber(row.spread_bps);
         const volume24hUsd = asNumber(row.volume_24h_usd);
         const oiRaw = asNumber(row.open_interest_usd);
-        const latestImpactBps = impactAtNotional(fillNotionalUsd, [
+        const liveSide = liveSideCosts.get(row.pair);
+        const storedLatestImpactBps = impactAtNotional(fillNotionalUsd, [
           [10_000, asNumber(row.impact_bps_10k)],
           [50_000, asNumber(row.impact_bps_50k)],
           [100_000, asNumber(row.impact_bps_100k)],
         ]);
+        const latestImpactBps = liveSide?.marketImpactBps ?? storedLatestImpactBps;
         const impactAtPercentile = (percentile: "p25" | "p50" | "p75") =>
           impactAtNotional(fillNotionalUsd, [
             [10_000, asNumber(row[`impact_bps_10k_${percentile}`])],
@@ -230,14 +288,14 @@ export async function GET(request: NextRequest) {
         if (
           spreadBps === null || latestImpactBps === null || p25ImpactBps === null || p50ImpactBps === null || p75ImpactBps === null ||
           p25SpreadBps === null || p50SpreadBps === null || p75SpreadBps === null || volume24hUsd === null || oiRaw === null ||
-          oiRaw <= 0 || volume24hUsd < MIN_VOLUME_USD
+          oiRaw * 2 < MIN_OPEN_INTEREST_USD || volume24hUsd < MIN_VOLUME_USD
         ) {
           return null;
         }
         // Two market legs cross half-spread plus quote impact. The number shown
         // to users is the 24h median planning estimate; the latest sample and
         // p25-p75 range remain visible so one stale quote cannot dominate a run.
-        const latestLegBps = spreadBps / 2 + latestImpactBps;
+        const latestLegBps = (liveSide?.spreadBps ?? spreadBps) / 2 + latestImpactBps;
         const p25LegBps = p25SpreadBps / 2 + p25ImpactBps;
         const p50LegBps = p50SpreadBps / 2 + p50ImpactBps;
         const p75LegBps = p75SpreadBps / 2 + p75ImpactBps;
@@ -251,8 +309,8 @@ export async function GET(request: NextRequest) {
           openInterestUsd: oiRaw * 2,
           volume24hUsd,
           competitionEligible: TRADFI_TICKERS.has(row.pair),
-          firstLimitSide: "long",
-          quoteAsOf: row.book_ts,
+          firstLimitSide: liveSide?.firstLimitSide ?? "long",
+          quoteAsOf: liveSide?.quoteAsOf ?? row.book_ts,
           cycleCostUsd,
           latestCycleCostUsd: costFromLegBps(latestLegBps),
           costRangeLowUsd: costFromLegBps(p25LegBps),
@@ -303,6 +361,7 @@ export async function GET(request: NextRequest) {
         totalCycleVolumeUsd,
         holdHours: HOLD_HOURS,
         minVolumeUsd: MIN_VOLUME_USD,
+        minOpenInterestUsd: MIN_OPEN_INTEREST_USD,
         competition: { active: competitionActive, name: "TradFi Trading Competition #5" },
         tradfiOnly,
         grouped,

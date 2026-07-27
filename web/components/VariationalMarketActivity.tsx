@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
 
 export type ActivityMetric = "volume" | "openInterest" | "uniqueTraders";
 export type ActivityRange = 30 | 90 | 180;
@@ -21,7 +22,12 @@ export interface ActivityResponse {
   days: number;
   volume: { series: ActivityPoint[]; observedDays: number; latest24h: number | null };
   openInterest: { series: ActivityPoint[]; latest: number | null };
-  uniqueTraders?: { series: ActivityPoint[]; latest: number | null; source: string };
+  uniqueTraders?: {
+    series: ActivityPoint[];
+    latest: number | null;
+    source: string;
+    metric?: "uniqueTraders" | "activeAddresses";
+  };
 }
 
 export function compactUsd(value: number | null): string {
@@ -107,95 +113,6 @@ export function compactCount(value: number | null, lowerBound = false): string {
   return lowerBound ? `${formatted}+` : formatted;
 }
 
-// --- Range extension from the DefiLlama reference chart (Jan–Jul 2026) ---
-// The activity API retains only ~30 days of real observations (DefiLlama's
-// historical perps API is paywalled). To make the 3M/6M toggle meaningful, the
-// earlier dates are filled from the same envelope the values were read off the
-// image with; the real recent days always win on the dates they cover.
-const USD_B = 1_000_000_000;
-// Dense waypoints traced off the DefiLlama reference chart, by position f∈[0,1]
-// across Jan→late-Jul 2026 ($bn on each metric's own axis). Volume uses its
-// envelope on every range (no free third-party history). OI is real from
-// DefiLlama on 30D; on 3M/6M the days older than that real window are filled
-// from the OI envelope below.
-const VOL_ENVELOPE: [number, number][] = [
-  [0, 1.15], [0.03, 1.45], [0.06, 1.55], [0.1, 1.45], [0.13, 1.15], [0.16, 0.95],
-  [0.2, 0.85], [0.25, 0.8], [0.3, 0.78], [0.34, 0.84], [0.4, 0.7],
-  [0.46, 0.52], [0.52, 0.42], [0.58, 0.48], [0.63, 0.54], [0.7, 0.6],
-  [0.76, 0.7], [0.78, 0.85], [0.82, 0.72], [0.88, 0.72], [0.94, 0.72], [1, 0.75],
-];
-const OI_ENVELOPE: [number, number][] = [
-  [0, 0.82], [0.03, 0.95], [0.06, 1.12], [0.09, 1.2], [0.12, 1.15], [0.15, 1.03],
-  [0.17, 0.8], [0.19, 0.88], [0.22, 0.85], [0.25, 0.92], [0.28, 0.88],
-  [0.31, 0.95], [0.34, 1.0], [0.37, 0.92], [0.4, 0.88], [0.43, 0.84],
-  [0.46, 0.8], [0.5, 0.72], [0.54, 0.66], [0.58, 0.62], [0.62, 0.65],
-  [0.66, 0.7], [0.7, 0.78], [0.73, 0.9], [0.76, 1.0], [0.78, 0.82],
-  [0.8, 0.9], [0.83, 0.98], [0.86, 1.05], [0.89, 1.1], [0.92, 1.15],
-  [0.95, 1.2], [0.98, 1.25], [1, 1.22],
-];
-const DAY_MS = 86_400_000;
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * Math.max(0, Math.min(1, t));
-}
-function envAt(anchors: [number, number][], f: number): number {
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const [p0, v0] = anchors[i];
-    const [p1, v1] = anchors[i + 1];
-    if (f <= p1) return lerp(v0, v1, (f - p0) / (p1 - p0));
-  }
-  return anchors[anchors.length - 1][1];
-}
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-function seedFromImage(kind: "volume" | "openInterest", endMs: number, days: number): ActivityPoint[] {
-  const anchors = kind === "volume" ? VOL_ENVELOPE : OI_ENVELOPE;
-  const rng = mulberry32(kind === "volume" ? 20260117 : 20260118);
-  const out: ActivityPoint[] = [];
-  for (let i = 0; i < days; i++) {
-    const f = i / (days - 1);
-    const date = new Date(endMs - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10);
-    let value = envAt(anchors, f) * USD_B;
-    if (kind === "volume") {
-      value *= 0.88 + 0.24 * rng(); // light daily texture, centred on envelope
-      if (rng() > 0.94) value *= 1.15 + 0.3 * rng(); // occasional tall day
-    } else {
-      value *= 0.99 + 0.02 * rng(); // follow the traced line, near-flat noise
-    }
-    out.push({ date, value });
-  }
-  return out;
-}
-/** Real recent series extended back to `rangeDays` with the image seed (real
- *  data wins on its dates; the seed is scaled to meet it with no seam). When
- *  no real data exists, the chart is the pure image seed. */
-export function extendToRange(real: ActivityPoint[], rangeDays: number, kind: "volume" | "openInterest"): ActivityPoint[] {
-  if (real.length >= rangeDays) return real.slice(-rangeDays);
-  const now = new Date();
-  const endMs = real.length > 0
-    ? Date.parse(`${real[real.length - 1].date}T00:00:00Z`)
-    : Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const seed = seedFromImage(kind, endMs, Math.max(rangeDays, 182));
-  if (real.length === 0) return seed.slice(-rangeDays);
-  const seedAtJunction = seed.find((p) => p.date === real[0].date)?.value;
-  const scale = seedAtJunction && seedAtJunction > 0 ? real[0].value / seedAtJunction : 1;
-  const byDate = new Map<string, number>();
-  for (const p of seed) byDate.set(p.date, p.value * scale);
-  for (const p of real) byDate.set(p.date, p.value); // real overrides the seed
-  return [...byDate.entries()]
-    .map(([date, value]) => ({ date, value }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-rangeDays);
-}
-
 export function VariationalMarketActivity({ includeUniqueTraders = false }: { includeUniqueTraders?: boolean }) {
   const locale = useLocale();
   const [data, setData] = useState<ActivityResponse | null>(null);
@@ -223,8 +140,11 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
 
   const isVolume = metric === "volume";
   const isUniqueTraders = metric === "uniqueTraders";
+  const isActiveAddresses = data?.uniqueTraders?.metric === "activeAddresses";
   const label = isUniqueTraders
-    ? tr(locale, "Unique traders", "Уникальные трейдеры")
+    ? isActiveAddresses
+      ? tr(locale, "Active addresses", "Активные адреса")
+      : tr(locale, "Unique traders", "Уникальные трейдеры")
     : isVolume
     ? tr(locale, "Volume (24h)", "Объём (24ч)")
     : tr(locale, "Open interest", "Открытый интерес");
@@ -236,15 +156,11 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
         ? data.volume.series
         : data.openInterest.series
       : [];
-    // Volume fills earlier days from its envelope on every range. OI is real
-    // on 30D (our snapshots + DefiLlama); on 3M/6M the days older than that
-    // real window are filled from the OI envelope.
     // Users has no daily-history source yet -- keep the chart empty (no lone
-    // dot) until a real series (>1 point) is connected; the current number
-    // still shows in the header above.
+    // dot) until a real series (>1 point) is connected. All market-series
+    // points shown here come from APIs or saved observations.
     if (isUniqueTraders) return raw.length > 1 ? raw : [];
-    if (isVolume) return extendToRange(raw, rangeDays, "volume");
-    return rangeDays === 30 ? raw.slice(-rangeDays) : extendToRange(raw, rangeDays, "openInterest");
+    return selectObservedRange(raw, rangeDays);
   }, [data, isVolume, isUniqueTraders, rangeDays]);
   const rangeText = rangeDays === 30
     ? tr(locale, "last 30 days", "последние 30 дней")
@@ -254,7 +170,8 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
   const headingRange = isUniqueTraders ? tr(locale, "last 30 days", "последние 30 дней") : rangeText;
   const latest = data ? (isUniqueTraders ? data.uniqueTraders?.latest ?? null : isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
   const color = isUniqueTraders ? "#b58cff" : isVolume ? "#5d9cff" : "#42d3bf";
-  const formatValue = isUniqueTraders ? (value: number) => compactCount(value, true) : compactUsd;
+  const usersLowerBound = data?.uniqueTraders?.source !== "dune";
+  const formatValue = isUniqueTraders ? (value: number) => compactCount(value, usersLowerBound) : compactUsd;
   const metrics: ActivityMetric[] = includeUniqueTraders ? ["volume", "openInterest", "uniqueTraders"] : ["volume", "openInterest"];
   return (
     <section className="rounded-lg border border-border bg-surface-1 p-5">
@@ -278,7 +195,13 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
               type="button"
               role="tab"
               aria-selected={active}
-              onClick={() => setMetric(value)}
+              onClick={() => {
+                setMetric(value);
+                if (value !== "uniqueTraders" && data) {
+                  const nextSeries = value === "volume" ? data.volume.series : data.openInterest.series;
+                  if (!hasObservedRange(nextSeries, rangeDays)) setRangeDays(30);
+                }
+              }}
               className={`pf-transition rounded px-3 py-1.5 text-sm font-medium ${active ? "bg-surface-1 text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}
             >
               {tabLabel}
@@ -291,6 +214,8 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
           <div className="inline-flex rounded-md border border-border bg-surface-2 p-1" role="tablist" aria-label={tr(locale, "Chart range", "Период графика")}>
             {([30, 90, 180] as ActivityRange[]).map((days) => {
               const active = rangeDays === days;
+              const raw = isVolume ? data?.volume.series ?? [] : data?.openInterest.series ?? [];
+              const available = hasObservedRange(raw, days);
               const label = days === 30 ? "30D" : days === 90 ? "3M" : "6M";
               return (
                 <button
@@ -298,8 +223,10 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
                   type="button"
                   role="tab"
                   aria-selected={active}
+                  aria-disabled={!available}
+                  disabled={!available}
                   onClick={() => setRangeDays(days)}
-                  className={`pf-transition rounded px-3 py-1.5 text-sm font-medium ${active ? "bg-surface-1 text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}
+                  className={`pf-transition rounded px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-35 ${active ? "bg-surface-1 text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary"}`}
                 >
                   {label}
                 </button>
@@ -317,7 +244,7 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
           <div className="flex items-baseline justify-between gap-3">
             <div>
               <h3 className="text-sm font-medium text-text-primary">{label}</h3>
-              <p className="mt-1 font-mono-num text-xl font-light text-text-primary">{isUniqueTraders ? compactCount(latest, true) : compactUsd(latest)}</p>
+              <p className="mt-1 font-mono-num text-xl font-light text-text-primary">{isUniqueTraders ? compactCount(latest, usersLowerBound) : compactUsd(latest)}</p>
             </div>
             <p className="font-mono-num text-right text-sm text-text-muted">{isUniqueTraders ? tr(locale, "Current", "Текущее") : `${rangeDays}(D)`}</p>
           </div>
@@ -331,8 +258,8 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
             </>
           ) : (
             <div className="flex h-80 items-center justify-center text-center text-sm text-text-muted">
-              {isUniqueTraders ? tr(locale, "Current figure shown above · daily history is being recorded and will fill the chart over time.", "Текущее значение показано выше · дневная история записывается и со временем заполнит график.") : isVolume
-                ? tr(locale, "Historical volume is collecting; new daily API observations are saved automatically.", "История объёма собирается; новые дневные наблюдения API сохраняются автоматически.")
+              {isUniqueTraders ? tr(locale, "Only the current public figure is available.", "Сейчас доступно только текущее публичное значение.") : isVolume
+                ? tr(locale, "Historical volume will appear as saved observations accumulate.", "История объёма появится по мере накопления сохранённых наблюдений.")
                 : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
             </div>
           )}

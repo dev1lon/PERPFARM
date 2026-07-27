@@ -4,10 +4,10 @@ Collapses the three one-time-per-venue setup steps (`bootstrap-venues`,
 `ingest-manual`, `sync-markets <slug>`) into one idempotent operation so
 adding a venue needs no per-venue shell work -- edit the adapter/registry +
 YAML, deploy, and this runs (manually via `perpfarm refresh-catalog`, or
-automatically at the start of the nightly job).
+automatically at the start of the hourly snapshot job).
 
 Everything here is idempotent upserts reading from committed code/YAML, so
-running it repeatedly (e.g. every nightly) is safe. It does NOT run
+running it repeatedly is safe. It does NOT run
 migrations -- schema changes still need a manual `alembic upgrade head`
 (Render's multi-service model can't run migrations race-free automatically;
 see docs/deploy.md).

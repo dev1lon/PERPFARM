@@ -21,7 +21,7 @@ function getServerSnapshot(): Locale {
 }
 
 export const LOCALE_INIT_SCRIPT =
-  "try{var l=localStorage.getItem('pf-locale');if(l==='ru'||l==='en')document.documentElement.dataset.locale=l;}catch(e){}";
+  "try{var l=localStorage.getItem('pf-locale');if(l==='ru'||l==='en'){document.documentElement.dataset.locale=l;document.documentElement.lang=l;}}catch(e){}";
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
@@ -39,6 +39,7 @@ export function tr(locale: Locale, en: string, ru: string): string {
 /** Set the active language (persisted + broadcast to all useLocale readers). */
 export function setLocale(next: Locale) {
   document.documentElement.dataset.locale = next;
+  document.documentElement.lang = next;
   try {
     localStorage.setItem("pf-locale", next);
   } catch {

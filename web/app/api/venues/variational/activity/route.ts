@@ -6,9 +6,7 @@ const VARIATIONAL_OMNI_URL = "https://www.variational.io/omni";
 // Official Omni site, checked on 2026-07-17. It is a lower bound ("50K+")
 // rather than an exact account count.
 const OFFICIAL_UNIQUE_TRADERS_FLOOR = 50_000;
-// How far back the first-party series may reach. Real observations only exist
-// from when sync-snapshots started writing; days beyond that are backfilled
-// on the client from the reference envelope until the DB catches up.
+// How far back real first-party/DefiLlama observations may reach.
 const HISTORY_DAYS = 180;
 const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
 
@@ -29,6 +27,10 @@ const DEFILLAMA_OPEN_INTEREST_URL = defiLlamaUrl(
 export const revalidate = 3600;
 
 type ActivityPoint = { date: string; value: number };
+type DuneUserSeries = {
+  points: ActivityPoint[];
+  metric: "uniqueTraders" | "activeAddresses";
+};
 
 function asNumber(value: unknown): number | null {
   const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -151,12 +153,12 @@ function valueFromDuneRow(row: Record<string, unknown>, names: string[]): unknow
 
 /**
  * Dune exposes saved-query results through an authenticated read-only API.
- * Configure a query from Variational's official dashboard that returns
- * `date`/`day` plus `unique_traders` (cumulative protocol accounts) and set
- * the two env values below. Until then, retain only Omni's published 50K+
- * current snapshot rather than inventing 30 days of user counts.
+ * Configure a query from Variational's official dashboard that returns a
+ * date/day plus either unique traders or daily active-address columns. Until
+ * then, retain only Omni's published 50K+ current snapshot rather than
+ * inventing user history.
  */
-async function getDuneUniqueTraders(): Promise<ActivityPoint[] | null> {
+async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
   const apiKey = process.env.DUNE_API_KEY;
   const queryId = process.env.DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID;
   if (!apiKey || !queryId) return null;
@@ -172,17 +174,27 @@ async function getDuneUniqueTraders(): Promise<ActivityPoint[] | null> {
       ? payload.result.rows
       : [];
     const byDate = new Map<string, number>();
+    let metric: DuneUserSeries["metric"] = "uniqueTraders";
     for (const row of rows) {
       if (!isRecord(row)) continue;
       const rawDate = valueFromDuneRow(row, ["date", "day", "blockdate", "period"]);
-      const rawCount = valueFromDuneRow(row, ["uniquetraders", "uniqueusers", "traders", "users"]);
+      const uniqueCount = asNumber(valueFromDuneRow(row, ["uniquetraders", "uniqueusers", "traders", "users"]));
+      const activeCount = asNumber(valueFromDuneRow(row, ["activeaddresses", "activeusers", "addresscount"]));
+      const newAddresses = asNumber(valueFromDuneRow(row, ["newaddress", "newaddresses"]));
+      const returningAddresses = asNumber(valueFromDuneRow(row, ["returningaddress", "returningaddresses"]));
+      const combinedActive = activeCount ?? (
+        newAddresses !== null || returningAddresses !== null
+          ? (newAddresses ?? 0) + (returningAddresses ?? 0)
+          : null
+      );
+      const value = uniqueCount ?? combinedActive;
+      if (uniqueCount === null && combinedActive !== null) metric = "activeAddresses";
       const parsedDate = rawDate instanceof Date ? rawDate : new Date(String(rawDate));
       const date = Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().slice(0, 10);
-      const value = asNumber(rawCount);
       if (date !== null && value !== null && value >= 0) byDate.set(date, value);
     }
     const points = [...byDate].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
-    return points.length > 0 ? points.slice(-HISTORY_DAYS) : null;
+    return points.length > 0 ? { points: points.slice(-HISTORY_DAYS), metric } : null;
   } catch {
     return null;
   }
@@ -253,9 +265,10 @@ export async function GET() {
       latest: live.openInterest,
     },
     uniqueTraders: {
-      series: duneUniqueTraders ?? (uniqueTraders === null ? [] : [{ date: new Date().toISOString().slice(0, 10), value: uniqueTraders }]),
-      latest: duneUniqueTraders?.at(-1)?.value ?? uniqueTraders,
+      series: duneUniqueTraders?.points ?? (uniqueTraders === null ? [] : [{ date: new Date().toISOString().slice(0, 10), value: uniqueTraders }]),
+      latest: duneUniqueTraders?.points.at(-1)?.value ?? uniqueTraders,
       source: duneUniqueTraders ? "dune" : "official-site",
+      metric: duneUniqueTraders?.metric ?? "uniqueTraders",
     },
   });
 }

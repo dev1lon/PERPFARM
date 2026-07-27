@@ -28,7 +28,14 @@ export default async function VenuePage({
   params: Promise<{ venueSlug: string }>;
 }) {
   const { venueSlug } = await params;
-  const [venueRow, allVenues] = await Promise.all([getVenueDetail(venueSlug), getVenues()]);
+  // The static protocol guide should remain available during a transient DB
+  // outage. Live calculator APIs surface their own actionable error states.
+  const [venueResult, venuesResult] = await Promise.allSettled([
+    getVenueDetail(venueSlug),
+    getVenues(),
+  ]);
+  const venueRow = venueResult.status === "fulfilled" ? venueResult.value : null;
+  const allVenues = venuesResult.status === "fulfilled" ? venuesResult.value : [];
   // Listed protocols without a DB row still receive their canonical SOON page.
   const catalog = findProtocol(venueSlug);
   if (!venueRow && !catalog) notFound();

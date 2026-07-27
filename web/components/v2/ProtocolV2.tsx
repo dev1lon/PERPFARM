@@ -13,8 +13,9 @@ import type { VenueSummary } from "@/lib/types";
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
 const INITIAL_POINTS_REMAINING = 1_650_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
-const COMPETITION_BONUS_POINTS = 20_000;
 const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function pointsProgress(now: number) {
@@ -26,7 +27,9 @@ function pointsProgress(now: number) {
           Math.ceil(INITIAL_POINTS_REMAINING / WEEKLY_POINT_DISTRIBUTION),
         );
   const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
-  const distributed = INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION + COMPETITION_BONUS_POINTS;
+  // Competition points are intentionally excluded: the user records them
+  // manually only after Variational confirms an actual distribution.
+  const distributed = INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION;
   return {
     distributed,
     remaining,
@@ -164,23 +167,9 @@ function AwardsPanel() {
   );
 }
 
-function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) {
+function HedgeRecommendations() {
   const locale = useLocale();
-  const [cheapestSlug, setCheapestSlug] = useState("variational");
-  useEffect(() => {
-    let active = true;
-    fetch("/api/venues/variational/cheapest-route")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (active && d?.partnerSlug) setCheapestSlug(d.partnerSlug);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
-  const nameOf = (slug: string) =>
-    slug === "variational" ? "Variational" : otherVenues.find((v) => v.slug === slug)?.name ?? slug;
+  const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
   const card = (slug: string, title: string, body: string, tags: [string, "ok" | "warn" | "neutral"][]) => (
     <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
@@ -214,8 +203,8 @@ function HedgeRecommendations({ otherVenues }: { otherVenues: VenueSummary[] }) 
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {card(
-          cheapestSlug,
-          `Variational × ${nameOf(cheapestSlug)}`,
+          "variational",
+          "Variational × Variational",
           tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами — самый дешёвый маршрут."),
           [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
         )}
@@ -238,6 +227,7 @@ function ActivityAndDistribution() {
     return () => window.clearInterval(t);
   }, []);
   const p = pointsProgress(now);
+  const competitionActive = now >= TRADFI_COMPETITION_START_UTC && now < TRADFI_COMPETITION_END_UTC;
   return (
     <div className="mt-11">
       <H2>{tr(locale, "Protocol activity", "Активность протокола")}</H2>
@@ -249,15 +239,21 @@ function ActivityAndDistribution() {
               <div className="text-[17px] font-semibold text-text-primary">TradFi Trading Competition #5</div>
               <div className="font-mono-num text-[12px] text-text-muted">2026-07-17 → 2026-07-31 · $20,000 {tr(locale, "prizes", "призы")}</div>
             </div>
-            <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
-              <span className="h-[5px] w-[5px] rounded-full bg-positive" />
-              {tr(locale, "Active", "Активно")}
+            <span className={`inline-flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${competitionActive ? "border-positive/30 bg-positive/10 text-positive" : "border-border bg-surface-2 text-text-muted"}`}>
+              <span className={`h-[5px] w-[5px] rounded-full ${competitionActive ? "bg-positive" : "bg-text-dim"}`} />
+              {competitionActive ? tr(locale, "Active", "Активно") : tr(locale, "Inactive", "Неактивно")}
             </span>
           </div>
           <div className="text-[14px] leading-[1.62] text-text-muted">
-            {locale === "ru"
-              ? "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi). Score: TradFi PnL × √TradFi volume."
-              : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."}
+            {competitionActive
+              ? locale === "ru"
+                ? "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi). Score: TradFi PnL × √TradFi volume."
+                : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."
+              : tr(
+                  locale,
+                  "The competition has ended. Any confirmed extra points are added to the distribution total manually.",
+                  "Турнир завершён. Подтверждённые дополнительные поинты добавляются в общий итог вручную.",
+                )}
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
             <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Eligible", "Eligible")}</span>
@@ -357,7 +353,7 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
             to the same pair-rankings / cross-rankings APIs). */}
         <ProtocolCalculatorV2 otherVenues={otherVenues} />
 
-        <HedgeRecommendations otherVenues={otherVenues} />
+        <HedgeRecommendations />
         <ActivityAndDistribution />
         <FactorsAffectingPoints />
 

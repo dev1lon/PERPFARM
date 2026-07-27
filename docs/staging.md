@@ -1,77 +1,37 @@
-# Staging (free) — Supabase + Render free
+# Staging
 
-A throwaway test copy of the site, fully on free tiers, isolated from prod.
+Staging is the isolated preview for changes before `main`.
 
-- **Web**: Render **free** web service, deployed from the `staging` branch.
-  Spins down after ~15 min idle and cold-starts (~30–60s) on the next request —
-  fine for staging.
-- **DB**: a free **Supabase** Postgres project (persistent — pauses after ~1
-  week of inactivity, restore in one click; not deleted like Render's free DB).
-- **Crons**: none (paid on Render). You seed/refresh the staging DB by running
-  the worker CLI **locally** against the Supabase URL — the Python worker runs
-  fine locally (only Next has the exFAT dev quirk).
+- Web: Vercel preview deployed from `staging`.
+- Database: separate Supabase/Postgres project.
+- Scheduled worker: none by default.
 
-Prod (`main`, `render.yaml`, Render Postgres) is untouched by any of this.
+## Initial database setup
 
-## 1. Branch
+From `worker/`, with the staging connection in `DATABASE_URL`:
 
-```
-git checkout -b staging
-git push -u origin staging
+```bash
+python -m alembic upgrade head
+perpfarm refresh-catalog
+perpfarm job fee-watch
+perpfarm job sync-snapshots
 ```
 
-Push test changes to `staging`; merge to `main` when they're ready for prod.
+There is no `job nightly` command. Pair rankings are calculated on request
+from the saved snapshots.
 
-## 2. Supabase project
+Run `perpfarm job sync-snapshots` again whenever staging needs fresh market
+data. Because staging has no cron, its volume history does not grow unless
+this command is run against the staging database.
 
-1. supabase.com → New project (free). Pick a region + DB password.
-2. Project → **Connect** → **Connection string** → **URI**. Use the **Session
-   pooler** (port `5432`) string. It looks like:
-   ```
-   postgresql://postgres.<ref>:<password>@<host>.pooler.supabase.com:5432/postgres
-   ```
-3. **Append `?sslmode=require`** if it isn't there — both the web (`lib/db.ts`)
-   and the worker turn on TLS when they see it. Keep this URL handy as
-   `STAGING_DB`.
+## Vercel variables
 
-## 3. Seed the staging DB (locally, from `worker/`)
-
-```
-cd worker
-DATABASE_URL="<STAGING_DB>?sslmode=require" python -m alembic upgrade head
-DATABASE_URL="<STAGING_DB>?sslmode=require" perpfarm refresh-catalog
-DATABASE_URL="<STAGING_DB>?sslmode=require" perpfarm job sync-snapshots
-DATABASE_URL="<STAGING_DB>?sslmode=require" perpfarm job nightly
-```
-
-- `alembic upgrade head` creates the schema.
-- `refresh-catalog` seeds venues + manual data (Twitter/Docs, etc.).
-- `sync-snapshots` + `nightly` populate market data and route scores.
-- Re-run these whenever you want to refresh staging data (there are no crons).
-
-## 4. Render free web service
-
-Either:
-
-- **Blueprint**: Render → New → **Blueprint** → point at `render.staging.yaml`
-  on the `staging` branch, then fill the `sync: false` env vars, **or**
-- **Manual**: Render → New → **Web Service** → this repo → **branch `staging`**,
-  `rootDir = web`, plan **Free**, build `npm install --include=dev && npm run
-  build`, start `npm start`.
-
-Set env vars on the service:
-
-| Key | Value |
-|-----|-------|
-| `DATABASE_URL` | the Supabase URL (with `?sslmode=require`) |
-| `DEFILLAMA_API_KEY` | optional (live DefiLlama volume) |
-| `DUNE_API_KEY` | optional (Users tab) |
+| Variable | Required |
+|---|---:|
+| `DATABASE_URL` | yes |
+| `DUNE_API_KEY` | optional |
 | `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional |
+| `DEFILLAMA_API_KEY` | optional |
 
-## Caveats
-
-- Cold start on the first request after idle (~30–60s) — expected.
-- Supabase free pauses after ~1 week idle; open the dashboard once to resume.
-- Schema changes: re-run `alembic upgrade head` against `STAGING_DB` after
-  merging migrations into `staging`.
-- Cost: **$0** — no Render DB, no crons.
+Push test changes to `staging`; merge to `main` only after the preview and
+automated checks pass.

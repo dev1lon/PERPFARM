@@ -10,8 +10,6 @@ import type { VenueSummary } from "@/lib/types";
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
 const INITIAL_POINTS_REMAINING = 1_650_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
-// One-off TradFi-competition bonus, counted into the Distributed total.
-const COMPETITION_BONUS_POINTS = 20_000;
 const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -24,7 +22,7 @@ function pointsProgress(now: number) {
     );
   const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
   return {
-    distributed: INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION + COMPETITION_BONUS_POINTS,
+    distributed: INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION,
     remaining,
     weeksRemaining: Math.ceil(remaining / WEEKLY_POINT_DISTRIBUTION),
     nextDrop: FIRST_TRACKED_DROP_UTC + completedDrops * WEEK_MS,

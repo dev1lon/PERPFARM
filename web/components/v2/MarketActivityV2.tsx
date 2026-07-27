@@ -6,17 +6,16 @@ import {
   compactCount,
   compactUsd,
   dayLabel,
-  extendToRange,
   type ActivityMetric,
   type ActivityPoint,
   type ActivityResponse,
 } from "@/components/VariationalMarketActivity";
+import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
 
 type Range = 30 | 90 | 180;
 
-/** Native (design) market-activity chart. Reuses the same activity API + the
- *  real-data prep (envelope extension, Users-empty rule) as the legacy Recharts
- *  component, rendered as the design's single-accent-line SVG chart. */
+/** Native market-activity chart. Every plotted point comes from the activity
+ * API or a saved observation; unavailable historical ranges stay disabled. */
 export function MarketActivityV2() {
   const locale = useLocale();
   const [data, setData] = useState<ActivityResponse | null>(null);
@@ -37,18 +36,30 @@ export function MarketActivityV2() {
 
   const isVolume = metric === "volume";
   const isUsers = metric === "uniqueTraders";
+  const rawSeries = useMemo(
+    () => data
+      ? isUsers
+        ? data.uniqueTraders?.series ?? []
+        : isVolume
+          ? data.volume.series
+          : data.openInterest.series
+      : [],
+    [data, isUsers, isVolume],
+  );
 
   const series = useMemo(() => {
-    const raw = data ? (isUsers ? data.uniqueTraders?.series ?? [] : isVolume ? data.volume.series : data.openInterest.series) : [];
-    if (isUsers) return raw.length > 1 ? raw : [];
-    if (isVolume) return extendToRange(raw, rangeDays, "volume");
-    return rangeDays === 30 ? raw.slice(-rangeDays) : extendToRange(raw, rangeDays, "openInterest");
-  }, [data, isVolume, isUsers, rangeDays]);
+    if (isUsers) return rawSeries.length > 1 ? rawSeries : [];
+    return selectObservedRange(rawSeries, rangeDays);
+  }, [isUsers, rangeDays, rawSeries]);
 
   const latest = data ? (isUsers ? data.uniqueTraders?.latest ?? null : isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
-  const fmt = isUsers ? (v: number) => compactCount(v, true) : compactUsd;
+  const usersLowerBound = data?.uniqueTraders?.source !== "dune";
+  const fmt = isUsers ? (v: number) => compactCount(v, usersLowerBound) : compactUsd;
+  const isActiveAddresses = data?.uniqueTraders?.metric === "activeAddresses";
   const caption = isUsers
-    ? tr(locale, "active accounts · protocol-wide", "активные аккаунты · по протоколу")
+    ? isActiveAddresses
+      ? tr(locale, "active addresses · daily", "активные адреса · за день")
+      : tr(locale, "unique traders · protocol-wide", "уникальные трейдеры · по протоколу")
     : isVolume
       ? tr(locale, "traded volume · last 24h", "объём торгов · за 24ч")
       : tr(locale, "open interest · current", "открытый интерес · сейчас");
@@ -72,7 +83,18 @@ export function MarketActivityV2() {
         <div className="flex items-center gap-2.5">
           <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
             {metrics.map((m) => (
-              <button key={m.key} type="button" onClick={() => setMetric(m.key)} className={tab(metric === m.key)}>
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => {
+                  setMetric(m.key);
+                  if (m.key !== "uniqueTraders" && data) {
+                    const nextSeries = m.key === "volume" ? data.volume.series : data.openInterest.series;
+                    if (!hasObservedRange(nextSeries, rangeDays)) setRangeDays(30);
+                  }
+                }}
+                className={tab(metric === m.key)}
+              >
                 {m.label}
               </button>
             ))}
@@ -80,14 +102,21 @@ export function MarketActivityV2() {
           {!isUsers && (
             <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
               {([30, 90, 180] as Range[]).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setRangeDays(d)}
-                  className={`pf-transition rounded-[7px] px-3 py-1.5 font-mono-num text-[12px] ${rangeDays === d ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
-                >
-                  {d === 30 ? "30D" : d === 90 ? "3M" : "6M"}
-                </button>
+                (() => {
+                  const available = hasObservedRange(rawSeries, d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      disabled={!available}
+                      aria-disabled={!available}
+                      onClick={() => setRangeDays(d)}
+                      className={`pf-transition rounded-[7px] px-3 py-1.5 font-mono-num text-[12px] disabled:cursor-not-allowed disabled:opacity-35 ${rangeDays === d ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                    >
+                      {d === 30 ? "30D" : d === 90 ? "3M" : "6M"}
+                    </button>
+                  );
+                })()
               ))}
             </div>
           )}
@@ -96,7 +125,7 @@ export function MarketActivityV2() {
 
       <div className="rounded-[18px] border border-border bg-surface-1 px-6 pb-5 pt-5">
         <div className="flex items-baseline gap-3.5 pb-4">
-          <div className="font-mono-num text-[28px] text-text-primary">{isUsers ? compactCount(latest, true) : compactUsd(latest)}</div>
+          <div className="font-mono-num text-[28px] text-text-primary">{isUsers ? compactCount(latest, usersLowerBound) : compactUsd(latest)}</div>
           {delta !== null && (
             <div className={`text-[13px] ${delta >= 0 ? "text-positive" : "text-negative"}`}>
               {delta >= 0 ? "+" : ""}
@@ -112,9 +141,9 @@ export function MarketActivityV2() {
         {data && (series.length > 1 ? <Chart series={series} fmt={fmt} locale={locale} /> : series.length === 0 ? (
           <div className="flex h-[260px] items-center justify-center px-6 text-center text-[14px] text-text-muted">
             {isUsers
-              ? tr(locale, "Current figure shown above · daily history is being recorded and will fill the chart over time.", "Текущее значение показано выше · дневная история записывается и со временем заполнит график.")
+              ? tr(locale, "Only the current public figure is available.", "Сейчас доступно только текущее публичное значение.")
               : isVolume
-                ? tr(locale, "Historical volume is collecting; new daily API observations are saved automatically.", "История объёма собирается; новые дневные наблюдения API сохраняются автоматически.")
+                ? tr(locale, "Historical volume will appear as saved observations accumulate.", "История объёма появится по мере накопления сохранённых наблюдений.")
                 : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
           </div>
         ) : (

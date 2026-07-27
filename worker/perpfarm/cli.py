@@ -14,6 +14,14 @@ from perpfarm.jobs.sync_snapshots import run_sync_snapshots
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = REPO_ROOT / "data" / "manual"
 DEFAULT_FIXTURES_DIR = REPO_ROOT / "data" / "fixtures"
+FEE_WATCH_WEEKDAY_UTC = 0  # Monday
+FEE_WATCH_HOUR_UTC = 6
+
+
+def _should_run_weekly_fee_watch(now: datetime) -> bool:
+    """Run the folded-in fee check once a week, Monday at 06:xx UTC."""
+    utc_now = now.astimezone(timezone.utc)
+    return utc_now.weekday() == FEE_WATCH_WEEKDAY_UTC and utc_now.hour == FEE_WATCH_HOUR_UTC
 
 
 @click.group()
@@ -80,9 +88,7 @@ def sync_markets_cmd(slug: str, fixtures_dir: Path, data_dir: Path, dry_run: boo
 
 
 def _do_refresh_catalog(engine, fixtures_dir: Path, data_dir: Path) -> None:
-    """Shared by the `refresh-catalog` command and the auto-refresh at the
-    start of the nightly job. Echoes a summary; raises ClickException if any
-    venue's market sync failed."""
+    """Shared by `refresh-catalog` and the hourly snapshot job."""
     summary = refresh_catalog(engine, fixtures_dir=fixtures_dir, data_dir=data_dir)
     click.echo(
         f"refresh-catalog: {summary.venues} venue(s), {summary.manual_rows} manual row(s), "
@@ -110,7 +116,7 @@ def _do_refresh_catalog(engine, fixtures_dir: Path, data_dir: Path) -> None:
 def refresh_catalog_cmd(fixtures_dir: Path, data_dir: Path) -> None:
     """Register venues + ingest manual data + sync all market lists (one shot).
 
-    Idempotent -- safe to run on a schedule (the daily cron runs this). Picks
+    Idempotent -- safe to run on a schedule (the hourly cron runs this). Picks
     up any venue/market/manual change so new listings enter the DB and
     sync-snapshots starts collecting them.
     """
@@ -166,9 +172,9 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
                 _do_refresh_catalog(engine, fixtures_dir, data_dir)
             except (IngestError, click.ClickException) as exc:
                 click.echo(f"  refresh-catalog skipped: {exc}", err=True)
-        # Fee check, folded in so fees don't need their own cron. Fees change
-        # rarely, so only actually run it once a day (06:xx UTC); non-fatal.
-        if datetime.now(timezone.utc).hour == 6:
+        # Fee check, folded in so fees don't need their own cron. Public fee
+        # schedules change rarely, so run it once a week; non-fatal.
+        if _should_run_weekly_fee_watch(datetime.now(timezone.utc)):
             try:
                 fw = run_fee_watch(engine, fixtures_dir=fixtures_dir, as_of=as_of_date)
                 click.echo(

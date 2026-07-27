@@ -35,6 +35,7 @@ interface RankingResponse {
   totalCycleVolumeUsd: number;
   holdHours: number;
   minVolumeUsd: number;
+  minOpenInterestUsd: number;
   competition: { active: boolean; name: string };
   grouped: boolean;
   bands: Band[];
@@ -165,13 +166,26 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
     if (status !== "loaded" || notionalUsd == null || ranHedge !== "variational") return;
     let active = true;
     fetch(`/api/venues/variational/pair-rankings?accountVolumeUsd=${notionalUsd}&tradfiOnly=${appliedTradfiOnly}`)
-      .then((r) => (r.ok ? (r.json() as Promise<RankingResponse>) : Promise.reject(new Error("failed"))))
+      .then(async (r) => {
+        if (r.ok) return r.json() as Promise<RankingResponse>;
+        const payload = await r.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error ?? "failed");
+      })
       .then((d) => active && setData(d))
-      .catch(() => active && setData(null));
+      .catch((error: unknown) => {
+        if (!active) return;
+        setData(null);
+        setErrorMessage(
+          error instanceof Error && error.message !== "failed"
+            ? error.message
+            : tr(locale, "Couldn’t calculate the route right now. Try again.", "Сейчас не удалось рассчитать маршрут. Попробуйте ещё раз."),
+        );
+        setStatus("error");
+      });
     return () => {
       active = false;
     };
-  }, [status, notionalUsd, appliedTradfiOnly, ranHedge]);
+  }, [status, notionalUsd, appliedTradfiOnly, ranHedge, locale]);
 
   function run() {
     if (!validVolume) {
@@ -233,7 +247,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
           </div>
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Volume per account", "Объём на аккаунт")}</div>
-            <div className={`flex h-[50px] items-center gap-2 rounded-xl border bg-surface-2 px-3.5 ${validVolume ? "border-border" : "border-negative/50"}`}>
+            <div className={`pf-transition flex h-[50px] items-center gap-2 rounded-xl border bg-surface-2 px-3.5 focus-within:border-accent/50 ${validVolume ? "border-border" : "border-negative/50"}`}>
               <span className="font-mono-num text-[15px] text-text-dim">$</span>
               <input
                 type="number"
@@ -241,6 +255,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
                 min="1000"
                 max="200000"
                 step="1000"
+                aria-label={tr(locale, "Volume per account in USDC", "Объём на аккаунт в USDC")}
                 value={accountVolumeInput}
                 onChange={(e) => setAccountVolumeInput(e.target.value)}
                 style={{ outline: "none" }}

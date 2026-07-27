@@ -24,7 +24,7 @@ services:
   # live Run reads these). Folded in so nothing else needs its own cron:
   #  - refresh-catalog runs first EACH hour (new venues/markets + manual YAML),
   #    so new listings enter the DB and get collected the same hour;
-  #  - fee-watch runs once a day (06:xx UTC) to diff fee pages.
+  #  - fee-watch runs once a week (Monday, 06:xx UTC) to diff fee pages.
   # Both are non-fatal: a hiccup in either never blocks snapshot writes.
   - type: cron
     name: perpfarm-sync-snapshots

@@ -1,15 +1,12 @@
 """Market-data snapshot sync: writes book/funding/volume snapshots per active market.
 
-Populates the three DB-only observation tables (`book_snapshots`,
-`funding_snapshots`, `volume_snapshots`) that `jobs/nightly.py` reads
-medians/means from. Nothing else in this codebase writes to them --
-`sync-markets` only maintains the market *list* (which symbols exist), not
-price/funding/depth data. Without this job, `spread_bps` is always NULL for
-every route in the DB-backed path, so `is_complete` is always false.
+Populates the three DB observation tables (`book_snapshots`,
+`funding_snapshots`, `volume_snapshots`) used by the request-time route
+calculator. `sync-markets` only maintains the market list; this job records
+the quote-impact, funding, volume, and OI history needed for ranking.
 
-Meant to run more often than nightly -- nightly.py's `_BOOK_WINDOW`/
-`_FUNDING_WINDOW` (24h/7d rolling windows) assume more than one sample a day,
-or the "median"/"mean" they compute is just a single stale point.
+It runs hourly so a 24-hour median contains multiple independent samples
+rather than one stale observation.
 
 Each market's fetch (network/API calls, can raise `NotImplementedError` for
 an unwired adapter, or any other exception for a transient failure) is
