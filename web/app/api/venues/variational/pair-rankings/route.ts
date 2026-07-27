@@ -32,30 +32,48 @@ const TRADFI_TICKERS = new Set([
 ]);
 
 type MarketRow = {
+  book_ts: string;
   pair: string;
   spread_bps: string | number | null;
   impact_bps_10k: string | number | null;
   impact_bps_50k: string | number | null;
   impact_bps_100k: string | number | null;
+  spread_bps_p25: string | number | null;
+  spread_bps_p50: string | number | null;
+  spread_bps_p75: string | number | null;
+  impact_bps_10k_p25: string | number | null;
+  impact_bps_10k_p50: string | number | null;
+  impact_bps_10k_p75: string | number | null;
+  impact_bps_50k_p25: string | number | null;
+  impact_bps_50k_p50: string | number | null;
+  impact_bps_50k_p75: string | number | null;
+  impact_bps_100k_p25: string | number | null;
+  impact_bps_100k_p50: string | number | null;
+  impact_bps_100k_p75: string | number | null;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
 };
 
+type CostTier = "low" | "medium" | "high";
 type PairRanking = {
   pair: string;
   openInterestUsd: number;
   volume24hUsd: number;
   competitionEligible: boolean;
   firstLimitSide: "long";
+  quoteAsOf: string;
   cycleCostUsd: number;
+  latestCycleCostUsd: number;
+  costRangeLowUsd: number;
+  costRangeHighUsd: number;
   // Cost breakdown: cycleCost = spread + slippage (funding nets to 0; Variational
   // is 0% maker/taker so there are no fees). The two LIMIT legs are free; the two
   // MARKET legs carry the whole cost, half on each account.
   spreadCostUsd: number;
   slippageCostUsd: number;
-  // Execution-risk proxy (no price series yet): per-leg friction in bps stands in
-  // for how far in the red the hedge opens on thin/volatile books.
-  risk: "low" | "medium" | "high";
+  // This classifies estimated execution cost (spread + quote impact), not
+  // liquidation, volatility, or any other trading risk.
+  costTier: CostTier;
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
@@ -97,6 +115,9 @@ function round(value: PairRanking): PairRanking {
     openInterestUsd: Math.round(value.openInterestUsd),
     volume24hUsd: Math.round(value.volume24hUsd),
     cycleCostUsd: Number(value.cycleCostUsd.toFixed(2)),
+    latestCycleCostUsd: Number(value.latestCycleCostUsd.toFixed(2)),
+    costRangeLowUsd: Number(value.costRangeLowUsd.toFixed(2)),
+    costRangeHighUsd: Number(value.costRangeHighUsd.toFixed(2)),
     spreadCostUsd: Number(value.spreadCostUsd.toFixed(2)),
     slippageCostUsd: Number(value.slippageCostUsd.toFixed(2)),
   };
@@ -113,11 +134,31 @@ async function loadMarkets(): Promise<MarketRow[]> {
     `WITH v AS (SELECT id FROM venues WHERE slug = 'variational'),
      book AS (
        SELECT DISTINCT ON (b.market_id)
-         b.market_id, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k
+         b.market_id, b.ts AS book_ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        WHERE m.venue_id = (SELECT id FROM v)
        ORDER BY b.market_id, b.ts DESC
+     ),
+     book_24h AS (
+       SELECT b.market_id,
+              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p25,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p50,
+              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p75,
+              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p25,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p50,
+              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p75,
+              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p25,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p50,
+              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p75,
+              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p25,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p50,
+              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p75
+       FROM book_snapshots b
+       JOIN markets m ON m.id = b.market_id
+       WHERE m.venue_id = (SELECT id FROM v)
+         AND b.ts >= now() - interval '24 hours'
+       GROUP BY b.market_id
      ),
      vol AS (
        SELECT DISTINCT ON (s.market_id)
@@ -127,12 +168,17 @@ async function loadMarkets(): Promise<MarketRow[]> {
        WHERE m.venue_id = (SELECT id FROM v)
        ORDER BY s.market_id, s.ts DESC
      )
-     SELECT m.symbol_canonical AS pair,
+     SELECT book.book_ts, m.symbol_canonical AS pair,
             book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k,
+            book_24h.spread_bps_p25, book_24h.spread_bps_p50, book_24h.spread_bps_p75,
+            book_24h.impact_bps_10k_p25, book_24h.impact_bps_10k_p50, book_24h.impact_bps_10k_p75,
+            book_24h.impact_bps_50k_p25, book_24h.impact_bps_50k_p50, book_24h.impact_bps_50k_p75,
+            book_24h.impact_bps_100k_p25, book_24h.impact_bps_100k_p50, book_24h.impact_bps_100k_p75,
             vol.volume_24h_usd, vol.open_interest_usd
      FROM markets m
      JOIN v ON v.id = m.venue_id
      JOIN book ON book.market_id = m.id
+     LEFT JOIN book_24h ON book_24h.market_id = m.id
      JOIN vol ON vol.market_id = m.id
      WHERE m.is_active = true`,
   );
@@ -164,25 +210,40 @@ export async function GET(request: NextRequest) {
         const spreadBps = asNumber(row.spread_bps);
         const volume24hUsd = asNumber(row.volume_24h_usd);
         const oiRaw = asNumber(row.open_interest_usd);
-        const impactBps = impactAtNotional(fillNotionalUsd, [
+        const latestImpactBps = impactAtNotional(fillNotionalUsd, [
           [10_000, asNumber(row.impact_bps_10k)],
           [50_000, asNumber(row.impact_bps_50k)],
           [100_000, asNumber(row.impact_bps_100k)],
         ]);
+        const impactAtPercentile = (percentile: "p25" | "p50" | "p75") =>
+          impactAtNotional(fillNotionalUsd, [
+            [10_000, asNumber(row[`impact_bps_10k_${percentile}`])],
+            [50_000, asNumber(row[`impact_bps_50k_${percentile}`])],
+            [100_000, asNumber(row[`impact_bps_100k_${percentile}`])],
+          ]);
+        const p25ImpactBps = impactAtPercentile("p25") ?? latestImpactBps;
+        const p50ImpactBps = impactAtPercentile("p50") ?? latestImpactBps;
+        const p75ImpactBps = impactAtPercentile("p75") ?? latestImpactBps;
+        const p25SpreadBps = asNumber(row.spread_bps_p25) ?? spreadBps;
+        const p50SpreadBps = asNumber(row.spread_bps_p50) ?? spreadBps;
+        const p75SpreadBps = asNumber(row.spread_bps_p75) ?? spreadBps;
         if (
-          spreadBps === null || impactBps === null || volume24hUsd === null || oiRaw === null ||
+          spreadBps === null || latestImpactBps === null || p25ImpactBps === null || p50ImpactBps === null || p75ImpactBps === null ||
+          p25SpreadBps === null || p50SpreadBps === null || p75SpreadBps === null || volume24hUsd === null || oiRaw === null ||
           oiRaw <= 0 || volume24hUsd < MIN_VOLUME_USD
         ) {
           return null;
         }
-        // One market leg crosses the half-spread plus impact at the fill size.
-        // The limit-first hedge has two such market legs across the two
-        // accounts; funding nets to zero at equal long/short size.
-        const legBps = spreadBps / 2 + impactBps;
-        const cycleCostUsd = (2 * fillNotionalUsd * legBps) / 10_000;
-        // Risk proxy: per-leg friction (bps) at the fill size. Deep/tight books
-        // score low; thin/wide (more volatile) score high.
-        const risk: PairRanking["risk"] = legBps <= 2 ? "low" : legBps <= 6 ? "medium" : "high";
+        // Two market legs cross half-spread plus quote impact. The number shown
+        // to users is the 24h median planning estimate; the latest sample and
+        // p25-p75 range remain visible so one stale quote cannot dominate a run.
+        const latestLegBps = spreadBps / 2 + latestImpactBps;
+        const p25LegBps = p25SpreadBps / 2 + p25ImpactBps;
+        const p50LegBps = p50SpreadBps / 2 + p50ImpactBps;
+        const p75LegBps = p75SpreadBps / 2 + p75ImpactBps;
+        const costFromLegBps = (legBps: number) => (2 * fillNotionalUsd * legBps) / 10_000;
+        const cycleCostUsd = costFromLegBps(p50LegBps);
+        const costTier: CostTier = p50LegBps <= 2 ? "low" : p50LegBps <= 6 ? "medium" : "high";
         return {
           pair: row.pair,
           // Omni displays gross OI (user side plus OLP counterparty); the
@@ -191,11 +252,15 @@ export async function GET(request: NextRequest) {
           volume24hUsd,
           competitionEligible: TRADFI_TICKERS.has(row.pair),
           firstLimitSide: "long",
+          quoteAsOf: row.book_ts,
           cycleCostUsd,
-          // Two MARKET legs: each crosses half-spread + impact. Split the total.
-          spreadCostUsd: (fillNotionalUsd * spreadBps) / 10_000,
-          slippageCostUsd: (2 * fillNotionalUsd * impactBps) / 10_000,
-          risk,
+          latestCycleCostUsd: costFromLegBps(latestLegBps),
+          costRangeLowUsd: costFromLegBps(p25LegBps),
+          costRangeHighUsd: costFromLegBps(p75LegBps),
+          // The planning breakdown uses p50 values, matching cycleCostUsd.
+          spreadCostUsd: (fillNotionalUsd * p50SpreadBps) / 10_000,
+          slippageCostUsd: (2 * fillNotionalUsd * p50ImpactBps) / 10_000,
+          costTier,
         };
       })
       .filter((value): value is PairRanking => value !== null);
@@ -225,9 +290,14 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    const asOf = candidates.reduce(
+      (oldest, candidate) => (candidate.quoteAsOf < oldest ? candidate.quoteAsOf : oldest),
+      candidates[0]?.quoteAsOf ?? new Date().toISOString(),
+    );
+
     return NextResponse.json(
       {
-        asOf: new Date().toISOString(),
+        asOf,
         fillNotionalUsd,
         accountVolumeUsd,
         totalCycleVolumeUsd,

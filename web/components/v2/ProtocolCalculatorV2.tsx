@@ -8,7 +8,7 @@ import { RouteMap } from "@/components/v2/RouteMap";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
-type Risk = "low" | "medium" | "high";
+type CostTier = "low" | "medium" | "high";
 interface PairRanking {
   pair: string;
   openInterestUsd: number;
@@ -16,9 +16,12 @@ interface PairRanking {
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
+  latestCycleCostUsd: number;
+  costRangeLowUsd: number;
+  costRangeHighUsd: number;
   spreadCostUsd: number;
   slippageCostUsd: number;
-  risk: Risk;
+  costTier: CostTier;
 }
 type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
@@ -52,21 +55,25 @@ function orders(firstLimitSide: "long" | "short") {
 
 const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
 
-const RISK_TONE: Record<Risk, string> = {
+const COST_TIER_TONE: Record<CostTier, string> = {
   low: "border-positive/30 bg-positive/10 text-positive",
   medium: "border-warning/30 bg-warning/10 text-warning",
   high: "border-negative/30 bg-negative/10 text-negative",
 };
-const RISK_DOT: Record<Risk, string> = { low: "bg-positive", medium: "bg-warning", high: "bg-negative" };
-function riskLabel(locale: Locale, r: Risk): string {
-  return r === "low" ? tr(locale, "Low risk", "Низкий риск") : r === "medium" ? tr(locale, "Medium risk", "Средний риск") : tr(locale, "High risk", "Высокий риск");
+const COST_TIER_DOT: Record<CostTier, string> = { low: "bg-positive", medium: "bg-warning", high: "bg-negative" };
+function costTierLabel(locale: Locale, tier: CostTier): string {
+  return tier === "low"
+    ? tr(locale, "Low execution cost", "Низкая стоимость исполнения")
+    : tier === "medium"
+      ? tr(locale, "Medium execution cost", "Средняя стоимость исполнения")
+      : tr(locale, "High execution cost", "Высокая стоимость исполнения");
 }
-function RiskBadge({ risk }: { risk: Risk }) {
+function CostTierBadge({ costTier }: { costTier: CostTier }) {
   const locale = useLocale();
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${RISK_TONE[risk]}`}>
-      <span className={`h-[5px] w-[5px] rounded-full ${RISK_DOT[risk]}`} />
-      {riskLabel(locale, risk)}
+    <span title={tr(locale, "Based on 24h spread and quote-impact data; this is not a liquidation-risk score.", "На основе 24ч спреда и quote impact; это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
+      <span className={`h-[5px] w-[5px] rounded-full ${COST_TIER_DOT[costTier]}`} />
+      {costTierLabel(locale, costTier)}
     </span>
   );
 }
@@ -133,7 +140,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   const hedgeOptions = [{ slug: "variational", name: "Variational" }, ...otherVenues.map((v) => ({ slug: v.slug, name: v.name }))];
 
   const [hedge, setHedge] = useState("variational");
-  const [accountVolumeInput, setAccountVolumeInput] = useState("50000");
+  const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
   const [tradfiOnly, setTradfiOnly] = useState(false);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -195,12 +202,12 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
     .slice(0, 10);
-  // Recommended = cheapest MEDIUM-OI pair with GREEN (low) risk; relax to any
+  // Recommended = cheapest MEDIUM-OI pair with low execution cost; relax to any
   // medium-OI if none are green; during a live competition prefer the eligible
   // (TradFi) one. Never just the global cheapest.
   const mediumByCost = [...(grouped ? bandPairs("medium") : flatPairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
   const compActive = data?.competition?.active ?? false;
-  const greenPool = mediumByCost.filter((p) => p.risk === "low");
+  const greenPool = mediumByCost.filter((p) => p.costTier === "low");
   const pool = greenPool.length ? greenPool : mediumByCost;
   const best =
     (compActive ? pool.find((p) => p.competitionEligible) : undefined) ??
@@ -254,7 +261,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
         <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
           <div className="flex items-center gap-4">
             <div className="text-[13px] text-text-muted">
-              {tr(locale, "Full hedge cycle:", "Полный хедж-цикл:")}{" "}
+              <span className="mr-1.5">{tr(locale, `2 fills of ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} per account В· Full hedge cycle:`, `2 филла по ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} на аккаунт В· Полный хедж-цикл:`)}</span>
               <span className="font-mono-num text-text-primary">{formatUsd((validVolume ? requested : 0) * 2, { decimals: 0 })}</span>{" "}
               {tr(locale, "across two accounts.", "на два аккаунта.")}
             </div>
@@ -363,7 +370,7 @@ function SameVenueResult({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
-            <RiskBadge risk={best.risk} />
+            <CostTierBadge costTier={best.costTier} />
             {best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -396,11 +403,12 @@ function SameVenueResult({
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-5">
               {[
+                [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                [tr(locale, "Estimated cycle cost", "Оценка стоимости цикла"), formatUsd(best.cycleCostUsd), "text-positive"],
+                [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(best.cycleCostUsd), "text-positive"],
                 [tr(locale, "Hold", "Удержание"), "12–24h", "text-text-primary"],
               ].map(([k, v, cls]) => (
                 <div key={k} className="flex flex-col gap-1.5">
@@ -412,8 +420,8 @@ function SameVenueResult({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
-                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
+                `24h estimated range: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}. LIMIT legs are assumed to fill at your target price; a fill is not guaranteed.`,
+                `Диапазон оценки за 24ч: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}. LIMIT-ноги считаются по вашей целевой цене, но исполнение не гарантировано.`,
               )}
             </div>
           </div>
@@ -428,7 +436,7 @@ function SameVenueResult({
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
           <div>
             <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-            <div className="text-[14px] text-text-muted">{tr(locale, `Sorted by full hedge-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
+            <div className="text-[14px] text-text-muted">{tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
           </div>
           <div className="flex flex-col items-end gap-2">
             {grouped && (
@@ -476,7 +484,7 @@ function SameVenueResult({
                     <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
-                      <span title={riskLabel(locale, p.risk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${RISK_DOT[p.risk]}`} />
+                      <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
                       {p.competitionEligible && (
                         <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                       )}
@@ -498,7 +506,7 @@ function SameVenueResult({
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
-                        <RiskBadge risk={p.risk} />
+                        <CostTierBadge costTier={p.costTier} />
                         {p.competitionEligible && (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -525,13 +533,14 @@ function SameVenueResult({
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-5">
                         {(
                           [
+                            [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                            [tr(locale, "Estimated cycle cost", "Оценка стоимости"), formatUsd(p.cycleCostUsd), "text-positive"],
-                            [tr(locale, "Hold", "Удержание"), "12–24h", "text-text-primary"],
+                            [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"],
+                            [tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">

@@ -293,7 +293,7 @@ function TierSCard({ p }: { p: HomeProtocol }) {
   return (
     <div className="group h-full">
       <Link
-        href={`/v2/${p.slug}`}
+        href={`/${p.slug}`}
         className="flex h-full flex-col gap-[18px] rounded-[18px] border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
       >
         <div className="flex items-center justify-between">
@@ -322,7 +322,7 @@ function EarlyCard({ p }: { p: HomeProtocol }) {
   return (
     <div className="group h-full">
       <Link
-        href={`/v2/${p.slug}`}
+        href={`/${p.slug}`}
         className="flex h-full items-center justify-between rounded-[18px] border border-border bg-surface-1 px-5 py-[18px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
       >
         <div className="flex items-center gap-3.5">
@@ -338,7 +338,7 @@ function EarlyCard({ p }: { p: HomeProtocol }) {
 function RadarTile({ p }: { p: HomeProtocol }) {
   return (
     <Link
-      href={`/v2/${p.slug}`}
+      href={`/${p.slug}`}
       className="pf-transition flex items-center gap-2.5 rounded-xl border border-border bg-bg px-3 py-2.5 hover:border-text-muted/40 hover:bg-surface-1"
     >
       <ProtocolMark slug={p.slug} name={p.name} size={24} radius={7} />

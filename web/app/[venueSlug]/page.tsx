@@ -1,26 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { VenuePageClient } from "@/components/VenuePageClient";
-import { VariationalLayoutPreview } from "@/components/VariationalLayoutPreview";
+import { ProtocolSoonV2 } from "@/components/v2/ProtocolSoonV2";
+import { ProtocolV2 } from "@/components/v2/ProtocolV2";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
-import type { VenueDetail } from "@/lib/types";
-
-/** A listed protocol that has no DB row yet (added after the DB was seeded)
- *  still gets its SOON page: build a minimal not-ready stub from the catalog. */
-function soonStub(slug: string, name: string): VenueDetail {
-  return {
-    slug,
-    name,
-    apiStatus: "stub",
-    meta: null,
-    executionRules: null,
-    currentFees: null,
-    feeHistory: [],
-    markets: [],
-  };
-}
 
 // ISR: the page shell (layout, venue list, static copy) is cached and
 // regenerated at most hourly. Live numbers (Run, activity chart) are fetched
@@ -45,19 +29,14 @@ export default async function VenuePage({
 }) {
   const { venueSlug } = await params;
   const [venueRow, allVenues] = await Promise.all([getVenueDetail(venueSlug), getVenues()]);
-  // Fall back to a SOON stub for a listed protocol the DB doesn't have yet, so
-  // it never 404s (e.g. bullet / ondo / qfex on a DB seeded before they existed).
+  // Listed protocols without a DB row still receive their canonical SOON page.
   const catalog = findProtocol(venueSlug);
-  const venue = venueRow ?? (catalog ? soonStub(venueSlug, catalog.name) : null);
-  if (!venue) notFound();
+  if (!venueRow && !catalog) notFound();
 
-  const ready = isReadyVenue(venueSlug);
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
-  // The only "done" perp uses the full designed layout; every other perp is
-  // not ready yet, so VenuePageClient renders its SOON page (isReadyVenue).
   if (venueSlug === "variational") {
-    return <VariationalLayoutPreview otherVenues={otherVenues} />;
+    return <ProtocolV2 otherVenues={otherVenues} />;
   }
-  return <VenuePageClient venue={venue} otherVenues={otherVenues} ready={ready} />;
+  return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog!.name} meta={venueRow?.meta ?? null} />;
 }

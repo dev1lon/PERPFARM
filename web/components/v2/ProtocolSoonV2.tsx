@@ -22,7 +22,7 @@ export function ProtocolSoonV2({
       <SiteHeaderV2 />
       <div className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-10">
         <div className="flex items-center gap-2 pb-4 pt-5 text-[13px] text-text-dim">
-          <Link href="/v2#protocols" className="pf-transition text-text-muted hover:text-text-primary">
+          <Link href="/#protocols" className="pf-transition text-text-muted hover:text-text-primary">
             {tr(locale, "Protocols", "Протоколы")}
           </Link>
           <span>/</span>

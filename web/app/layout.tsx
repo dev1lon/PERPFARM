@@ -21,6 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "PERPFARM",
   description: "Cost-per-point optimizer for tokenless perp DEXes",
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({
@@ -34,15 +35,13 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-bg text-text-primary antialiased">
+      <body className="pf-v2 min-h-full flex flex-col bg-bg text-text-primary antialiased">
         {/* Applies the stored theme before content paints (no flash). */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: LOCALE_INIT_SCRIPT }} />
         <LocaleProvider>
           <SiteNavigation />
-        {/* Each page adds its own bottom padding to clear the fixed SiteFooter;
-            keeping it out of <main> avoids a bg-coloured strip under pages whose
-            brand background is a min-h-screen layer. */}
+        {/* Each page adds its own bottom padding to clear the fixed SiteFooter. */}
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </LocaleProvider>
