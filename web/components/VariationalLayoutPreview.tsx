@@ -10,7 +10,10 @@ import type { VenueSummary } from "@/lib/types";
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
 const INITIAL_POINTS_REMAINING = 1_650_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
+const COMPETITION_POINT_DISTRIBUTION = 20_000;
+const COMPLETED_COMPETITIONS_BEFORE_CURRENT = 4;
 const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+const CURRENT_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function pointsProgress(now: number) {
@@ -21,8 +24,13 @@ function pointsProgress(now: number) {
       Math.ceil(INITIAL_POINTS_REMAINING / WEEKLY_POINT_DISTRIBUTION)
     );
   const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
+  const completedCompetitions =
+    COMPLETED_COMPETITIONS_BEFORE_CURRENT + (now >= CURRENT_COMPETITION_END_UTC ? 1 : 0);
   return {
-    distributed: INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION,
+    distributed:
+      INITIAL_POINTS_DISTRIBUTED +
+      completedDrops * WEEKLY_POINT_DISTRIBUTION +
+      completedCompetitions * COMPETITION_POINT_DISTRIBUTION,
     remaining,
     weeksRemaining: Math.ceil(remaining / WEEKLY_POINT_DISTRIBUTION),
     nextDrop: FIRST_TRACKED_DROP_UTC + completedDrops * WEEK_MS,

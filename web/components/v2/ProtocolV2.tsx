@@ -13,6 +13,8 @@ import type { VenueSummary } from "@/lib/types";
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
 const INITIAL_POINTS_REMAINING = 1_650_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
+const COMPETITION_POINT_DISTRIBUTION = 20_000;
+const COMPLETED_COMPETITIONS_BEFORE_CURRENT = 4;
 const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
@@ -27,9 +29,12 @@ function pointsProgress(now: number) {
           Math.ceil(INITIAL_POINTS_REMAINING / WEEKLY_POINT_DISTRIBUTION),
         );
   const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
-  // Competition points are intentionally excluded: the user records them
-  // manually only after Variational confirms an actual distribution.
-  const distributed = INITIAL_POINTS_DISTRIBUTED + completedDrops * WEEKLY_POINT_DISTRIBUTION;
+  const completedCompetitions =
+    COMPLETED_COMPETITIONS_BEFORE_CURRENT + (now >= TRADFI_COMPETITION_END_UTC ? 1 : 0);
+  const distributed =
+    INITIAL_POINTS_DISTRIBUTED +
+    completedDrops * WEEKLY_POINT_DISTRIBUTION +
+    completedCompetitions * COMPETITION_POINT_DISTRIBUTION;
   return {
     distributed,
     remaining,
@@ -251,8 +256,8 @@ function ActivityAndDistribution() {
                 : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."
               : tr(
                   locale,
-                  "The competition has ended. Any confirmed extra points are added to the distribution total manually.",
-                  "Турнир завершён. Подтверждённые дополнительные поинты добавляются в общий итог вручную.",
+                  "The competition has ended. Its 20,000-point distribution is included in the tracked total.",
+                  "Турнир завершён. Его раздача 20 000 поинтов учтена в общем количестве.",
                 )}
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
