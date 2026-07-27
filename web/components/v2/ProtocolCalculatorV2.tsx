@@ -167,8 +167,12 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   // cheapest: high-OI majors are cheap to trade but not the best points target.
   const byOi = [...flatPairs].sort((a, b) => b.openInterestUsd - a.openInterestUsd);
   const third = Math.max(1, Math.ceil(byOi.length / 3));
-  const medium = byOi.slice(third, third * 2);
-  const best = [...medium].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0] ?? top[0];
+  const mediumByCost = byOi.slice(third, third * 2).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
+  // During an active competition, prefer the cheapest ELIGIBLE (TradFi) medium-OI
+  // pair — its volume counts double toward the competition. Otherwise the
+  // cheapest medium-OI pair (Priority 1), never the global cheapest.
+  const compActive = data?.competition?.active ?? false;
+  const best = (compActive ? mediumByCost.find((p) => p.competitionEligible) : undefined) ?? mediumByCost[0] ?? top[0];
 
   return (
     <div className="mt-10">
