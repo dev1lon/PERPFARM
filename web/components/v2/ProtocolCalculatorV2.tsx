@@ -420,8 +420,8 @@ function SameVenueResult({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                `24h estimated range: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Latest sampled cost: ${formatUsd(best.latestCycleCostUsd)}. LIMIT legs are assumed to fill at your target price; a fill is not guaranteed.`,
-                `Диапазон оценки за 24ч: ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}. Последняя стоимость по снапшоту: ${formatUsd(best.latestCycleCostUsd)}. LIMIT-ноги считаются по вашей целевой цене, но исполнение не гарантировано.`,
+                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
+                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
               )}
             </div>
           </div>
