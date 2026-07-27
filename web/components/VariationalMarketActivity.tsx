@@ -12,11 +12,11 @@ import {
 } from "recharts";
 import { tr, useLocale } from "@/components/LocaleProvider";
 
-type ActivityMetric = "volume" | "openInterest" | "uniqueTraders";
-type ActivityRange = 30 | 90 | 180;
-type ActivityPoint = { date: string; value: number };
+export type ActivityMetric = "volume" | "openInterest" | "uniqueTraders";
+export type ActivityRange = 30 | 90 | 180;
+export type ActivityPoint = { date: string; value: number };
 
-interface ActivityResponse {
+export interface ActivityResponse {
   asOf: string;
   days: number;
   volume: { series: ActivityPoint[]; observedDays: number; latest24h: number | null };
@@ -24,7 +24,7 @@ interface ActivityResponse {
   uniqueTraders?: { series: ActivityPoint[]; latest: number | null; source: string };
 }
 
-function compactUsd(value: number | null): string {
+export function compactUsd(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "n/a";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -34,7 +34,7 @@ function compactUsd(value: number | null): string {
   }).format(value);
 }
 
-function dayLabel(value: string, locale: "en" | "ru"): string {
+export function dayLabel(value: string, locale: "en" | "ru"): string {
   return new Date(`${value}T00:00:00Z`).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
     day: "numeric",
     month: "short",
@@ -101,7 +101,7 @@ function ActivityChart({
   );
 }
 
-function compactCount(value: number | null, lowerBound = false): string {
+export function compactCount(value: number | null, lowerBound = false): string {
   if (value === null || !Number.isFinite(value)) return "n/a";
   const formatted = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
   return lowerBound ? `${formatted}+` : formatted;
@@ -177,7 +177,7 @@ function seedFromImage(kind: "volume" | "openInterest", endMs: number, days: num
 /** Real recent series extended back to `rangeDays` with the image seed (real
  *  data wins on its dates; the seed is scaled to meet it with no seam). When
  *  no real data exists, the chart is the pure image seed. */
-function extendToRange(real: ActivityPoint[], rangeDays: number, kind: "volume" | "openInterest"): ActivityPoint[] {
+export function extendToRange(real: ActivityPoint[], rangeDays: number, kind: "volume" | "openInterest"): ActivityPoint[] {
   if (real.length >= rangeDays) return real.slice(-rangeDays);
   const now = new Date();
   const endMs = real.length > 0

@@ -6,7 +6,7 @@ import { tr, useLocale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
-import { VariationalMarketActivity } from "@/components/VariationalMarketActivity";
+import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import type { VenueSummary } from "@/lib/types";
 
 /* ---- real points-distribution logic (ported from VariationalLayoutPreview) ---- */
@@ -368,13 +368,8 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
         <ActivityAndDistribution />
         <FactorsAffectingPoints />
 
-        {/* Live market-activity chart (temporary; native reskin next). */}
-        <div className="mt-11">
-          <H2>{tr(locale, "Market activity", "Активность рынка")}</H2>
-          <div className="mt-4">
-            <VariationalMarketActivity includeUniqueTraders />
-          </div>
-        </div>
+        {/* Native market-activity chart (live activity API, design SVG). */}
+        <MarketActivityV2 />
 
         <div className="mt-14 flex items-center justify-between border-t border-border pt-7 text-[13px] text-text-muted">
           <span>{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span>
