@@ -262,13 +262,9 @@ function ActivityAndDistribution() {
               ? "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi). Score: TradFi PnL × √TradFi volume."
               : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."}
           </div>
-          <div className="flex flex-col gap-2">
-            <div className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Eligible markets", "Eligible-рынки")}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {["XAU", "QQQ", "SPY", "TSLA", "XAG"].map((m) => (
-                <span key={m} className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono-num text-[12px] text-text-primary">{m}</span>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Eligible", "Eligible")}</span>
+            <span className="text-text-primary">{tr(locale, "all TradFi markets", "все TradFi-рынки")}</span>
           </div>
           <a href="https://docs.variational.io/omni/trading-competition" target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-accent hover:text-accent-hover">
             {tr(locale, "Competition rules ↗", "Правила конкурса ↗")}

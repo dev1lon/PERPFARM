@@ -441,13 +441,47 @@ function SameVenueResult({
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       {p.competitionEligible && (
-                        <div className="pb-3">
+                        <div className="pb-3.5">
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                             {tr(locale, "Competition eligible", "Eligible для конкурса")}
                           </span>
                         </div>
                       )}
+                      {/* LONG / SHORT legs (compact recommended-route view, no 3D) */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2 rounded-[12px] border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
+                          <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
+                          <div className="flex items-center gap-2">
+                            <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
+                            <span className="text-[15px] font-semibold text-text-primary">Variational</span>
+                          </div>
+                          <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
+                        </div>
+                        <div className="flex flex-col gap-2 rounded-[12px] border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
+                          <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
+                          <div className="flex items-center gap-2">
+                            <ProtocolMark slug="variational" name={hedgeName} size={22} radius={7} />
+                            <span className="text-[15px] font-semibold text-text-primary">{hedgeName}</span>
+                          </div>
+                          <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-4">
+                        {(
+                          [
+                            [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
+                            [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
+                            [tr(locale, "Estimated cycle cost", "Оценка стоимости"), formatUsd(p.cycleCostUsd), "text-positive"],
+                            [tr(locale, "Hold", "Удержание"), "12–24h", "text-text-primary"],
+                          ] as [string, string, string][]
+                        ).map(([k, v, cls]) => (
+                          <div key={k} className="flex flex-col gap-1">
+                            <div className="text-[11px] text-text-muted">{k}</div>
+                            <div className={`font-mono-num text-[15px] ${cls}`}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
                       <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Cost breakdown", "Разбор стоимости")} · {p.pair}</div>
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                         {(
