@@ -563,13 +563,14 @@ function SameVenueResult({
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-6">
                         {(
                           [
                             [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"],
+                            [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"],
                             [tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
