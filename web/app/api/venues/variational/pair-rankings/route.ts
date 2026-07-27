@@ -45,6 +45,11 @@ type PairRanking = {
   competitionEligible: boolean;
   firstLimitSide: "long";
   cycleCostUsd: number;
+  // Cost breakdown: cycleCost = spread + slippage (funding nets to 0; Variational
+  // is 0% maker/taker so there are no fees). The two LIMIT legs are free; the two
+  // MARKET legs carry the whole cost, half on each account.
+  spreadCostUsd: number;
+  slippageCostUsd: number;
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
@@ -86,6 +91,8 @@ function round(value: PairRanking): PairRanking {
     openInterestUsd: Math.round(value.openInterestUsd),
     volume24hUsd: Math.round(value.volume24hUsd),
     cycleCostUsd: Number(value.cycleCostUsd.toFixed(2)),
+    spreadCostUsd: Number(value.spreadCostUsd.toFixed(2)),
+    slippageCostUsd: Number(value.slippageCostUsd.toFixed(2)),
   };
 }
 
@@ -176,6 +183,9 @@ export async function GET(request: NextRequest) {
           competitionEligible: TRADFI_TICKERS.has(row.pair),
           firstLimitSide: "long",
           cycleCostUsd,
+          // Two MARKET legs: each crosses half-spread + impact. Split the total.
+          spreadCostUsd: (fillNotionalUsd * spreadBps) / 10_000,
+          slippageCostUsd: (2 * fillNotionalUsd * impactBps) / 10_000,
         };
       })
       .filter((value): value is PairRanking => value !== null);

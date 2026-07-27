@@ -15,6 +15,8 @@ interface PairRanking {
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
+  spreadCostUsd: number;
+  slippageCostUsd: number;
 }
 interface Band {
   key: "high" | "medium" | "low" | "all";
@@ -446,22 +448,30 @@ function SameVenueResult({
                           </span>
                         </div>
                       )}
-                      <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Example hedge sequence", "Пример последовательности хеджа")} · {p.pair}</div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-xl bg-surface-1 p-4 text-[13px] text-text-muted">
-                          <div className="font-semibold text-text-primary">{tr(locale, "Account A · LONG", "Аккаунт A · LONG")}</div>
-                          <div className="mt-1.5">{limitLongFirst ? tr(locale, "Entry: LIMIT buy", "Вход: LIMIT покупка") : tr(locale, "Entry: MARKET buy", "Вход: MARKET покупка")} {formatUsd(data.fillNotionalUsd, { decimals: 0 })}</div>
-                          <div className="mt-1">{limitLongFirst ? tr(locale, "Exit: MARKET sell", "Выход: MARKET продажа") : tr(locale, "Exit: LIMIT sell", "Выход: LIMIT продажа")} {formatUsd(data.fillNotionalUsd, { decimals: 0 })}</div>
-                        </div>
-                        <div className="rounded-xl bg-surface-1 p-4 text-[13px] text-text-muted">
-                          <div className="font-semibold text-text-primary">{tr(locale, "Account B · SHORT", "Аккаунт B · SHORT")}</div>
-                          <div className="mt-1.5">{limitLongFirst ? tr(locale, "Entry: MARKET sell", "Вход: MARKET продажа") : tr(locale, "Entry: LIMIT sell", "Вход: LIMIT продажа")} {formatUsd(data.fillNotionalUsd, { decimals: 0 })}</div>
-                          <div className="mt-1">{limitLongFirst ? tr(locale, "Exit: LIMIT buy", "Выход: LIMIT покупка") : tr(locale, "Exit: MARKET buy", "Выход: MARKET покупка")} {formatUsd(data.fillNotionalUsd, { decimals: 0 })}</div>
-                        </div>
+                      <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Cost breakdown", "Разбор стоимости")} · {p.pair}</div>
+                      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                        {(
+                          [
+                            [tr(locale, "LONG entry", "LONG вход"), limitLongFirst ? 0 : p.cycleCostUsd / 2],
+                            [tr(locale, "LONG exit", "LONG выход"), limitLongFirst ? p.cycleCostUsd / 2 : 0],
+                            [tr(locale, "SHORT entry", "SHORT вход"), limitLongFirst ? p.cycleCostUsd / 2 : 0],
+                            [tr(locale, "SHORT exit", "SHORT выход"), limitLongFirst ? 0 : p.cycleCostUsd / 2],
+                            [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
+                            [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
+                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), 0],
+                            [tr(locale, "Fees", "Комиссии"), 0],
+                          ] as [string, number][]
+                        ).map(([k, v]) => (
+                          <div key={k} className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5">
+                            <span className="text-[12px] text-text-muted">{k}</span>
+                            <span className="font-mono-num text-[13px] text-text-primary">{formatUsd(v)}</span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3 text-[13px] text-text-muted">
-                        <span>{tr(locale, "Full-cycle cost", "Стоимость полного цикла")} <span className="font-mono-num text-positive">{formatUsd(p.cycleCostUsd)}</span></span>
-                        <span>{tr(locale, "Net funding: $0 at equal LONG/SHORT size.", "Net funding: $0 при равном размере LONG/SHORT.")}</span>
+                      <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3.5 text-[13px] text-text-muted">
+                        <span>{tr(locale, "Full cost per account", "Полная стоимость на аккаунт")} <span className="font-mono-num text-text-primary">{formatUsd(p.cycleCostUsd / 2)}</span></span>
+                        <span>{tr(locale, "Combined hedge-cycle cost", "Полная стоимость хедж-цикла")} <span className="font-mono-num text-positive">{formatUsd(p.cycleCostUsd)}</span></span>
+                        <span>{tr(locale, "Two MARKET legs pay; two LIMIT legs are free.", "Платят две MARKET-ноги; две LIMIT-ноги бесплатны.")}</span>
                       </div>
                     </div>
                   )}
