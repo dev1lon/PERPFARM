@@ -38,22 +38,22 @@ const TRADFI_TICKERS = new Set([
 type MarketRow = {
   book_ts: string;
   pair: string;
-  spread_bps: string | number | null;
-  impact_bps_10k: string | number | null;
-  impact_bps_50k: string | number | null;
-  impact_bps_100k: string | number | null;
-  spread_bps_p25: string | number | null;
-  spread_bps_p50: string | number | null;
-  spread_bps_p75: string | number | null;
-  impact_bps_10k_p25: string | number | null;
-  impact_bps_10k_p50: string | number | null;
-  impact_bps_10k_p75: string | number | null;
-  impact_bps_50k_p25: string | number | null;
-  impact_bps_50k_p50: string | number | null;
-  impact_bps_50k_p75: string | number | null;
-  impact_bps_100k_p25: string | number | null;
-  impact_bps_100k_p50: string | number | null;
-  impact_bps_100k_p75: string | number | null;
+  spread_bps?: string | number | null;
+  impact_bps_10k?: string | number | null;
+  impact_bps_50k?: string | number | null;
+  impact_bps_100k?: string | number | null;
+  spread_bps_p25?: string | number | null;
+  spread_bps_p50?: string | number | null;
+  spread_bps_p75?: string | number | null;
+  impact_bps_10k_p25?: string | number | null;
+  impact_bps_10k_p50?: string | number | null;
+  impact_bps_10k_p75?: string | number | null;
+  impact_bps_50k_p25?: string | number | null;
+  impact_bps_50k_p50?: string | number | null;
+  impact_bps_50k_p75?: string | number | null;
+  impact_bps_100k_p25?: string | number | null;
+  impact_bps_100k_p50?: string | number | null;
+  impact_bps_100k_p75?: string | number | null;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
 };
@@ -86,6 +86,8 @@ type LiveSideCost = {
   marketImpactBps: number;
   spreadBps: number | null;
   quoteAsOf: string | null;
+  volume24hUsd: number | null;
+  openInterestUsd: number | null;
 };
 
 function asNumber(value: unknown): number | null {
@@ -128,11 +130,19 @@ async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, L
     const mark = asNumber(listing.mark_price);
     if (!base || !oneK || !hundredK || mark === null || mark <= 0) continue;
     const side = chooseFirstLimitSide({ notional: fillNotionalUsd, mark, base, oneK, hundredK });
+    const openInterest = isRecord(listing.open_interest) ? listing.open_interest : null;
+    const longOpenInterest = openInterest ? asNumber(openInterest.long_open_interest) : null;
+    const shortOpenInterest = openInterest ? asNumber(openInterest.short_open_interest) : null;
     costs.set(listing.ticker, {
       firstLimitSide: side.firstLimitSide,
       marketImpactBps: side.marketImpactBps,
       spreadBps: asNumber(listing.base_spread_bps),
       quoteAsOf: typeof listing.quotes.updated_at === "string" ? listing.quotes.updated_at : null,
+      volume24hUsd: asNumber(listing.volume_24h),
+      openInterestUsd:
+        longOpenInterest !== null && shortOpenInterest !== null
+          ? longOpenInterest + shortOpenInterest
+          : null,
     });
   }
   return costs;
@@ -189,7 +199,6 @@ async function loadMarkets(): Promise<MarketRow[]> {
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        WHERE m.venue_id = (SELECT id FROM v)
-         AND b.ts >= now() - interval '7 days'
        ORDER BY b.market_id, b.ts DESC
      ),
      book_24h AS (
@@ -218,7 +227,6 @@ async function loadMarkets(): Promise<MarketRow[]> {
        FROM volume_snapshots s
        JOIN markets m ON m.id = s.market_id
        WHERE m.venue_id = (SELECT id FROM v)
-         AND s.ts >= now() - interval '7 days'
        ORDER BY s.market_id, s.ts DESC
      )
      SELECT book.book_ts, m.symbol_canonical AS pair,
@@ -261,12 +269,28 @@ export async function GET(request: NextRequest) {
       loadLiveSideCosts(fillNotionalUsd).catch(() => new Map<string, LiveSideCost>()),
     ]);
 
-    const candidates = rows
+    // Staging intentionally has no snapshot cron. Always prefer live volume/OI
+    // and add live-only rows when the saved snapshots have aged past the query
+    // window. Historical DB rows still supply the 24h percentile estimates
+    // whenever they are available.
+    const marketRows = new Map(rows.map((row) => [row.pair, row]));
+    for (const [pair, live] of liveSideCosts) {
+      if (marketRows.has(pair)) continue;
+      marketRows.set(pair, {
+        book_ts: live.quoteAsOf ?? new Date().toISOString(),
+        pair,
+        spread_bps: live.spreadBps,
+        volume_24h_usd: live.volume24hUsd,
+        open_interest_usd: live.openInterestUsd,
+      });
+    }
+
+    const candidates = [...marketRows.values()]
       .map((row): PairRanking | null => {
-        const spreadBps = asNumber(row.spread_bps);
-        const volume24hUsd = asNumber(row.volume_24h_usd);
-        const oiRaw = asNumber(row.open_interest_usd);
         const liveSide = liveSideCosts.get(row.pair);
+        const spreadBps = liveSide?.spreadBps ?? asNumber(row.spread_bps);
+        const volume24hUsd = liveSide?.volume24hUsd ?? asNumber(row.volume_24h_usd);
+        const oiRaw = liveSide?.openInterestUsd ?? asNumber(row.open_interest_usd);
         const storedLatestImpactBps = impactAtNotional(fillNotionalUsd, [
           [10_000, asNumber(row.impact_bps_10k)],
           [50_000, asNumber(row.impact_bps_50k)],
