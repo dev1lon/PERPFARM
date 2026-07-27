@@ -217,14 +217,15 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
     .slice(0, 10);
   // Recommended = cheapest MEDIUM-OI pair with low execution cost; relax to any
-  // medium-OI if none are green; during a live competition prefer the eligible
-  // (TradFi) one. Never just the global cheapest.
+  // medium-OI if none are green. During an active competition, eligibility is
+  // mandatory: pick the cheapest eligible medium-OI pair before considering its
+  // execution-cost tier. Never just the global cheapest.
   const mediumByCost = [...(grouped ? bandPairs("medium") : flatPairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
   const compActive = data?.competition?.active ?? false;
   const greenPool = mediumByCost.filter((p) => p.costTier === "low");
   const pool = greenPool.length ? greenPool : mediumByCost;
   const best =
-    (compActive ? pool.find((p) => p.competitionEligible) : undefined) ??
+    (compActive ? mediumByCost.find((p) => p.competitionEligible) : undefined) ??
     pool[0] ??
     [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
 
