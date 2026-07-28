@@ -37,19 +37,9 @@ function Hero() {
         className="overflow-hidden rounded-[20px] border"
         style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}
       >
-        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
             {tr(locale, "Hedge route", "Хедж-маршрут")}
-          </div>
-          <div className="flex items-center gap-5 text-[12px]" style={{ color: "#8b96ad" }}>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4d8dff" }} />
-              {tr(locale, "Long", "LONG")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#f2746e" }} />
-              {tr(locale, "Short", "SHORT")}
-            </span>
           </div>
         </div>
         <RouteMap mode="checkpoints" height={320} />
