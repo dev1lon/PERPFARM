@@ -145,6 +145,82 @@ function CostModel() {
   );
 }
 
+function DataBasis() {
+  const locale = useLocale();
+  const item = (label: string) => (
+    <div className="rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 text-[13px] text-text-primary">
+      {label}
+    </div>
+  );
+
+  return (
+    <section className="pt-13">
+      <H2
+        title={tr(locale, "Data behind the estimate", "Данные в основе оценки")}
+        sub={tr(
+          locale,
+          "What PerpFarm measures directly and what remains an estimate until the hedge is closed.",
+          "Что PerpFarm измеряет напрямую, а что остаётся оценкой до закрытия хеджа.",
+        )}
+      />
+      <div className="overflow-hidden rounded-[20px] border border-border bg-surface-1">
+        <div className="grid md:grid-cols-[1.35fr_1fr]">
+          <div className="p-6 sm:p-7 md:border-r md:border-border">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-positive" />
+                <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Observed market data", "Наблюдаемые рыночные данные")}</h3>
+              </div>
+              <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-positive">{tr(locale, "OBSERVED", "НАБЛЮДАЕТСЯ")}</span>
+            </div>
+            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted">
+              {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {item(tr(locale, "Current quotes", "Текущие котировки"))}
+              {item(tr(locale, "Open interest and 24h volume", "Открытый интерес и объём за 24ч"))}
+              {item(tr(locale, "Spread and impact at your size", "Спред и влияние ордера для вашего размера"))}
+              {item(tr(locale, "Typical 24h cost range", "Типичный диапазон стоимости за 24ч"))}
+            </div>
+          </div>
+
+          <div className="border-t border-border p-6 sm:p-7 md:border-l-0 md:border-t-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Estimated over the hold", "Оценивается на период удержания")}</h3>
+              </div>
+              <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-warning">{tr(locale, "ESTIMATED", "ОЦЕНКА")}</span>
+            </div>
+            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted">
+              {tr(
+                locale,
+                "These values depend on market conditions after you run the calculation.",
+                "Эти значения зависят от состояния рынка после запуска расчёта.",
+              )}
+            </p>
+            <div className="mt-4 grid gap-2">
+              {item(tr(locale, "Exit execution cost", "Стоимость исполнения при выходе"))}
+              {item(tr(locale, "Net funding during the hold", "Чистый фандинг за время удержания"))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex gap-4 rounded-[16px] border border-warning/20 bg-surface-1 px-5 py-4">
+        <span className="w-[3px] flex-none rounded-full bg-warning" />
+        <p className="text-[14px] leading-[1.62] text-text-muted">
+          {tr(
+            locale,
+            "Protocol rules can change. PerpFarm separates publicly confirmed rules from planning assumptions.",
+            "Правила протоколов могут меняться. PerpFarm отделяет публично подтверждённые правила от предположений для планирования.",
+          )}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export function MethodologyV2() {
   const locale = useLocale();
   return (
@@ -153,6 +229,7 @@ export function MethodologyV2() {
       <div className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-10">
         <Hero />
         <CostModel />
+        <DataBasis />
 
         <div className="mt-14 flex flex-col items-start justify-between gap-5 rounded-[20px] border border-accent/20 px-8 py-8 sm:flex-row sm:items-center" style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}>
           <div className="flex flex-col gap-2">
