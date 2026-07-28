@@ -44,11 +44,11 @@ function Hero() {
           <div className="flex items-center gap-5 text-[12px]" style={{ color: "#8b96ad" }}>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4d8dff" }} />
-              {tr(locale, "Long leg", "LONG-ножка")}
+              {tr(locale, "Long", "LONG")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#f2746e" }} />
-              {tr(locale, "Short leg", "SHORT-ножка")}
+              {tr(locale, "Short", "SHORT")}
             </span>
           </div>
         </div>
@@ -173,7 +173,7 @@ function DataBasis() {
               </div>
               <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-positive">{tr(locale, "OBSERVED", "НАБЛЮДАЕТСЯ")}</span>
             </div>
-            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted">
+            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -192,7 +192,7 @@ function DataBasis() {
               </div>
               <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-warning">{tr(locale, "ESTIMATED", "ОЦЕНКА")}</span>
             </div>
-            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted">
+            <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(
                 locale,
                 "These values depend on market conditions after you run the calculation.",
