@@ -33,27 +33,32 @@ function Hero() {
           )}
         </p>
       </div>
-      <div
-        className="overflow-hidden rounded-[20px] border"
-        style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}
-      >
-        <div className="flex items-center justify-between gap-4 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
-            {tr(locale, "Hedge route", "Хедж-маршрут")}
-          </div>
-          <div className="flex items-center gap-5 text-[12px]" style={{ color: "#8b96ad" }}>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ background: "#4d8dff" }} />
-              {tr(locale, "Route cost", "Стоимость маршрута")}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ background: "#f0b45a" }} />
-              {tr(locale, "Funding layer", "Фандинг")}
-            </span>
-          </div>
+    </div>
+  );
+}
+
+/** The hedge-cycle 3D (LONG/SHORT entry+exit over the net-funding layer) — sits
+ *  next to the cost formula it illustrates. */
+function HedgeRouteCard() {
+  const locale = useLocale();
+  return (
+    <div className="mb-4 overflow-hidden rounded-[20px] border" style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+      <div className="flex items-center justify-between gap-4 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
+          {tr(locale, "Hedge route", "Хедж-маршрут")}
         </div>
-        <RouteMap mode="checkpoints" height={320} />
+        <div className="flex items-center gap-5 text-[12px]" style={{ color: "#8b96ad" }}>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: "#4d8dff" }} />
+            {tr(locale, "Route cost", "Стоимость маршрута")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: "#f0b45a" }} />
+            {tr(locale, "Funding layer", "Фандинг")}
+          </span>
+        </div>
       </div>
+      <RouteMap mode="checkpoints" height={260} />
     </div>
   );
 }
@@ -177,6 +182,7 @@ function CostModel() {
           "Маршруты ранжируются по полной стоимости хедж-цикла, а не только по опубликованной торговой комиссии.",
         )}
       />
+      <HedgeRouteCard />
       <div className="rounded-[20px] border border-accent/20 p-6 sm:p-8" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--surface-1) 55%)" }}>
         <div className="font-mono-num text-[11px] uppercase tracking-[0.1em] text-accent">
           {tr(locale, "Full hedge-cycle cost =", "Полная стоимость хедж-цикла =")}
