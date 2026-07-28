@@ -20,16 +20,16 @@ function Hero() {
     <div className="flex flex-col gap-[26px] pb-13 pt-[72px]">
       <div className="flex max-w-[720px] flex-col items-start gap-5">
         <div className="font-mono-num text-[11px] tracking-[0.16em] text-accent">
-          {tr(locale, "CALCULATION FRAMEWORK", "МОДЕЛЬ РАСЧЁТА")}
+          {tr(locale, "HOW PERPFARM WORKS", "КАК УСТРОЕН PERPFARM")}
         </div>
         <h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.032em] text-text-primary sm:text-[56px]">
-          {tr(locale, "How PerpFarm estimates route cost", "Как PerpFarm считает стоимость маршрута")}
+          {tr(locale, "How PerpFarm works", "Как устроен PerpFarm")}
         </h1>
         <p className="text-[17px] leading-[1.62] text-text-muted">
           {tr(
             locale,
-            "PerpFarm ranks eligible hedge routes by their estimated full-cycle cost at the volume you enter. It does not predict how many points a protocol will emit.",
-            "PerpFarm ранжирует доступные хедж-маршруты по расчётной полной стоимости цикла для указанного объёма. Сайт не пытается предсказать, сколько поинтов выдаст протокол.",
+            "PerpFarm researches how each protocol rewards farming, verifies the rules, and estimates the real cost of following them — so you can farm efficiently at a known cost. It never predicts how many points a protocol will emit or the value of a point.",
+            "PerpFarm исследует, как каждый протокол награждает за фарм, проверяет правила и оценивает реальную стоимость их исполнения — чтобы вы фармили эффективно при понятной цене. Сайт никогда не предсказывает, сколько поинтов выдаст протокол, и не оценивает цену поинта.",
           )}
         </p>
       </div>
@@ -58,6 +58,101 @@ function Hero() {
   );
 }
 
+function Approach() {
+  const locale = useLocale();
+  const steps = [
+    {
+      n: "01",
+      title: tr(locale, "Collect public data", "Собираем публичные данные"),
+      body: tr(locale, "We pull quotes, open interest, 24h volume and funding from public perp-dex APIs, and save market history hourly.", "Тянем котировки, open interest, объём за 24ч и фандинг из публичных API perp-dex и каждый час сохраняем историю рынка."),
+    },
+    {
+      n: "02",
+      title: tr(locale, "Verify reward rules", "Проверяем правила наград"),
+      body: tr(locale, "We read each protocol's docs and mark what is publicly confirmed versus a planning assumption.", "Читаем документацию каждого протокола и отмечаем, что публично подтверждено, а что — предположение для планирования."),
+    },
+    {
+      n: "03",
+      title: tr(locale, "Analyse farming strategies", "Анализируем стратегии фарма"),
+      body: tr(locale, "We work out what actually earns points — holding time, medium-OI markets, passive liquidity, tiers and activity — and how to farm them.", "Разбираемся, что реально приносит поинты — время удержания, рынки среднего OI, пассивная ликвидность, тиры и активность — и как их фармить."),
+    },
+    {
+      n: "04",
+      title: tr(locale, "Estimate execution cost", "Оцениваем стоимость исполнения"),
+      body: tr(locale, "We price the full hedge cycle at your size, so you can follow the strategy on the cheapest route.", "Считаем полный хедж-цикл под ваш размер, чтобы следовать стратегии по самому дешёвому маршруту."),
+    },
+  ];
+  return (
+    <section className="pt-13">
+      <H2
+        title={tr(locale, "Our approach", "Наш подход")}
+        sub={tr(locale, "First how to farm, then what it costs — in that order.", "Сначала как фармить, потом сколько это стоит — именно в таком порядке.")}
+      />
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map((s) => (
+          <div key={s.n} className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-6">
+            <div className="font-mono-num text-[11px] text-accent">{s.n}</div>
+            <div className="text-[16px] font-semibold text-text-primary">{s.title}</div>
+            <div className="text-[14px] leading-[1.62] text-text-muted">{s.body}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function InputCards() {
+  const locale = useLocale();
+  const card = "flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6";
+  const num = (n: string) => <div className="font-mono-num text-[11px] text-accent">{n}</div>;
+  const chip = (t: string) => <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-mono-num text-[11px] text-text-primary">{t}</span>;
+  return (
+    <section className="pt-13">
+      <H2 title={tr(locale, "What is included in a route calculation", "Что входит в расчёт маршрута")} sub={tr(locale, "Five inputs, in the order the model applies them.", "Пять входов — в порядке, в котором их применяет модель.")} />
+      <div className="grid gap-3.5 md:grid-cols-3">
+        <div className={card}>
+          <div className="flex items-center gap-3">{num("01")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Market eligibility", "Пригодность рынка")}</div></div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Only tradable markets are considered: asset availability, enough liquidity, a live open-interest floor (gross OI ≥ $50k), and protocol activity eligibility.", "Учитываются только торгуемые рынки: доступность актива, достаточная ликвидность, живой флор по OI (gross OI ≥ $50k) и eligibility под активность протокола.")}</div>
+          <div className="mt-auto flex flex-wrap gap-1.5">{chip("availability")}{chip("OI floor")}{chip("eligibility")}</div>
+        </div>
+        <div className={card}>
+          <div className="flex items-center gap-3">{num("02")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Entry and exit", "Вход и выход")}</div></div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade — two LIMIT legs are free, the two MARKET legs carry the cost.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку — две LIMIT-ноги бесплатны, две MARKET-ноги несут стоимость.")}</div>
+          <div className="mt-auto grid grid-cols-2 gap-1.5">
+            <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG entry</div>
+            <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG exit</div>
+            <div className="rounded-[9px] border border-negative/20 bg-negative/[0.06] px-3 py-2 font-mono-num text-[11px] text-negative">SHORT entry</div>
+            <div className="rounded-[9px] border border-negative/20 bg-negative/[0.06] px-3 py-2 font-mono-num text-[11px] text-negative">SHORT exit</div>
+          </div>
+        </div>
+        <div className={card}>
+          <div className="flex items-center gap-3">{num("03")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Spread and quote impact", "Спред и quote impact")}</div></div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Published fees can be zero while execution still costs. PerpFarm adds half-spread and quote impact at your size, using the 24h median with a typical range.", "Опубликованные комиссии могут быть нулевыми, а исполнение всё равно стоит. PerpFarm добавляет полспреда и quote impact на ваш размер — по медиане за 24ч с типичным диапазоном.")}</div>
+          <div className="mt-auto flex items-center justify-between rounded-[10px] bg-surface-2 px-3.5 py-3">
+            <span className="text-[12px] text-text-muted">{tr(locale, "Published fee", "Комиссия")}</span>
+            <span className="font-mono-num text-[13px] text-text-dim">$0.00</span>
+            <span className="text-[12px] text-text-muted">{tr(locale, "Real cost", "Реальная")}</span>
+            <span className="font-mono-num text-[13px] text-text-primary">$6.20</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3.5 rounded-[18px] border border-warning/20 bg-surface-1 p-6">
+          <div className="flex items-center gap-3">{num("04")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Funding", "Фандинг")}</div><span className="ml-auto rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] text-warning">{tr(locale, "ESTIMATE", "ОЦЕНКА")}</span></div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is counted as a net hedge-cycle cost: it nets to zero on an equal-size same-protocol hedge, while a cross-protocol route counts the funding delta. Future funding stays an estimate.", "Фандинг учитывается как чистая стоимость цикла: при равном размере на одном протоколе он нетится в ноль, а в кросс-маршруте считается дельта фандинга. Будущий фандинг остаётся оценкой.")}</div>
+        </div>
+        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
+          <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
+          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">{tr(locale, "The protocol rules that affect farming efficiency — surfaced, never turned into a computed point value (that stays your manual knowledge).", "Правила протокола, влияющие на эффективность фарма — мы их показываем, но никогда не превращаем в расчётную цену поинта (она остаётся вашим ручным знанием).")}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {["holding time", "open interest", "eligible volume", "maker liquidity", "tiers", "referrals", "activity"].map((m) => (
+              <span key={m} className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[12px] text-text-primary">{m}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CostModel() {
   const locale = useLocale();
   const step = (label: string, tone: "long" | "short") => (
@@ -73,7 +168,7 @@ function CostModel() {
   );
 
   return (
-    <section>
+    <section className="pt-13">
       <H2
         title={tr(locale, "How a route cost is built", "Из чего складывается стоимость маршрута")}
         sub={tr(
@@ -228,6 +323,8 @@ export function MethodologyV2() {
       <SiteHeaderV2 />
       <div className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-10">
         <Hero />
+        <Approach />
+        <InputCards />
         <CostModel />
         <DataBasis />
 

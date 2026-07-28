@@ -209,6 +209,15 @@ const StepDiagram3 = () => (
     <circle cx="90" cy="6" r="3" style={{ fill: "var(--v2-pulse)" }} />
   </svg>
 );
+// Set volume: ascending size bars.
+const StepDiagramVolume = () => (
+  <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
+    <rect x="14" y="19" width="9" height="8" rx="2" style={accent} />
+    <rect x="30" y="13" width="9" height="14" rx="2" style={accent} />
+    <rect x="46" y="7" width="9" height="20" rx="2" style={accent} />
+    <rect x="62" y="1" width="9" height="26" rx="2" style={{ fill: "var(--v2-pulse)" }} />
+  </svg>
+);
 
 function HowItWorks() {
   const locale = useLocale();
@@ -235,17 +244,27 @@ function HowItWorks() {
     },
     {
       n: "3",
+      title: tr(locale, "Set volume", "Укажите объём"),
+      body: tr(
+        locale,
+        "Enter the volume you'll trade per account — the cost is priced for your size.",
+        "Введите объём, который будете торговать на аккаунт — стоимость считается под ваш размер.",
+      ),
+      diagram: <StepDiagramVolume />,
+    },
+    {
+      n: "4",
       title: tr(locale, "Run the calculation", "Запустите расчёт"),
       body: tr(
         locale,
-        "Enter volume per account and get the cheapest route with its full cycle cost.",
-        "Введите объём на аккаунт и получите самый дешёвый маршрут с полной стоимостью цикла.",
+        "Run and get the cheapest route with its full hedge-cycle cost.",
+        "Запустите и получите самый дешёвый маршрут с полной стоимостью хедж-цикла.",
       ),
       diagram: <StepDiagram3 />,
     },
   ];
   return (
-    <div id="how" className="grid gap-4 pb-[76px] md:grid-cols-3">
+    <div id="how" className="grid gap-4 pb-[76px] sm:grid-cols-2 lg:grid-cols-4">
       {steps.map((s) => (
         <div
           key={s.n}
