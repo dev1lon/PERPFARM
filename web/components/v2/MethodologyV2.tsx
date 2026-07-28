@@ -171,16 +171,16 @@ function DataBasis() {
                 <span className="h-1.5 w-1.5 rounded-full bg-positive" />
                 <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Observed market data", "Наблюдаемые рыночные данные")}</h3>
               </div>
-              <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-positive">{tr(locale, "OBSERVED", "НАБЛЮДАЕТСЯ")}</span>
+              <span className="rounded-md bg-positive/10 px-2 py-1 font-mono-num text-[10px] uppercase tracking-[0.08em] text-positive">{tr(locale, "OBSERVED", "НАБЛЮДАЕТСЯ")}</span>
             </div>
             <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
-              {item(tr(locale, "Live quotes", "Текущие котировки"))}
-              {item(tr(locale, "OI & 24h volume", "OI и объём 24ч"))}
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {item(tr(locale, "Current quotes", "Текущие котировки"))}
+              {item(tr(locale, "Open interest & 24h volume", "OI и объём 24ч"))}
               {item(tr(locale, "Spread & impact", "Спред и влияние"))}
-              {item(tr(locale, "24h cost range", "Диапазон стоимости 24ч"))}
+              {item(tr(locale, "Typical 24h range", "Диапазон за 24ч"))}
             </div>
           </div>
 
@@ -190,7 +190,7 @@ function DataBasis() {
                 <span className="h-1.5 w-1.5 rounded-full bg-warning" />
                 <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Estimated over the hold", "Оценивается на период удержания")}</h3>
               </div>
-              <span className="font-mono-num text-[10px] uppercase tracking-[0.08em] text-warning">{tr(locale, "ESTIMATED", "ОЦЕНКА")}</span>
+              <span className="rounded-md bg-warning/10 px-2 py-1 font-mono-num text-[10px] uppercase tracking-[0.08em] text-warning">{tr(locale, "ESTIMATED", "ОЦЕНКА")}</span>
             </div>
             <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(
@@ -199,7 +199,7 @@ function DataBasis() {
                 "Эти значения зависят от состояния рынка после запуска расчёта.",
               )}
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid gap-2">
               {item(tr(locale, "Exit cost", "Стоимость выхода"))}
               {item(tr(locale, "Net funding", "Чистый фандинг"))}
             </div>
