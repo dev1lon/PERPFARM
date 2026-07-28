@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { LocaleProvider, LOCALE_INIT_SCRIPT } from "@/components/LocaleProvider";
-import { SiteNavigation } from "@/components/SiteNavigation";
 import { SiteFooter } from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 import "./globals.css";
@@ -40,8 +39,8 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: LOCALE_INIT_SCRIPT }} />
         <LocaleProvider>
-          <SiteNavigation />
-        {/* Each page adds its own bottom padding to clear the fixed SiteFooter. */}
+        {/* Each page ships its own SiteHeaderV2 and adds bottom padding to clear
+            the fixed SiteFooter. */}
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </LocaleProvider>
