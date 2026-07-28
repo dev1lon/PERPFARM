@@ -209,13 +209,14 @@ const StepDiagram3 = () => (
     <circle cx="90" cy="6" r="3" style={{ fill: "var(--v2-pulse)" }} />
   </svg>
 );
-// Set volume: ascending size bars.
+// Set volume: a "$ amount" input field with a caret.
 const StepDiagramVolume = () => (
   <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
-    <rect x="14" y="19" width="9" height="8" rx="2" style={accent} />
-    <rect x="30" y="13" width="9" height="14" rx="2" style={accent} />
-    <rect x="46" y="7" width="9" height="20" rx="2" style={accent} />
-    <rect x="62" y="1" width="9" height="26" rx="2" style={{ fill: "var(--v2-pulse)" }} />
+    <rect x="4" y="6" width="108" height="18" rx="6" fill="none" strokeWidth="1" style={{ stroke: "var(--border)" }} />
+    <text x="13" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", fill: "var(--text-dim)" }}>$</text>
+    <text x="23" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", fill: "var(--text-primary)" }}>50,000</text>
+    <rect x="66" y="10" width="1.5" height="10" rx="1" style={{ fill: "var(--accent)" }} />
+    <text x="86" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fill: "var(--text-dim)" }}>USDC</text>
   </svg>
 );
 
