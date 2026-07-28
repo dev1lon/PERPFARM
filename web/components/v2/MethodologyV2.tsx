@@ -84,24 +84,20 @@ function CostModel() {
       />
       <div className="rounded-[20px] border border-accent/20 p-6 sm:p-8" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--surface-1) 55%)" }}>
         <div className="font-mono-num text-[11px] uppercase tracking-[0.1em] text-accent">
-          {tr(locale, "Full hedge cycle", "Полный хедж-цикл")}
+          {tr(locale, "Full hedge-cycle cost =", "Полная стоимость хедж-цикла =")}
         </div>
-        <div className="pt-4">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {step(tr(locale, "LONG entry", "Вход LONG"), "long")}
-            <span className="font-mono-num text-[16px] text-text-dim">+</span>
-            {step(tr(locale, "LONG exit", "Выход LONG"), "long")}
-            <span className="font-mono-num text-[16px] text-text-dim">+</span>
-            {step(tr(locale, "SHORT entry", "Вход SHORT"), "short")}
-            <span className="font-mono-num text-[16px] text-text-dim">+</span>
-            {step(tr(locale, "SHORT exit", "Выход SHORT"), "short")}
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2.5">
-            <span className="font-mono-num text-[16px] text-text-dim">+</span>
-            <span className="rounded-[11px] border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 font-mono-num text-[13px] text-warning">
-              {tr(locale, "net funding during the hold", "чистый фандинг во время удержания")}
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2.5 pt-4">
+          {step(tr(locale, "LONG entry", "Вход LONG"), "long")}
+          <span className="font-mono-num text-[16px] text-text-dim">+</span>
+          {step(tr(locale, "LONG exit", "Выход LONG"), "long")}
+          <span className="font-mono-num text-[16px] text-text-dim">+</span>
+          {step(tr(locale, "SHORT entry", "Вход SHORT"), "short")}
+          <span className="font-mono-num text-[16px] text-text-dim">+</span>
+          {step(tr(locale, "SHORT exit", "Выход SHORT"), "short")}
+          <span className="font-mono-num text-[16px] text-text-dim">+</span>
+          <span className="rounded-[11px] border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 font-mono-num text-[13px] text-warning">
+            {tr(locale, "net funding", "чистый фандинг")}
+          </span>
         </div>
 
         <div className="mt-6 max-w-[900px] border-t border-border pt-5 text-[15px] leading-[1.68] text-text-muted">
