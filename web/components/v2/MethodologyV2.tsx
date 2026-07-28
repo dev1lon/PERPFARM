@@ -5,6 +5,7 @@ import { useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
+import { RouteMap } from "@/components/v2/RouteMap";
 
 function H2({ title, sub }: { title: string; sub: string }) {
   return (
@@ -12,48 +13,6 @@ function H2({ title, sub }: { title: string; sub: string }) {
       <h2 className="mb-1.5 text-[26px] font-bold tracking-[-0.02em] text-text-primary">{title}</h2>
       <div className="pb-5 text-[15px] text-text-muted">{sub}</div>
     </>
-  );
-}
-
-/** Static, theme-aware hedge-cycle schematic (stands in for the checkpoints 3D):
- *  LONG entry/exit (green) → SHORT entry/exit (red), with the net-funding layer
- *  beneath. */
-function CycleSchematic() {
-  const nodes = [
-    { x: 90, y: 150, tone: "var(--positive)", label: "LONG entry" },
-    { x: 340, y: 72, tone: "var(--positive)", label: "LONG exit" },
-    { x: 560, y: 72, tone: "var(--negative)", label: "SHORT entry" },
-    { x: 810, y: 150, tone: "var(--negative)", label: "SHORT exit" },
-  ];
-  return (
-    <svg viewBox="0 0 900 230" preserveAspectRatio="xMidYMid meet" className="h-[300px] w-full">
-      {/* route curve */}
-      <path
-        d="M90 150 C 210 60, 300 72, 340 72 L 560 72 C 620 72, 700 70, 810 150"
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      {/* net funding layer */}
-      <line x1="70" y1="200" x2="830" y2="200" stroke="var(--warning)" strokeWidth="1.4" strokeDasharray="4 5" opacity="0.7" />
-      {nodes.map((n) => (
-        <line key={`d${n.x}`} x1={n.x} y1={n.y} x2={n.x} y2="200" stroke="var(--warning)" strokeWidth="1" strokeDasharray="2 4" opacity="0.3" />
-      ))}
-      <text x="450" y="222" textAnchor="middle" fill="var(--warning)" style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, letterSpacing: "0.14em" }}>
-        NET FUNDING LAYER
-      </text>
-      {/* checkpoints */}
-      {nodes.map((n) => (
-        <g key={n.x}>
-          <circle cx={n.x} cy={n.y} r="12" fill="none" stroke={n.tone} strokeWidth="1.5" opacity="0.5" />
-          <circle cx={n.x} cy={n.y} r="6" fill={n.tone} />
-          <text x={n.x} y={n.y - 22} textAnchor="middle" fill="var(--text-muted)" style={{ fontFamily: "var(--font-mono), monospace", fontSize: 11, letterSpacing: "0.08em" }}>
-            {n.label}
-          </text>
-        </g>
-      ))}
-    </svg>
   );
 }
 
@@ -68,17 +27,15 @@ function Hero() {
           {tr(locale, "PerpFarm compares full hedge-cycle execution cost, not just published trading fees.", "PerpFarm сравнивает полную стоимость исполнения хедж-цикла, а не только опубликованные торговые комиссии.")}
         </p>
       </div>
-      <div className="overflow-hidden rounded-[20px] border border-border bg-surface-1">
-        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-          <div className="font-mono-num text-[11px] uppercase tracking-[0.1em] text-text-muted">{tr(locale, "Execution checkpoints", "Точки исполнения")}</div>
-          <div className="flex items-center gap-5">
-            <span className="flex items-center gap-1.5 text-[12px] text-text-muted"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{tr(locale, "Route cost", "Стоимость маршрута")}</span>
-            <span className="flex items-center gap-1.5 text-[12px] text-text-muted"><span className="h-1.5 w-1.5 rounded-full bg-warning" />{tr(locale, "Funding layer", "Слой фандинга")}</span>
+      <div className="overflow-hidden rounded-[20px] border" style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>{tr(locale, "Execution checkpoints", "Точки исполнения")}</div>
+          <div className="flex items-center gap-5 text-[12px]" style={{ color: "#8b96ad" }}>
+            <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4d8dff" }} />{tr(locale, "Route cost", "Стоимость маршрута")}</span>
+            <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: "#f0b45a" }} />{tr(locale, "Funding layer", "Слой фандинга")}</span>
           </div>
         </div>
-        <div className="px-4 py-4">
-          <CycleSchematic />
-        </div>
+        <RouteMap mode="checkpoints" height={320} />
       </div>
     </div>
   );
@@ -166,6 +123,10 @@ function RankingFormula() {
         </div>
         <div className="max-w-[760px] pt-5 text-[15px] leading-[1.66] text-text-muted">
           {tr(locale, "Routes are ordered from the lowest estimated full-cycle cost to the highest. There is no separate “max points” or “balanced” mode — cost is the only ranking.", "Маршруты сортируются от наименьшей оценочной стоимости цикла к наибольшей. Нет отдельного режима «max points» или «balanced» — единственное ранжирование по стоимости.")}
+        </div>
+        <div className="mt-5 rounded-[12px] bg-surface-2 px-4 py-3.5 font-mono-num text-[13px] leading-[1.8] text-text-muted">
+          <div><span className="text-text-primary">cost</span> = 2 · fill · (spread / 2 + impact) / 10,000</div>
+          <div className="text-text-dim">{tr(locale, "fill = volume ÷ 2 · spread & impact = 24h median · range = p25–p75 · funding, fees = 0 for an equal same-protocol hedge", "fill = объём ÷ 2 · spread и impact = медиана 24ч · диапазон = p25–p75 · funding, fees = 0 для равного same-protocol хеджа")}</div>
         </div>
       </div>
     </div>

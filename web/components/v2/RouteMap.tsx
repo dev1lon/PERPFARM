@@ -72,7 +72,7 @@ export function RouteMap({
   shortLabel = "TxFlow",
   height = 432,
 }: {
-  mode?: "network" | "result";
+  mode?: "network" | "result" | "checkpoints";
   pair?: string;
   longLabel?: string;
   shortLabel?: string;
@@ -94,7 +94,7 @@ export function RouteMap({
     Object.assign(overlay.style, { position: "absolute", inset: "0", pointerEvents: "none", overflow: "hidden" });
     host.appendChild(overlay);
 
-    function label(text: string, kind: "idle" | "side" | "pair"): HTMLDivElement {
+    function label(text: string, kind: "idle" | "side" | "pair" | "ck" | "fund"): HTMLDivElement {
       const el = document.createElement("div");
       el.textContent = text;
       const base: Partial<CSSStyleDeclaration> = {
@@ -132,9 +132,132 @@ export function RouteMap({
           background: "rgba(10,16,30,0.86)",
           color: "#e8ecf5",
         });
+      if (kind === "ck")
+        Object.assign(base, {
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "10px",
+          fontWeight: "500",
+          letterSpacing: "0.1em",
+          padding: "4px 8px",
+          borderRadius: "6px",
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(10,16,30,0.86)",
+          color: "#cfd8ea",
+        });
+      if (kind === "fund")
+        Object.assign(base, {
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "10px",
+          fontWeight: "500",
+          letterSpacing: "0.14em",
+          color: "#f0c383",
+        });
       Object.assign(el.style, base);
       overlay.appendChild(el);
       return el;
+    }
+
+    // ---- checkpoints mode: the hedge cycle (LONG/SHORT entry+exit) over a net
+    // funding layer. Self-contained; returns its own cleanup. ----
+    if (mode === "checkpoints") {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+      const camBase = new THREE.Vector3(0, 0.1, 6.2);
+      camera.position.copy(camBase);
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.85, -0.3, 0.55),
+        new THREE.Vector3(-0.62, 0.42, 0.18),
+        new THREE.Vector3(0.62, 0.34, -0.2),
+        new THREE.Vector3(1.85, -0.36, -0.55),
+      ]);
+      group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 140, 0.013, 10, false), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.95 })));
+      group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 140, 0.05, 10, false), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false })));
+
+      // net funding layer beneath the route + drop connectors
+      const fundPts: THREE.Vector3[] = [];
+      for (let i = 0; i <= 60; i++) fundPts.push(curve.getPoint(i / 60).clone().setY(-1.15));
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(fundPts), new THREE.LineBasicMaterial({ color: 0xf0b45a, transparent: true, opacity: 0.45 })));
+      for (let i = 0; i <= 8; i++) {
+        const topPt = curve.getPoint(i / 8);
+        group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([topPt.clone(), topPt.clone().setY(-1.15)]), new THREE.LineBasicMaterial({ color: 0xf0b45a, transparent: true, opacity: 0.14 })));
+      }
+      const fundLabel = label("NET FUNDING LAYER", "fund");
+
+      const marks: { t: number; text: string; color: number; up: boolean }[] = [
+        { t: 0, text: "LONG entry", color: LONG_COLOR, up: false },
+        { t: 0.34, text: "LONG exit", color: LONG_COLOR, up: true },
+        { t: 0.66, text: "SHORT entry", color: SHORT_COLOR, up: true },
+        { t: 1, text: "SHORT exit", color: SHORT_COLOR, up: false },
+      ];
+      const ckNodes = marks.map((m) => {
+        const p = curve.getPoint(m.t);
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.062, 20, 20), new THREE.MeshBasicMaterial({ color: m.color }));
+        core.position.copy(p);
+        group.add(core);
+        const haloMat = new THREE.MeshBasicMaterial({ color: m.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+        const halo = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.157, 48), haloMat);
+        halo.position.copy(p);
+        group.add(halo);
+        return { core, halo, haloMat, label: label(m.text, "ck"), up: m.up };
+      });
+
+      const resizeCk = () => {
+        const w = host.clientWidth || 600;
+        const h = host.clientHeight || 400;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      const ro = new ResizeObserver(resizeCk);
+      ro.observe(host);
+      resizeCk();
+
+      const v = new THREE.Vector3();
+      const t0 = performance.now();
+      let raf = 0;
+      const frame = (t: number) => {
+        const w = host.clientWidth;
+        const h = host.clientHeight;
+        if (!REDUCED) {
+          camera.position.set(camBase.x + Math.sin(t * 0.15) * 0.24, camBase.y + Math.sin(t * 0.11 + 1.1) * 0.12, camBase.z + Math.cos(t * 0.09) * 0.18);
+        }
+        camera.lookAt(0, -0.18, 0);
+        ckNodes.forEach((n, i) => {
+          n.halo.quaternion.copy(camera.quaternion);
+          const pulse = REDUCED ? 0 : Math.sin(t * 1.5 - i * 0.7) * 0.5 + 0.5;
+          n.halo.scale.setScalar(1 + pulse * 0.14);
+          n.haloMat.opacity = 0.6 - pulse * 0.24;
+          v.copy(n.core.position).project(camera);
+          const x = (v.x * 0.5 + 0.5) * w;
+          const y = (-v.y * 0.5 + 0.5) * h + (n.up ? -28 : 28);
+          n.label.style.transform = `translate(-50%,-50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        });
+        v.copy(curve.getPoint(0.5).clone().setY(-1.15)).project(camera);
+        fundLabel.style.transform = `translate(-50%,-50%) translate(${((v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h + 18).toFixed(1)}px)`;
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(() => frame((performance.now() - t0) / 1000));
+      };
+      raf = requestAnimationFrame(() => frame((performance.now() - t0) / 1000));
+
+      return () => {
+        cancelAnimationFrame(raf);
+        ro.disconnect();
+        renderer.dispose();
+        scene.traverse((obj) => {
+          const mm = obj as THREE.Mesh;
+          if (mm.geometry) mm.geometry.dispose();
+          const mat = mm.material;
+          if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+          else if (mat) mat.dispose();
+        });
+        canvas.remove();
+        overlay.remove();
+      };
     }
 
     const scene = new THREE.Scene();
