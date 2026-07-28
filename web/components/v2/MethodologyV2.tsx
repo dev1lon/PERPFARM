@@ -148,7 +148,7 @@ function CostModel() {
 function DataBasis() {
   const locale = useLocale();
   const item = (label: string) => (
-    <div className="rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 text-[13px] text-text-primary">
+    <div className="whitespace-nowrap rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 text-[13px] text-text-primary">
       {label}
     </div>
   );
@@ -176,11 +176,11 @@ function DataBasis() {
             <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {item(tr(locale, "Current quotes", "Текущие котировки"))}
-              {item(tr(locale, "Open interest and 24h volume", "Открытый интерес и объём за 24ч"))}
-              {item(tr(locale, "Spread and impact at your size", "Спред и влияние ордера для вашего размера"))}
-              {item(tr(locale, "Typical 24h cost range", "Типичный диапазон стоимости за 24ч"))}
+            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+              {item(tr(locale, "Live quotes", "Текущие котировки"))}
+              {item(tr(locale, "OI & 24h volume", "OI и объём 24ч"))}
+              {item(tr(locale, "Spread & impact", "Спред и влияние"))}
+              {item(tr(locale, "24h cost range", "Диапазон стоимости 24ч"))}
             </div>
           </div>
 
@@ -199,9 +199,9 @@ function DataBasis() {
                 "Эти значения зависят от состояния рынка после запуска расчёта.",
               )}
             </p>
-            <div className="mt-4 grid gap-2">
-              {item(tr(locale, "Exit execution cost", "Стоимость исполнения при выходе"))}
-              {item(tr(locale, "Net funding during the hold", "Чистый фандинг за время удержания"))}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {item(tr(locale, "Exit cost", "Стоимость выхода"))}
+              {item(tr(locale, "Net funding", "Чистый фандинг"))}
             </div>
           </div>
         </div>
