@@ -209,14 +209,13 @@ const StepDiagram3 = () => (
     <circle cx="90" cy="6" r="3" style={{ fill: "var(--v2-pulse)" }} />
   </svg>
 );
-// Set volume: a "$ amount" input field with a caret.
+// Set volume: a slider (track + filled portion + knob) — "dial in your size".
 const StepDiagramVolume = () => (
   <svg width="150" height="30" viewBox="0 0 150 30" style={{ overflow: "visible" }} aria-hidden>
-    <rect x="4" y="6" width="108" height="18" rx="6" fill="none" strokeWidth="1" style={{ stroke: "var(--border)" }} />
-    <text x="13" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", fill: "var(--text-dim)" }}>$</text>
-    <text x="23" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "11px", fill: "var(--text-primary)" }}>50,000</text>
-    <rect x="66" y="10" width="1.5" height="10" rx="1" style={{ fill: "var(--accent)" }} />
-    <text x="86" y="19" style={{ fontFamily: "var(--font-mono), monospace", fontSize: "9px", fill: "var(--text-dim)" }}>USDC</text>
+    <line x1="14" y1="15" x2="120" y2="15" strokeWidth="3" strokeLinecap="round" style={{ stroke: "var(--text-dim)", opacity: 0.4 }} />
+    <line x1="14" y1="15" x2="72" y2="15" strokeWidth="3" strokeLinecap="round" style={{ stroke: "var(--accent)" }} />
+    <circle cx="72" cy="15" r="10" fill="none" strokeWidth="1" style={{ stroke: "var(--accent)", opacity: 0.35 }} />
+    <circle cx="72" cy="15" r="5" style={accent} />
   </svg>
 );
 
