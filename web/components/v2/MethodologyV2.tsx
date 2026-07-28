@@ -176,7 +176,7 @@ function DataBasis() {
             <p className="pt-2 text-[14px] leading-[1.6] text-text-muted md:min-h-[45px]">
               {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 md:mt-[26px]">
               {item(tr(locale, "Current quotes", "Текущие котировки"))}
               {item(tr(locale, "Open interest & 24h volume", "OI и объём 24ч"))}
               {item(tr(locale, "Spread & impact", "Спред и влияние"))}
