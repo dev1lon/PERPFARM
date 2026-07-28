@@ -474,7 +474,7 @@ function SameVenueResult({
                 ))}
               </div>
             )}
-            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "snapshot", "снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
+            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
           </div>
         </div>
 

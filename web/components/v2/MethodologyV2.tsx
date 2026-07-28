@@ -159,8 +159,8 @@ function DataBasis() {
         title={tr(locale, "Data behind the estimate", "Данные в основе оценки")}
         sub={tr(
           locale,
-          "What PerpFarm measures directly and what remains an estimate until the hedge is closed.",
-          "Что PerpFarm измеряет напрямую, а что остаётся оценкой до закрытия хеджа.",
+          "Current quotes are read when you run a calculation. Market history is saved hourly; the 24h cost range is built from those observations.",
+          "Текущие котировки запрашиваются при запуске расчёта. История рынка сохраняется каждый час; диапазон за 24ч строится по этим наблюдениям.",
         )}
       />
       <div className="overflow-hidden rounded-[20px] border border-border bg-surface-1">
