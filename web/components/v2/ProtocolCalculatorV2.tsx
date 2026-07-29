@@ -428,7 +428,7 @@ function SameVenueResult({
                   tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  tr(locale, `Range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                  tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
