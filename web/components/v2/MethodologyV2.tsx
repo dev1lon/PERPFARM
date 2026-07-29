@@ -122,7 +122,7 @@ function InputCards() {
         </div>
         <div className={card}>
           <div className="flex items-center gap-3">{num("02")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Entry and exit", "Вход и выход")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade. Fees and execution costs are applied according to each protocol and order type; LIMIT orders are not assumed to be free.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку. Комиссии и стоимость исполнения учитываются по правилам каждого протокола и типу ордера; LIMIT-ордера не считаются бесплатными по умолчанию.")}</div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade. Fees and execution costs are applied according to each protocol and order type.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку. Комиссии и стоимость исполнения учитываются по правилам каждого протокола и типу ордера.")}</div>
           <div className="mt-auto grid grid-cols-2 gap-1.5">
             <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG entry</div>
             <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG exit</div>
