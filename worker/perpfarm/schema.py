@@ -86,6 +86,10 @@ book_snapshots = Table(
     Column("depth_usd_10k", Numeric),
     Column("depth_usd_50k", Numeric),
     Column("depth_usd_100k", Numeric),
+    # Native quote/depth points supplied by an adapter. The JSON shape is
+    # {reference_price, points: [{notional_usd, bid, ask}, ...]} so every
+    # venue can retain its own real curve without new fixed-size columns.
+    Column("quote_curve_json", JSONB),
     UniqueConstraint("market_id", "ts", name="uq_book_market_ts"),
 )
 Index("idx_book_market_ts", book_snapshots.c.market_id, book_snapshots.c.ts.desc())

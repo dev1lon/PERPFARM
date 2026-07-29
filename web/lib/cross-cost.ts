@@ -10,6 +10,7 @@
  */
 
 import { getPool } from "@/lib/db";
+import { quoteCurveImpactBps } from "@/lib/quote-curve";
 
 const HOLD_HOURS = 24;
 const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
@@ -23,6 +24,7 @@ type VenueMarketRow = {
   impact_bps_10k: string | number | null;
   impact_bps_50k: string | number | null;
   impact_bps_100k: string | number | null;
+  quote_curve_json: unknown;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
   funding: string | number | null;
@@ -79,9 +81,13 @@ function impactAtNotional(notional: number, anchors: Array<[number, number | nul
 }
 
 // One market leg's cost in bps on its venue: taker fee + half-spread + impact.
-function legBps(row: VenueMarketRow, fillNotionalUsd: number): number | null {
+function legBps(
+  row: VenueMarketRow,
+  fillNotionalUsd: number,
+  impactMode: "average" | "cheapest" = "average",
+): number | null {
   const spread = asNumber(row.spread_bps);
-  const impact = impactAtNotional(fillNotionalUsd, [
+  const impact = quoteCurveImpactBps(row.quote_curve_json, fillNotionalUsd, impactMode) ?? impactAtNotional(fillNotionalUsd, [
     [10_000, asNumber(row.impact_bps_10k)],
     [50_000, asNumber(row.impact_bps_50k)],
     [100_000, asNumber(row.impact_bps_100k)],
@@ -96,7 +102,8 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
     `WITH v AS (SELECT id, slug FROM venues WHERE slug = ANY($1)),
      book AS (
        SELECT DISTINCT ON (b.market_id)
-         b.market_id, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k
+         b.market_id, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+         to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        JOIN v ON v.id = m.venue_id
@@ -125,7 +132,7 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        ORDER BY venue_id, effective_from DESC, created_at DESC
      )
      SELECT v.slug, m.symbol_canonical AS pair,
-            book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k,
+            book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps
      FROM markets m
      JOIN v ON v.id = m.venue_id
@@ -251,7 +258,7 @@ export async function selfMatchCheapest(slug: string, accountVolumeUsd: number):
   for (const r of rows) {
     const vol = asNumber(r.volume_24h_usd);
     const oi = asNumber(r.open_interest_usd);
-    const bps = legBps(r, fillNotionalUsd);
+    const bps = legBps(r, fillNotionalUsd, "cheapest");
     if (vol === null || oi === null || bps === null || oi <= 0 || vol < MIN_VOLUME_USD) continue;
     const cost = (accountVolumeUsd * bps) / 10_000; // 2 market legs
     if (cheapest === null || cost < cheapest) cheapest = cost;

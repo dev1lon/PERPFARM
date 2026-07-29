@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
-import { chooseFirstLimitSide, type QuotePair } from "@/lib/variational-quotes";
+import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ const MEDIUM_OI_USD = 3_000_000;
 const HOLD_HOURS = 24;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
+const QUOTE_SIZE_KEY = /^size_(\d+)([km])$/;
 
 // The stats feed exposes ticker/name but not an asset-class field. Keep the
 // TradFi universe explicit so eligible pairs can be badged during the
@@ -42,20 +43,18 @@ type MarketRow = {
   impact_bps_10k?: string | number | null;
   impact_bps_50k?: string | number | null;
   impact_bps_100k?: string | number | null;
-  spread_bps_p25?: string | number | null;
-  spread_bps_p50?: string | number | null;
-  spread_bps_p75?: string | number | null;
-  impact_bps_10k_p25?: string | number | null;
-  impact_bps_10k_p50?: string | number | null;
-  impact_bps_10k_p75?: string | number | null;
-  impact_bps_50k_p25?: string | number | null;
-  impact_bps_50k_p50?: string | number | null;
-  impact_bps_50k_p75?: string | number | null;
-  impact_bps_100k_p25?: string | number | null;
-  impact_bps_100k_p50?: string | number | null;
-  impact_bps_100k_p75?: string | number | null;
+  quote_curve_json?: unknown;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
+};
+
+type BookHistoryRow = {
+  pair: string;
+  spread_bps: string | number | null;
+  impact_bps_10k: string | number | null;
+  impact_bps_50k: string | number | null;
+  impact_bps_100k: string | number | null;
+  quote_curve_json: unknown;
 };
 
 type CostTier = "low" | "medium" | "high";
@@ -89,6 +88,7 @@ type LiveSideCost = {
   volume24hUsd: number | null;
   openInterestUsd: number | null;
 };
+type QuotePair = [bid: number, ask: number];
 
 function asNumber(value: unknown): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -110,6 +110,24 @@ function quotePair(value: unknown): QuotePair | null {
   return bid !== null && ask !== null && bid > 0 && ask > 0 ? [bid, ask] : null;
 }
 
+/** Normalize Omni's live RFQ fields into the snapshot curve schema. */
+function quoteCurveFromListing(listing: Record<string, unknown>): Record<string, unknown> | null {
+  if (!isRecord(listing.quotes)) return null;
+  const base = quotePair(listing.quotes.base) ?? quotePair(listing.quotes.size_1k);
+  const referencePrice = asNumber(listing.mark_price);
+  if (base === null || referencePrice === null || referencePrice <= 0) return null;
+
+  const points: Array<Record<string, number>> = [{ notional_usd: 0, bid: base[0], ask: base[1] }];
+  for (const [key, value] of Object.entries(listing.quotes)) {
+    const match = QUOTE_SIZE_KEY.exec(key);
+    const quote = quotePair(value);
+    if (match === null || quote === null) continue;
+    const multiplier = match[2] === "k" ? 1_000 : 1_000_000;
+    points.push({ notional_usd: Number(match[1]) * multiplier, bid: quote[0], ask: quote[1] });
+  }
+  return { reference_price: referencePrice, points };
+}
+
 /**
  * The two MARKET fills have the same direction: LIMIT LONG first means two
  * sells; LIMIT SHORT first means two buys. Pick the cheaper live side. The
@@ -124,12 +142,9 @@ async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, L
   const costs = new Map<string, LiveSideCost>();
   for (const listing of payload.listings) {
     if (!isRecord(listing) || typeof listing.ticker !== "string" || !isRecord(listing.quotes)) continue;
-    const base = quotePair(listing.quotes.base) ?? quotePair(listing.quotes.size_1k);
-    const oneK = quotePair(listing.quotes.size_1k);
-    const hundredK = quotePair(listing.quotes.size_100k);
-    const mark = asNumber(listing.mark_price);
-    if (!base || !oneK || !hundredK || mark === null || mark <= 0) continue;
-    const side = chooseFirstLimitSide({ notional: fillNotionalUsd, mark, base, oneK, hundredK });
+    const curve = quoteCurveFromListing(listing);
+    const side = quoteCurveMarketSide(curve, fillNotionalUsd);
+    if (side === null) continue;
     const openInterest = isRecord(listing.open_interest) ? listing.open_interest : null;
     const longOpenInterest = openInterest ? asNumber(openInterest.long_open_interest) : null;
     const shortOpenInterest = openInterest ? asNumber(openInterest.short_open_interest) : null;
@@ -170,6 +185,43 @@ function impactAtNotional(
   return points[points.length - 1][1];
 }
 
+type ImpactSnapshot = {
+  spread_bps?: string | number | null;
+  impact_bps_10k?: string | number | null;
+  impact_bps_50k?: string | number | null;
+  impact_bps_100k?: string | number | null;
+  quote_curve_json?: unknown;
+};
+
+type CostSample = { legBps: number; spreadBps: number; impactBps: number };
+
+function sampleFromSnapshot(snapshot: ImpactSnapshot, fillNotionalUsd: number): CostSample | null {
+  const spreadBps = asNumber(snapshot.spread_bps);
+  const impactBps = quoteCurveImpactBps(snapshot.quote_curve_json, fillNotionalUsd, "cheapest") ?? impactAtNotional(fillNotionalUsd, [
+    [10_000, asNumber(snapshot.impact_bps_10k)],
+    [50_000, asNumber(snapshot.impact_bps_50k)],
+    [100_000, asNumber(snapshot.impact_bps_100k)],
+  ]);
+  if (spreadBps === null || impactBps === null) return null;
+  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps };
+}
+
+function percentileSample(samples: CostSample[], percentile: number): CostSample | null {
+  if (samples.length === 0) return null;
+  const sorted = [...samples].sort((left, right) => left.legBps - right.legBps);
+  const position = (sorted.length - 1) * percentile;
+  const lowerIndex = Math.floor(position);
+  const upperIndex = Math.ceil(position);
+  const lower = sorted[lowerIndex]!;
+  const upper = sorted[upperIndex]!;
+  const fraction = position - lowerIndex;
+  return {
+    legBps: lower.legBps + (upper.legBps - lower.legBps) * fraction,
+    spreadBps: lower.spreadBps + (upper.spreadBps - lower.spreadBps) * fraction,
+    impactBps: lower.impactBps + (upper.impactBps - lower.impactBps) * fraction,
+  };
+}
+
 function round(value: PairRanking): PairRanking {
   return {
     ...value,
@@ -195,31 +247,12 @@ async function loadMarkets(): Promise<MarketRow[]> {
     `WITH v AS (SELECT id FROM venues WHERE slug = 'variational'),
      book AS (
        SELECT DISTINCT ON (b.market_id)
-         b.market_id, b.ts AS book_ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k
+         b.market_id, b.ts AS book_ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+         to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        WHERE m.venue_id = (SELECT id FROM v)
        ORDER BY b.market_id, b.ts DESC
-     ),
-     book_24h AS (
-       SELECT b.market_id,
-              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p25,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p50,
-              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.spread_bps::double precision) AS spread_bps_p75,
-              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p25,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p50,
-              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_10k::double precision) AS impact_bps_10k_p75,
-              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p25,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p50,
-              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_50k::double precision) AS impact_bps_50k_p75,
-              percentile_cont(0.25) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p25,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p50,
-              percentile_cont(0.75) WITHIN GROUP (ORDER BY b.impact_bps_100k::double precision) AS impact_bps_100k_p75
-       FROM book_snapshots b
-       JOIN markets m ON m.id = b.market_id
-       WHERE m.venue_id = (SELECT id FROM v)
-         AND b.ts >= now() - interval '24 hours'
-       GROUP BY b.market_id
      ),
      vol AS (
        SELECT DISTINCT ON (s.market_id)
@@ -230,18 +263,27 @@ async function loadMarkets(): Promise<MarketRow[]> {
        ORDER BY s.market_id, s.ts DESC
      )
      SELECT book.book_ts, m.symbol_canonical AS pair,
-            book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k,
-            book_24h.spread_bps_p25, book_24h.spread_bps_p50, book_24h.spread_bps_p75,
-            book_24h.impact_bps_10k_p25, book_24h.impact_bps_10k_p50, book_24h.impact_bps_10k_p75,
-            book_24h.impact_bps_50k_p25, book_24h.impact_bps_50k_p50, book_24h.impact_bps_50k_p75,
-            book_24h.impact_bps_100k_p25, book_24h.impact_bps_100k_p50, book_24h.impact_bps_100k_p75,
+            book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd
      FROM markets m
      JOIN v ON v.id = m.venue_id
      JOIN book ON book.market_id = m.id
-     LEFT JOIN book_24h ON book_24h.market_id = m.id
      JOIN vol ON vol.market_id = m.id
      WHERE m.is_active = true`,
+  );
+  return rows;
+}
+
+async function loadBookHistory(): Promise<BookHistoryRow[]> {
+  const { rows } = await getPool().query<BookHistoryRow>(
+    `SELECT m.symbol_canonical AS pair,
+            b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+            to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
+     FROM book_snapshots b
+     JOIN markets m ON m.id = b.market_id
+     JOIN venues v ON v.id = m.venue_id
+     WHERE v.slug = 'variational'
+       AND b.ts >= now() - interval '24 hours'`,
   );
   return rows;
 }
@@ -264,10 +306,18 @@ export async function GET(request: NextRequest) {
     const competitionActive = competitionIsActive();
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
-    const [rows, liveSideCosts] = await Promise.all([
+    const [rows, bookHistory, liveSideCosts] = await Promise.all([
       loadMarkets(),
+      loadBookHistory(),
       loadLiveSideCosts(fillNotionalUsd).catch(() => new Map<string, LiveSideCost>()),
     ]);
+
+    const historyByPair = new Map<string, BookHistoryRow[]>();
+    for (const snapshot of bookHistory) {
+      const rowsForPair = historyByPair.get(snapshot.pair) ?? [];
+      rowsForPair.push(snapshot);
+      historyByPair.set(snapshot.pair, rowsForPair);
+    }
 
     // Staging intentionally has no snapshot cron. Always prefer live volume/OI
     // and add live-only rows when the saved snapshots have aged past the query
@@ -288,41 +338,35 @@ export async function GET(request: NextRequest) {
     const candidates = [...marketRows.values()]
       .map((row): PairRanking | null => {
         const liveSide = liveSideCosts.get(row.pair);
-        const spreadBps = liveSide?.spreadBps ?? asNumber(row.spread_bps);
         const volume24hUsd = liveSide?.volume24hUsd ?? asNumber(row.volume_24h_usd);
         const oiRaw = liveSide?.openInterestUsd ?? asNumber(row.open_interest_usd);
-        const storedLatestImpactBps = impactAtNotional(fillNotionalUsd, [
-          [10_000, asNumber(row.impact_bps_10k)],
-          [50_000, asNumber(row.impact_bps_50k)],
-          [100_000, asNumber(row.impact_bps_100k)],
-        ]);
-        const latestImpactBps = liveSide?.marketImpactBps ?? storedLatestImpactBps;
-        const impactAtPercentile = (percentile: "p25" | "p50" | "p75") =>
-          impactAtNotional(fillNotionalUsd, [
-            [10_000, asNumber(row[`impact_bps_10k_${percentile}`])],
-            [50_000, asNumber(row[`impact_bps_50k_${percentile}`])],
-            [100_000, asNumber(row[`impact_bps_100k_${percentile}`])],
-          ]);
-        const p25ImpactBps = impactAtPercentile("p25") ?? latestImpactBps;
-        const p50ImpactBps = impactAtPercentile("p50") ?? latestImpactBps;
-        const p75ImpactBps = impactAtPercentile("p75") ?? latestImpactBps;
-        const p25SpreadBps = asNumber(row.spread_bps_p25) ?? spreadBps;
-        const p50SpreadBps = asNumber(row.spread_bps_p50) ?? spreadBps;
-        const p75SpreadBps = asNumber(row.spread_bps_p75) ?? spreadBps;
+        const liveSample = liveSide?.spreadBps === null || liveSide?.spreadBps === undefined
+          ? null
+          : {
+              spreadBps: liveSide.spreadBps,
+              impactBps: liveSide.marketImpactBps,
+              legBps: liveSide.spreadBps / 2 + liveSide.marketImpactBps,
+            };
+        const latestSample = liveSample ?? sampleFromSnapshot(row, fillNotionalUsd);
+        const historicalSamples = (historyByPair.get(row.pair) ?? [])
+          .map((snapshot) => sampleFromSnapshot(snapshot, fillNotionalUsd))
+          .filter((sample): sample is CostSample => sample !== null);
+        const p25Sample = percentileSample(historicalSamples, 0.25) ?? latestSample;
+        const p50Sample = percentileSample(historicalSamples, 0.5) ?? latestSample;
+        const p75Sample = percentileSample(historicalSamples, 0.75) ?? latestSample;
         if (
-          spreadBps === null || latestImpactBps === null || p25ImpactBps === null || p50ImpactBps === null || p75ImpactBps === null ||
-          p25SpreadBps === null || p50SpreadBps === null || p75SpreadBps === null || volume24hUsd === null || oiRaw === null ||
+          latestSample === null || p25Sample === null || p50Sample === null || p75Sample === null ||
+          volume24hUsd === null || oiRaw === null ||
           oiRaw * 2 < MIN_OPEN_INTEREST_USD || volume24hUsd < MIN_VOLUME_USD
         ) {
           return null;
         }
-        // Two market legs cross half-spread plus quote impact. The number shown
-        // to users is the 24h median planning estimate; the latest sample and
-        // p25-p75 range remain visible so one stale quote cannot dominate a run.
-        const latestLegBps = (liveSide?.spreadBps ?? spreadBps) / 2 + latestImpactBps;
-        const p25LegBps = p25SpreadBps / 2 + p25ImpactBps;
-        const p50LegBps = p50SpreadBps / 2 + p50ImpactBps;
-        const p75LegBps = p75SpreadBps / 2 + p75ImpactBps;
+        // Newer snapshots use the venue's native quote points. Older rows use
+        // the legacy stored anchors, so historical range data stays usable.
+        const latestLegBps = latestSample.legBps;
+        const p25LegBps = p25Sample.legBps;
+        const p50LegBps = p50Sample.legBps;
+        const p75LegBps = p75Sample.legBps;
         const costFromLegBps = (legBps: number) => (2 * fillNotionalUsd * legBps) / 10_000;
         const cycleCostUsd = costFromLegBps(p50LegBps);
         const costTier: CostTier = p50LegBps <= 2 ? "low" : p50LegBps <= 6 ? "medium" : "high";
@@ -340,8 +384,8 @@ export async function GET(request: NextRequest) {
           costRangeLowUsd: costFromLegBps(p25LegBps),
           costRangeHighUsd: costFromLegBps(p75LegBps),
           // The planning breakdown uses p50 values, matching cycleCostUsd.
-          spreadCostUsd: (fillNotionalUsd * p50SpreadBps) / 10_000,
-          slippageCostUsd: (2 * fillNotionalUsd * p50ImpactBps) / 10_000,
+          spreadCostUsd: (fillNotionalUsd * p50Sample.spreadBps) / 10_000,
+          slippageCostUsd: (2 * fillNotionalUsd * p50Sample.impactBps) / 10_000,
           costTier,
         };
       })

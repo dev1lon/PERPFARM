@@ -19,9 +19,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, inspect, select
 
-from perpfarm.adapters.base import MarketUnavailable, VenueAdapter
+from perpfarm.adapters.base import MarketUnavailable, OrderbookTop, VenueAdapter
 from perpfarm.adapters.registry import FIXTURE_SLUGS, build_adapter
 from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
 
@@ -33,9 +33,31 @@ class SnapshotSyncSummary:
     errors: list[tuple[str, str]] = field(default_factory=list)
 
 
+def _serialize_quote_curve(book: OrderbookTop) -> dict[str, object] | None:
+    """Keep a venue's actual quote/depth anchors in one snapshot row."""
+
+    curve = book.quote_curve
+    if curve is None:
+        return None
+    return {
+        "reference_price": curve.reference_price,
+        "points": [
+            {"notional_usd": point.notional_usd, "bid": point.bid, "ask": point.ask}
+            for point in curve.points
+        ],
+    }
+
+
 def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSummary:
     ts = datetime.now(timezone.utc)
     summary = SnapshotSyncSummary()
+    # The migration is deliberately manual in Render. Keep the hourly job
+    # backwards-compatible during the deploy window: existing snapshot writes
+    # continue until the JSONB column is present, then native curves begin to
+    # be retained automatically without another code change.
+    has_native_quote_curve = any(
+        column["name"] == "quote_curve_json" for column in inspect(engine).get_columns("book_snapshots")
+    )
 
     with engine.connect() as read_conn:
         rows = read_conn.execute(
@@ -73,20 +95,23 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
 
         try:
             with engine.begin() as conn:
+                book_values: dict[str, object] = {
+                    "market_id": market_id,
+                    "ts": ts,
+                    "best_bid": book.best_bid,
+                    "best_ask": book.best_ask,
+                    "spread_bps": book.spread_bps,
+                    "impact_bps_10k": book.impact_bps_10k,
+                    "impact_bps_50k": book.impact_bps_50k,
+                    "impact_bps_100k": book.impact_bps_100k,
+                    "depth_usd_10k": book.depth_usd_10k,
+                    "depth_usd_50k": book.depth_usd_50k,
+                    "depth_usd_100k": book.depth_usd_100k,
+                }
+                if has_native_quote_curve:
+                    book_values["quote_curve_json"] = _serialize_quote_curve(book)
                 conn.execute(
-                    book_snapshots.insert().values(
-                        market_id=market_id,
-                        ts=ts,
-                        best_bid=book.best_bid,
-                        best_ask=book.best_ask,
-                        spread_bps=book.spread_bps,
-                        impact_bps_10k=book.impact_bps_10k,
-                        impact_bps_50k=book.impact_bps_50k,
-                        impact_bps_100k=book.impact_bps_100k,
-                        depth_usd_10k=book.depth_usd_10k,
-                        depth_usd_50k=book.depth_usd_50k,
-                        depth_usd_100k=book.depth_usd_100k,
-                    )
+                    book_snapshots.insert().values(**book_values)
                 )
                 conn.execute(
                     funding_snapshots.insert().values(

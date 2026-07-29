@@ -5,7 +5,7 @@ Reads JSON files from a per-venue directory:
     <fixtures_dir>/<slug>/markets.json    -- list[MarketInfo-shaped dict]
     <fixtures_dir>/<slug>/funding.json    -- {native_symbol: FundingData-shaped dict}
     <fixtures_dir>/<slug>/orderbook.json  -- {native_symbol: OrderbookTop-shaped dict,
-                                              impact_bps_*/depth_usd_* optional}
+                                              impact_bps_*/depth_usd_*/quote_curve optional}
     <fixtures_dir>/<slug>/volume.json     -- {native_symbol: VolumeData-shaped dict}
     <fixtures_dir>/<slug>/fees.json       -- FeeData-shaped dict (venue-wide, not per-symbol)
 """
@@ -18,6 +18,8 @@ from perpfarm.adapters.base import (
     FundingData,
     MarketInfo,
     OrderbookTop,
+    QuoteCurve,
+    QuoteCurvePoint,
     VenueAdapter,
     VolumeData,
 )
@@ -57,6 +59,23 @@ class FixtureAdapter(VenueAdapter):
 
     def get_orderbook_top(self, symbol: str) -> OrderbookTop:
         row = self._load("orderbook.json")[symbol]
+        raw_curve = row.get("quote_curve")
+        curve = None
+        if isinstance(raw_curve, dict) and isinstance(raw_curve.get("points"), list):
+            try:
+                curve = QuoteCurve(
+                    reference_price=float(raw_curve["reference_price"]),
+                    points=tuple(
+                        QuoteCurvePoint(
+                            notional_usd=float(point["notional_usd"]),
+                            bid=float(point["bid"]),
+                            ask=float(point["ask"]),
+                        )
+                        for point in raw_curve["points"]
+                    ),
+                )
+            except (KeyError, TypeError, ValueError):
+                curve = None
         return OrderbookTop(
             best_bid=row["best_bid"],
             best_ask=row["best_ask"],
@@ -67,6 +86,7 @@ class FixtureAdapter(VenueAdapter):
             depth_usd_10k=row.get("depth_usd_10k"),
             depth_usd_50k=row.get("depth_usd_50k"),
             depth_usd_100k=row.get("depth_usd_100k"),
+            quote_curve=curve,
         )
 
     def get_volume(self, symbol: str) -> VolumeData:

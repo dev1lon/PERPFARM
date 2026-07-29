@@ -33,6 +33,28 @@ class FundingData:
 
 
 @dataclass(frozen=True)
+class QuoteCurvePoint:
+    """One native venue quote/depth point at a USD notional size."""
+
+    notional_usd: float
+    bid: float
+    ask: float
+
+
+@dataclass(frozen=True)
+class QuoteCurve:
+    """Native execution curve observed from a venue's public market data.
+
+    The point at notional 0 is the touch/base quote. Later points can come
+    from an RFQ quote curve or a VWAP walk over a CLOB. We keep the venue's
+    actual points instead of imposing a universal list of USD buckets.
+    """
+
+    reference_price: float
+    points: tuple[QuoteCurvePoint, ...]
+
+
+@dataclass(frozen=True)
 class OrderbookTop:
     best_bid: float
     best_ask: float
@@ -46,6 +68,9 @@ class OrderbookTop:
     depth_usd_10k: float | None = None
     depth_usd_50k: float | None = None
     depth_usd_100k: float | None = None
+    # Optional native quote/depth curve. The legacy fixed buckets above remain
+    # for historical rows and adapters that do not expose a curve yet.
+    quote_curve: QuoteCurve | None = None
 
 
 @dataclass(frozen=True)

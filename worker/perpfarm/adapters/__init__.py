@@ -2,6 +2,8 @@ from perpfarm.adapters.base import (
     FundingData,
     MarketInfo,
     OrderbookTop,
+    QuoteCurve,
+    QuoteCurvePoint,
     VenueAdapter,
     VolumeData,
 )
@@ -13,6 +15,8 @@ __all__ = [
     "MarketInfo",
     "FundingData",
     "OrderbookTop",
+    "QuoteCurve",
+    "QuoteCurvePoint",
     "VolumeData",
     "FixtureAdapter",
     "REGISTRY",

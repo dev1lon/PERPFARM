@@ -15,6 +15,7 @@ manufacturing a cost-per-point number.
 """
 
 from collections.abc import Mapping
+import re
 
 import httpx
 
@@ -24,6 +25,8 @@ from perpfarm.adapters.base import (
     MarketInfo,
     MarketUnavailable,
     OrderbookTop,
+    QuoteCurve,
+    QuoteCurvePoint,
     VenueAdapter,
     VolumeData,
 )
@@ -31,6 +34,7 @@ from perpfarm.adapters.base import (
 STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats"
 FEE_SOURCE_URL = "https://docs.variational.io/omni/trading/fees"
 _HOURS_PER_YEAR = 8760.0
+_QUOTE_SIZE_KEY = re.compile(r"^size_(\d+)([km])$")
 
 
 def _float(value: object | None) -> float | None:
@@ -72,36 +76,65 @@ def _funding_from_annualized_rate(annualized_rate: float, interval_hours: float)
     )
 
 
-def _quote_curve_impact_bps(listing: Mapping[str, object]) -> dict[str, float | None]:
-    """Estimate impact beyond Omni's base quote from its public RFQ curve.
-
-    Omni exposes a base quote plus $1k, $100k, and (for majors) $1m quotes,
-    rather than individual book levels.  We use the base quote as the touch,
-    linearly interpolate the displayed quote prices for $10k/$50k, and use
-    the displayed $100k quote directly.  A missing side means no estimate.
-    """
+def _quote_curve_from_listing(listing: Mapping[str, object]) -> QuoteCurve | None:
+    """Return every real public RFQ point exposed by Omni for this market."""
     quotes = listing.get("quotes")
     if not isinstance(quotes, Mapping):
-        return {key: None for key in ("impact_bps_10k", "impact_bps_50k", "impact_bps_100k")}
+        return None
 
     base = _quote_pair(quotes.get("base")) or _quote_pair(quotes.get("size_1k"))
-    one_k = _quote_pair(quotes.get("size_1k"))
-    hundred_k = _quote_pair(quotes.get("size_100k"))
-    if base is None or one_k is None or hundred_k is None:
-        return {key: None for key in ("impact_bps_10k", "impact_bps_50k", "impact_bps_100k")}
-
     mark = _float(listing.get("mark_price"))
-    if mark is None or mark <= 0:
+    if base is None or mark is None or mark <= 0:
+        return None
+
+    points: dict[float, QuoteCurvePoint] = {0.0: QuoteCurvePoint(0.0, *base)}
+    for key, value in quotes.items():
+        if not isinstance(key, str):
+            continue
+        match = _QUOTE_SIZE_KEY.fullmatch(key)
+        quote = _quote_pair(value)
+        if match is None or quote is None:
+            continue
+        multiplier = 1_000.0 if match.group(2) == "k" else 1_000_000.0
+        notional = float(match.group(1)) * multiplier
+        points[notional] = QuoteCurvePoint(notional, *quote)
+
+    return QuoteCurve(reference_price=mark, points=tuple(points[key] for key in sorted(points)))
+
+
+def _interpolate_quote(curve: QuoteCurve, notional: float) -> tuple[float, float] | None:
+    points = curve.points
+    if not points or notional < 0 or notional > points[-1].notional_usd:
+        return None
+    if notional <= points[0].notional_usd:
+        return points[0].bid, points[0].ask
+    for index in range(1, len(points)):
+        left, right = points[index - 1], points[index]
+        if notional <= right.notional_usd:
+            position = (notional - left.notional_usd) / (right.notional_usd - left.notional_usd)
+            return _lerp(left.bid, right.bid, position), _lerp(left.ask, right.ask, position)
+    return None
+
+
+def _quote_curve_impact_bps(listing: Mapping[str, object]) -> dict[str, float | None]:
+    """Estimate average impact from Omni's real RFQ anchors.
+
+    The standardized $10k/$50k/$100k fields remain for compatibility with
+    older snapshots. The full native curve is stored separately and is what
+    newer calculations use for arbitrary fill sizes.
+    """
+    curve = _quote_curve_from_listing(listing)
+    if curve is None or len(curve.points) < 2:
         return {key: None for key in ("impact_bps_10k", "impact_bps_50k", "impact_bps_100k")}
 
-    def impact_at(notional: float) -> float:
-        # Both $10k and $50k lie between the documented $1k and $100k quote
-        # buckets. $100k uses the observed quote, not an extrapolation.
-        position = (notional - 1_000.0) / 99_000.0
-        bid = _lerp(one_k[0], hundred_k[0], position)
-        ask = _lerp(one_k[1], hundred_k[1], position)
-        buy_impact = max(ask - base[1], 0.0) / mark * 10_000.0
-        sell_impact = max(base[0] - bid, 0.0) / mark * 10_000.0
+    def impact_at(notional: float) -> float | None:
+        quote = _interpolate_quote(curve, notional)
+        if quote is None:
+            return None
+        base = curve.points[0]
+        bid, ask = quote
+        buy_impact = max(ask - base.ask, 0.0) / curve.reference_price * 10_000.0
+        sell_impact = max(base.bid - bid, 0.0) / curve.reference_price * 10_000.0
         return (buy_impact + sell_impact) / 2.0
 
     return {
@@ -169,25 +202,23 @@ class VariationalAdapter(VenueAdapter):
 
     def get_orderbook_top(self, symbol: str) -> OrderbookTop:
         listing = self._listing(symbol)
-        quotes = listing.get("quotes")
-        if not isinstance(quotes, Mapping):
-            raise MarketUnavailable(f"variational: quotes unavailable for {symbol}")
-        base = _quote_pair(quotes.get("base")) or _quote_pair(quotes.get("size_1k"))
-        if base is None:
+        curve = _quote_curve_from_listing(listing)
+        if curve is None:
             raise MarketUnavailable(f"variational: incomplete base quote for {symbol}")
+        base = curve.points[0]
 
         impact = _quote_curve_impact_bps(listing)
         spread_bps = _float(listing.get("base_spread_bps"))
         if spread_bps is None:
-            mid = (base[0] + base[1]) / 2.0
-            spread_bps = (base[1] - base[0]) / mid * 10_000.0
+            mid = (base.bid + base.ask) / 2.0
+            spread_bps = (base.ask - base.bid) / mid * 10_000.0
 
         def depth(key: str, notional: float) -> float | None:
             return notional if impact[key] is not None else None
 
         return OrderbookTop(
-            best_bid=base[0],
-            best_ask=base[1],
+            best_bid=base.bid,
+            best_ask=base.ask,
             spread_bps=spread_bps,
             impact_bps_10k=impact["impact_bps_10k"],
             impact_bps_50k=impact["impact_bps_50k"],
@@ -195,6 +226,7 @@ class VariationalAdapter(VenueAdapter):
             depth_usd_10k=depth("impact_bps_10k", 10_000.0),
             depth_usd_50k=depth("impact_bps_50k", 50_000.0),
             depth_usd_100k=depth("impact_bps_100k", 100_000.0),
+            quote_curve=curve,
         )
 
     def get_volume(self, symbol: str) -> VolumeData:

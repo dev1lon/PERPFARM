@@ -4,6 +4,7 @@ import pytest
 
 from perpfarm.adapters.variational import (
     _funding_from_annualized_rate,
+    _quote_curve_from_listing,
     _quote_curve_impact_bps,
     _quote_pair,
 )
@@ -32,6 +33,23 @@ def test_quote_curve_impact_measures_extra_cost_beyond_base_quote():
     assert impact["impact_bps_10k"] == pytest.approx(90 * 9 / 99)
     assert impact["impact_bps_50k"] == pytest.approx(90 * 49 / 99)
     assert impact["impact_bps_100k"] == pytest.approx(90)
+
+
+def test_quote_curve_keeps_every_native_omni_quote_size():
+    curve = _quote_curve_from_listing(
+        {
+            "mark_price": "100",
+            "quotes": {
+                "base": {"bid": "99.9", "ask": "100.1"},
+                "size_1k": {"bid": "99.8", "ask": "100.2"},
+                "size_100k": {"bid": "99", "ask": "101"},
+                "size_1m": {"bid": "95", "ask": "105"},
+            },
+        }
+    )
+
+    assert curve is not None
+    assert [point.notional_usd for point in curve.points] == [0, 1_000, 100_000, 1_000_000]
 
 
 def test_quote_curve_impact_requires_base_and_100k_quotes():
