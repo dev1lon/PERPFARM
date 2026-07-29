@@ -74,7 +74,7 @@ function Approach() {
     {
       n: "02",
       title: tr(locale, "Collect public data", "Собираем публичные данные"),
-      body: tr(locale, "We pull quotes, open interest, 24h volume and funding from public perp-dex APIs, and save market history hourly.", "Тянем котировки, open interest, объём за 24ч и фандинг из публичных API perp-dex и каждый час сохраняем историю рынка."),
+      body: tr(locale, "We collect buy and sell quotes, spread and quote impact at each tested size, open interest, 24h trading volume, funding and published fees from public protocol data. Market snapshots are saved hourly.", "Собираем котировки покупки и продажи, спред и quote impact для каждого проверяемого размера, open interest, торговый объём за 24ч, фандинг и опубликованные комиссии из публичных данных протоколов. Снимки рынка сохраняются каждый час."),
     },
     {
       n: "03",
@@ -117,12 +117,12 @@ function InputCards() {
       <div className="grid gap-3.5 md:grid-cols-3">
         <div className={card}>
           <div className="flex items-center gap-3">{num("01")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Market eligibility", "Пригодность рынка")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Only tradable markets are considered: asset availability, enough liquidity, a live open-interest floor (gross OI ≥ $50k), and protocol activity eligibility.", "Учитываются только торгуемые рынки: доступность актива, достаточная ликвидность, живой флор по OI (gross OI ≥ $50k) и eligibility под активность протокола.")}</div>
-          <div className="mt-auto flex flex-wrap gap-1.5">{chip("availability")}{chip("OI floor")}{chip("eligibility")}</div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Only tradable markets are considered: asset availability, enough liquidity for the selected position size, sufficient market activity, and any protocol-specific eligibility rules.", "Учитываются только торгуемые рынки: доступность актива, достаточная ликвидность для выбранного размера позиции, достаточная рыночная активность и правила eligibility конкретного протокола.")}</div>
+          <div className="mt-auto flex flex-wrap gap-1.5">{chip("availability")}{chip("liquidity")}{chip("eligibility")}</div>
         </div>
         <div className={card}>
           <div className="flex items-center gap-3">{num("02")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Entry and exit", "Вход и выход")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade — two LIMIT legs are free, the two MARKET legs carry the cost.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку — две LIMIT-ноги бесплатны, две MARKET-ноги несут стоимость.")}</div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade. Fees and execution costs are applied according to each protocol and order type; LIMIT orders are not assumed to be free.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку. Комиссии и стоимость исполнения учитываются по правилам каждого протокола и типу ордера; LIMIT-ордера не считаются бесплатными по умолчанию.")}</div>
           <div className="mt-auto grid grid-cols-2 gap-1.5">
             <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG entry</div>
             <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG exit</div>
@@ -140,15 +140,15 @@ function InputCards() {
             <span className="font-mono-num text-[13px] text-text-primary">$6.20</span>
           </div>
         </div>
-        <div className="flex flex-col gap-3.5 rounded-[18px] border border-warning/20 bg-surface-1 p-6">
+        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6">
           <div className="flex items-center gap-3">{num("04")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Funding", "Фандинг")}</div><span className="ml-auto rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] text-warning">{tr(locale, "ESTIMATE", "ОЦЕНКА")}</span></div>
           <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is counted as a net hedge-cycle cost: it nets to zero on an equal-size same-protocol hedge, while a cross-protocol route counts the funding delta. Future funding stays an estimate.", "Фандинг учитывается как чистая стоимость цикла: при равном размере на одном протоколе он нетится в ноль, а в кросс-маршруте считается дельта фандинга. Будущий фандинг остаётся оценкой.")}</div>
         </div>
         <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
           <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
-          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">{tr(locale, "The protocol rules that affect farming efficiency — surfaced, never turned into a computed point value (that stays your manual knowledge).", "Правила протокола, влияющие на эффективность фарма — мы их показываем, но никогда не превращаем в расчётную цену поинта (она остаётся вашим ручным знанием).")}</div>
+          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">{tr(locale, "The protocol rules that affect farming efficiency are shown alongside the route analysis.", "Правила протокола, влияющие на эффективность фарма, показываются вместе с анализом маршрута.")}</div>
           <div className="flex flex-wrap gap-1.5">
-            {["holding time", "open interest", "eligible volume", "maker liquidity", "tiers", "referrals", "activity"].map((m) => (
+            {["holding time", "open interest", "eligible volume", "maker liquidity", "activity"].map((m) => (
               <span key={m} className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[12px] text-text-primary">{m}</span>
             ))}
           </div>
@@ -204,8 +204,8 @@ function CostModel() {
         <div className="mt-6 max-w-[900px] border-t border-border pt-5 text-[15px] leading-[1.68] text-text-muted">
           {tr(
             locale,
-            "In plain words: route cost = your position size × the observed spread and quote impact on the MARKET orders + net funding while the hedge is held.",
-            "Простыми словами: стоимость маршрута = размер позиции × наблюдаемые спред и влияние MARKET-ордеров на котировку + чистый фандинг за время удержания хеджа.",
+            "In plain words: route cost = your position size × (half the spread you cross + quote impact) for each MARKET order + applicable fees on all fills + net funding while the hedge is held.",
+            "Простыми словами: стоимость маршрута = размер позиции × (половина пересекаемого спреда + quote impact) для каждого MARKET-ордера + применимые комиссии всех исполнений + чистый фандинг за время удержания хеджа.",
           )}
         </div>
 
@@ -231,7 +231,7 @@ function CostModel() {
             </p>
           </div>
           <div className="rounded-[14px] bg-surface-2 p-4">
-            <div className="text-[15px] font-semibold text-text-primary">{tr(locale, "Typical 24h range", "Типичный диапазон за 24ч")}</div>
+            <div className="text-[15px] font-semibold text-text-primary">{tr(locale, "Typical 24h cost range", "Типичный диапазон стоимости за 24ч")}</div>
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
                 locale,
@@ -279,9 +279,9 @@ function DataBasis() {
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 md:mt-[26px]">
               {item(tr(locale, "Current quotes", "Текущие котировки"))}
-              {item(tr(locale, "Open interest & 24h volume", "OI и объём 24ч"))}
+              {item(tr(locale, "Open interest & 24h trading volume", "OI и торговый объём за 24ч"))}
               {item(tr(locale, "Spread & impact", "Спред и влияние"))}
-              {item(tr(locale, "Typical 24h range", "Диапазон за 24ч"))}
+              {item(tr(locale, "Typical 24h cost range", "Диапазон стоимости за 24ч"))}
             </div>
           </div>
 
