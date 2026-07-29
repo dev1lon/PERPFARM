@@ -68,18 +68,18 @@ function Approach() {
   const steps = [
     {
       n: "01",
+      title: tr(locale, "Analyse farming strategies", "Анализируем стратегии фарма"),
+      body: tr(locale, "We work out what actually earns points — holding time, medium-OI markets, passive liquidity, tiers and activity — and how to farm them.", "Разбираемся, что реально приносит поинты — время удержания, рынки среднего OI, пассивная ликвидность, тиры и активность — и как их фармить."),
+    },
+    {
+      n: "02",
       title: tr(locale, "Collect public data", "Собираем публичные данные"),
       body: tr(locale, "We pull quotes, open interest, 24h volume and funding from public perp-dex APIs, and save market history hourly.", "Тянем котировки, open interest, объём за 24ч и фандинг из публичных API perp-dex и каждый час сохраняем историю рынка."),
     },
     {
-      n: "02",
+      n: "03",
       title: tr(locale, "Verify reward rules", "Проверяем правила наград"),
       body: tr(locale, "We read each protocol's docs and mark what is publicly confirmed versus a planning assumption.", "Читаем документацию каждого протокола и отмечаем, что публично подтверждено, а что — предположение для планирования."),
-    },
-    {
-      n: "03",
-      title: tr(locale, "Analyse farming strategies", "Анализируем стратегии фарма"),
-      body: tr(locale, "We work out what actually earns points — holding time, medium-OI markets, passive liquidity, tiers and activity — and how to farm them.", "Разбираемся, что реально приносит поинты — время удержания, рынки среднего OI, пассивная ликвидность, тиры и активность — и как их фармить."),
     },
     {
       n: "04",
