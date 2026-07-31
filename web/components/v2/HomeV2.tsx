@@ -6,6 +6,7 @@ import { useState } from "react";
 import { brandAssets } from "@/lib/brand";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
 import { RouteMap } from "@/components/v2/RouteMap";
+import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import {
@@ -301,9 +302,12 @@ function TierLabel({ children }: { children: React.ReactNode }) {
 
 function TierSCard({ p }: { p: HomeProtocol }) {
   const locale = useLocale();
-  const cell = (label: string, value?: string) => (
+  const cell = (label: string, value?: string, tip?: string) => (
     <div className="flex flex-col gap-1.5 rounded-xl bg-surface-2 p-3">
-      <div className="text-[11px] text-text-muted">{label}</div>
+      <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+        {label}
+        {tip ? <InfoTip text={tip} /> : null}
+      </div>
       <div className="font-mono-num text-[15px] text-text-primary">{value ?? "—"}</div>
     </div>
   );
@@ -328,8 +332,8 @@ function TierSCard({ p }: { p: HomeProtocol }) {
           {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate)}
-          {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc)}
+          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale))}
+          {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale))}
           {cell(tr(locale, "Next drop", "След. дроп"), p.nextDrop)}
         </div>
       </Link>
