@@ -134,7 +134,13 @@ function quoteCurveFromListing(listing: Record<string, unknown>): Record<string,
  * 24h median remains based on saved direction-averaged observations.
  */
 async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, LiveSideCost>> {
-  const response = await fetch(VARIATIONAL_STATS_URL, { next: { revalidate: 60 } });
+  // Hard timeout: the venue's public API can hang or block server-side callers,
+  // and without this the whole serverless request stalls until Vercel kills it
+  // (the ranking then falls back to saved snapshots instead of failing).
+  const response = await fetch(VARIATIONAL_STATS_URL, {
+    next: { revalidate: 60 },
+    signal: AbortSignal.timeout(6_000),
+  });
   if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
   const payload: unknown = await response.json();
   if (!isRecord(payload) || !Array.isArray(payload.listings)) throw new Error("Invalid Variational stats");

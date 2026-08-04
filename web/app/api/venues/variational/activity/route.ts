@@ -62,7 +62,10 @@ function chartPoints(chart: unknown, breakdownKey?: string): ActivityPoint[] {
 }
 
 async function getDefiLlamaOpenInterest(): Promise<ActivityPoint[]> {
-  const response = await fetch(DEFILLAMA_OPEN_INTEREST_URL, { next: { revalidate: 60 * 60 } });
+  const response = await fetch(DEFILLAMA_OPEN_INTEREST_URL, {
+    next: { revalidate: 60 * 60 },
+    signal: AbortSignal.timeout(8_000),
+  });
   if (!response.ok) throw new Error(`DefiLlama returned ${response.status}`);
   const payload: unknown = await response.json();
   if (!isRecord(payload) || !Array.isArray(payload.totalDataChartBreakdown)) {
@@ -115,7 +118,10 @@ async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"):
 }
 
 async function getCurrentVariationalStats(): Promise<{ volume24h: number | null; openInterest: number | null }> {
-  const response = await fetch(VARIATIONAL_STATS_URL, { next: { revalidate: 5 * 60 } });
+  const response = await fetch(VARIATIONAL_STATS_URL, {
+    next: { revalidate: 5 * 60 },
+    signal: AbortSignal.timeout(6_000),
+  });
   if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
   const payload: unknown = await response.json();
   if (!isRecord(payload)) throw new Error("Variational stats returned an invalid payload");
@@ -134,7 +140,10 @@ async function getCurrentVariationalStats(): Promise<{ volume24h: number | null;
  */
 async function getOfficialUniqueTraders(): Promise<number | null> {
   try {
-    const response = await fetch(VARIATIONAL_OMNI_URL, { next: { revalidate: 60 * 60 } });
+    const response = await fetch(VARIATIONAL_OMNI_URL, {
+      next: { revalidate: 60 * 60 },
+      signal: AbortSignal.timeout(6_000),
+    });
     if (!response.ok) return null;
     const body = await response.text();
     const match = body.match(/(\d+(?:\.\d+)?)\s*K\s*\+?\s*(?:<[^>]+>\s*)*Unique\s+Traders/i);
@@ -167,6 +176,7 @@ async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
     const response = await fetch(`${DUNE_RESULTS_URL}/${encodeURIComponent(queryId)}/results?limit=100`, {
       headers: { "X-Dune-Api-Key": apiKey },
       next: { revalidate: 60 * 60 },
+      signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) return null;
     const payload: unknown = await response.json();
