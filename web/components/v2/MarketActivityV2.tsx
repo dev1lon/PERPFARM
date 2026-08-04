@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import {
   compactCount,
@@ -99,7 +99,9 @@ export function MarketActivityV2() {
               </button>
             ))}
           </div>
-          {!isUsers && (
+          {/* Always rendered — the row must not reflow when a metric without
+              history (Users) is selected; unavailable ranges just disable. */}
+          {(
             <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
               {([30, 90, 180] as Range[]).map((d) => (
                 (() => {
@@ -168,17 +170,32 @@ function Chart({ series, fmt, locale }: { series: ActivityPoint[]; fmt: (v: numb
   const area = `${path} L1120 250 L0 250 Z`;
   const tickIdx = [0, Math.round((n - 1) * 0.25), Math.round((n - 1) * 0.5), Math.round((n - 1) * 0.75), n - 1];
 
-  const onMove = (e: MouseEvent<HTMLDivElement>) => {
+  const pick = (clientX: number) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return;
-    setHi(Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) / r.width) * (n - 1)))));
+    setHi(Math.max(0, Math.min(n - 1, Math.round(((clientX - r.left) / r.width) * (n - 1)))));
+  };
+  const onMove = (e: MouseEvent<HTMLDivElement>) => pick(e.clientX);
+  // Touch: dragging a finger across the chart scrubs the point. `touch-action:
+  // pan-y` keeps vertical page scrolling while claiming horizontal movement.
+  const onTouch = (e: TouchEvent<HTMLDivElement>) => {
+    const t = e.touches[0];
+    if (t) pick(t.clientX);
   };
   const hx = hi !== null ? (X(hi) / 1120) * 100 : 0;
   const hy = hi !== null ? (Y(series[hi].value) / 260) * 100 : 0;
 
   return (
     <>
-      <div ref={ref} className="relative h-[260px]" onMouseMove={onMove} onMouseLeave={() => setHi(null)}>
+      <div
+        ref={ref}
+        className="relative h-[260px] touch-pan-y"
+        onMouseMove={onMove}
+        onMouseLeave={() => setHi(null)}
+        onTouchStart={onTouch}
+        onTouchMove={onTouch}
+        onTouchEnd={() => setHi(null)}
+      >
         <svg viewBox="0 0 1120 260" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
           <defs>
             <linearGradient id="pfActivityArea" x1="0" y1="0" x2="0" y2="1">

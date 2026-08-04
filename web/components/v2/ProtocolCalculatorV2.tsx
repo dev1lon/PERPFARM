@@ -576,7 +576,8 @@ function SameVenueResult({
               )}
             </div>
           </div>
-          <div className="border-t border-border lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+          {/* The 3D route is decorative; phones skip it to save space + battery. */}
+          <div className="hidden border-t border-border lg:block lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
             <RouteMap mode="result" pair={best.pair} longLabel="Variational" shortLabel={hedgeName} height={360} />
           </div>
         </div>
@@ -611,9 +612,10 @@ function SameVenueResult({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-[18px] border border-border bg-bg">
-          <div className="min-w-[900px]">
-            <div className={`grid ${GRID} items-center gap-3 border-b border-border bg-surface-1 px-[18px] py-3 text-[11px] text-text-dim`}>
+        <div className="rounded-[18px] border border-border bg-bg lg:overflow-x-auto">
+          <div className="lg:min-w-[900px]">
+            {/* Column headers belong to the wide table only. */}
+            <div className={`hidden lg:grid ${GRID} items-center gap-3 border-b border-border bg-surface-1 px-[18px] py-3 text-[11px] text-text-dim`}>
               <div>#</div>
               <div>{tr(locale, "Pair", "Пара")}</div>
               <div>{tr(locale, "Open interest", "Открытый интерес")}</div>
@@ -633,29 +635,53 @@ function SameVenueResult({
                     type="button"
                     onClick={() => setExpanded(open ? null : p.pair)}
                     aria-expanded={open}
-                    className={`pf-transition grid ${GRID} w-full items-center gap-3 px-[18px] py-3.5 text-left hover:bg-surface-1 ${open ? "bg-surface-1" : ""}`}
+                    className={`pf-transition w-full text-left hover:bg-surface-1 ${open ? "bg-surface-1" : ""}`}
                   >
-                    <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
-                      <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
-                      {p.competitionEligible && (
-                        <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
-                      )}
+                    {/* Wide layout: one row per pair. */}
+                    <div className={`hidden lg:grid ${GRID} items-center gap-3 px-[18px] py-3.5`}>
+                      <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
+                        <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.competitionEligible && (
+                          <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
+                        )}
+                      </div>
+                      <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
+                      <div className="flex items-center gap-2">
+                        <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
+                        <span className="text-[13px] text-text-primary">Variational</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ProtocolMark slug="variational" name={hedgeName} size={22} radius={7} />
+                        <span className="text-[13px] text-text-primary">{hedgeName}</span>
+                      </div>
+                      <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
+                      <div className="font-mono-num text-[12px] text-text-muted">{o.exit}</div>
+                      <div className={`text-right font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</div>
+                      <div className="text-right text-[11px] text-text-dim">{open ? "▲" : "▼"}</div>
                     </div>
-                    <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
-                    <div className="flex items-center gap-2">
-                      <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
-                      <span className="text-[13px] text-text-primary">Variational</span>
+
+                    {/* Phone layout: a two-line card, no sideways scrolling. */}
+                    <div className="flex flex-col gap-1 px-4 py-3 lg:hidden">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
+                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
+                        <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.competitionEligible && (
+                          <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
+                        )}
+                        <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
+                        <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 pl-[26px] font-mono-num text-[11px] text-text-muted">
+                        <span>OI {compactUsd(p.openInterestUsd)}</span>
+                        <span className="text-text-dim">·</span>
+                        <span>{o.entry}</span>
+                        <span className="text-text-dim">→</span>
+                        <span>{o.exit}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <ProtocolMark slug="variational" name={hedgeName} size={22} radius={7} />
-                      <span className="text-[13px] text-text-primary">{hedgeName}</span>
-                    </div>
-                    <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
-                    <div className="font-mono-num text-[12px] text-text-muted">{o.exit}</div>
-                    <div className={`text-right font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</div>
-                    <div className="text-right text-[11px] text-text-dim">{open ? "▲" : "▼"}</div>
                   </button>
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>

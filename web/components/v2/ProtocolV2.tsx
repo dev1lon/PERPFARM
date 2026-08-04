@@ -22,7 +22,8 @@ const COMPLETED_COMPETITIONS = 5;
 /** A known weekly-drop day, with the number of farming weeks completed by then. */
 const WEEK_ANCHOR_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const WEEKS_AT_ANCHOR = 32;
-const REMAINING_AT_ANCHOR = 1_650_000;
+/** Pool left on the anchor date: 10 weekly drops, so 8 remain by 2026-08-04. */
+const REMAINING_AT_ANCHOR = 1_500_000;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
