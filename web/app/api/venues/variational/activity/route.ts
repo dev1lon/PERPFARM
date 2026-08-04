@@ -121,6 +121,11 @@ async function getCurrentVariationalStats(): Promise<{ volume24h: number | null;
   const response = await fetch(VARIATIONAL_STATS_URL, {
     next: { revalidate: 5 * 60 },
     signal: AbortSignal.timeout(6_000),
+    headers: {
+      Accept: "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
   });
   if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
   const payload: unknown = await response.json();

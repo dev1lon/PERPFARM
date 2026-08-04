@@ -140,6 +140,14 @@ async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, L
   const response = await fetch(VARIATIONAL_STATS_URL, {
     next: { revalidate: 60 },
     signal: AbortSignal.timeout(6_000),
+    // The venue's edge rejects or stalls requests carrying the default runtime
+    // agent; the worker reaches the same endpoint fine with ordinary client
+    // headers, so send those from the server too.
+    headers: {
+      Accept: "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
   });
   if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
   const payload: unknown = await response.json();
@@ -280,16 +288,32 @@ async function loadMarkets(): Promise<MarketRow[]> {
   return rows;
 }
 
+/**
+ * 24h of book snapshots for the percentile range. Every hourly snapshot of all
+ * ~540 markets carries a quote curve, so the raw pull is tens of megabytes and
+ * can outlast the request. Sampling every other snapshot keeps the full 24h
+ * window (and a representative spread of quotes) at half the payload.
+ */
+const HISTORY_SAMPLE_STRIDE = 2;
+const HISTORY_MAX_SNAPSHOTS = 24;
+
 async function loadBookHistory(): Promise<BookHistoryRow[]> {
   const { rows } = await getPool().query<BookHistoryRow>(
-    `SELECT m.symbol_canonical AS pair,
-            b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
-            to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
-     FROM book_snapshots b
-     JOIN markets m ON m.id = b.market_id
-     JOIN venues v ON v.id = m.venue_id
-     WHERE v.slug = 'variational'
-       AND b.ts >= now() - interval '24 hours'`,
+    `WITH v AS (SELECT id FROM venues WHERE slug = 'variational'),
+     ranked AS (
+       SELECT m.symbol_canonical AS pair,
+              b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+              to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
+              row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
+       FROM book_snapshots b
+       JOIN markets m ON m.id = b.market_id
+       WHERE m.venue_id = (SELECT id FROM v)
+         AND b.ts >= now() - interval '24 hours'
+     )
+     SELECT pair, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
+     FROM ranked
+     WHERE rn <= $1 AND (rn - 1) % $2 = 0`,
+    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE],
   );
   return rows;
 }
