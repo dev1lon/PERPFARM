@@ -12,6 +12,13 @@ export function farmEstimateTip(locale: Locale): string {
     "Ориентировочный диапазон стоимости фарма одного поинта. Ручная оценка, не гарантия — зависит от эмиссии и условий, которые могут меняться.",
   );
 }
+export function volumePerPointTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Roughly how much traded volume earns one point. A manual figure from experience — the site never derives points from volume. Used together with the live execution cost to express cost per point.",
+    "Примерно сколько объёма нужно, чтобы получить один поинт. Ручная цифра из опыта — сайт не выводит поинты из объёма сам. Используется вместе с живой стоимостью исполнения, чтобы показать стоимость поинта.",
+  );
+}
 export function otcPointTip(locale: Locale): string {
   return tr(
     locale,

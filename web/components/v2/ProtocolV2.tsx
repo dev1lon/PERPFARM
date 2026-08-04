@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
-import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
+import { InfoTip, farmEstimateTip, otcPointTip, volumePerPointTip } from "@/components/v2/InfoTip";
+import { findProtocol, volumeLabel } from "@/lib/home-protocols";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import type { VenueSummary } from "@/lib/types";
@@ -74,6 +75,7 @@ function H2({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   const locale = useLocale();
+  const volumePerPointLabel = volumeLabel(findProtocol("variational")?.volumePerPointUsd);
   const metric = (label: string, value: string, valueClass = "text-text-primary", tip?: string) => (
     <div className="flex flex-col gap-1.5 rounded-[14px] border border-border bg-surface-1 px-4 py-3.5">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
@@ -103,8 +105,9 @@ function Hero() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {metric(tr(locale, "Season", "Сезон"), "Season 1")}
+          {metric(tr(locale, "Volume per point", "Объём на поинт"), volumePerPointLabel, "text-text-primary", volumePerPointTip(locale))}
           {metric(tr(locale, "Farm estimate", "Оценка фарма"), "$5–11/pt", "text-positive", farmEstimateTip(locale))}
           {metric(tr(locale, "OTC point price", "OTC цена поинта"), "$24", "text-text-primary", otcPointTip(locale))}
         </div>

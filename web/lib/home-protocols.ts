@@ -22,13 +22,17 @@ export interface HomeProtocol {
   otc?: string;
   /** Manual next-drop countdown/date, e.g. "6d 17h" or "2026-09-01". */
   nextDrop?: string;
+  /** Manual: roughly how much traded volume (USD) earns ONE point. Hand-entered
+   *  from experience — the site never derives points from volume itself. Used
+   *  with the live execution cost to express cost per point. */
+  volumePerPointUsd?: number;
   /** Manual points-program status. */
   status?: PointsStatus;
 }
 
 /** Tier S — the large two-up cards with the metric grid. */
 export const TIER_S: HomeProtocol[] = [
-  { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
+  { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", volumePerPointUsd: 50_000, status: "live" },
   { slug: "tradexyz", name: "TradeXYZ", season: "Season 2", status: "teased" },
 ];
 
@@ -65,4 +69,12 @@ export const ALL_PROTOCOLS: HomeProtocol[] = [...TIER_S, ...EARLY, ...RADAR];
 
 export function findProtocol(slug: string): HomeProtocol | undefined {
   return ALL_PROTOCOLS.find((p) => p.slug === slug);
+}
+
+/** Compact USD label for the manual volume-per-point figure ($50,000 -> "$50k"). */
+export function volumeLabel(usd: number | undefined): string {
+  if (!usd || !Number.isFinite(usd)) return "—";
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(usd % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(usd % 1_000 === 0 ? 0 : 1)}k`;
+  return `$${usd}`;
 }

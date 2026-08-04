@@ -6,10 +6,11 @@ import { useState } from "react";
 import { brandAssets } from "@/lib/brand";
 import { PerpDexLogo } from "@/components/PerpDexLogo";
 import { RouteMap } from "@/components/v2/RouteMap";
-import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
+import { InfoTip, farmEstimateTip, otcPointTip, volumePerPointTip } from "@/components/v2/InfoTip";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import {
+  volumeLabel,
   TIER_S,
   EARLY,
   RADAR,
@@ -331,7 +332,8 @@ function TierSCard({ p }: { p: HomeProtocol }) {
           </div>
           {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
+          {cell(tr(locale, "Volume per point", "Объём на поинт"), volumeLabel(p.volumePerPointUsd), volumePerPointTip(locale))}
           {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale))}
           {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale))}
           {cell(tr(locale, "Next drop", "След. дроп"), p.nextDrop)}
