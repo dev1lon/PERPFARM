@@ -107,7 +107,7 @@ function Hero() {
         <div className="grid grid-cols-3 gap-2.5">
           {metric(tr(locale, "Season", "Сезон"), "Season 1")}
           {metric(tr(locale, "Farm estimate", "Оценка фарма"), "$5–11/pt", "text-positive", farmEstimateTip(locale))}
-          {metric(tr(locale, "OTC point price", "OTC цена поинта"), "$21", "text-text-primary", otcPointTip(locale))}
+          {metric(tr(locale, "OTC point price", "OTC цена поинта"), "$24", "text-text-primary", otcPointTip(locale))}
         </div>
       </div>
     </>
