@@ -133,8 +133,18 @@ class HibachiAdapter(VenueAdapter):
             self._exchange_info = self._get_json("/market/exchange-info")
         return self._exchange_info
 
+    def _contracts(self) -> list[dict]:
+        # During scheduled maintenance the API answers 200 with a payload that
+        # has no contract list. Say so plainly instead of surfacing a bare
+        # KeyError('futureContracts') in the cron log.
+        info = self._get_exchange_info()
+        contracts = info.get("futureContracts")
+        if not contracts:
+            raise RuntimeError("Hibachi API returned no contracts (venue under maintenance?)")
+        return contracts
+
     def get_markets(self) -> list[MarketInfo]:
-        contracts = self._get_exchange_info()["futureContracts"]
+        contracts = self._contracts()
         return [
             MarketInfo(
                 symbol=c["symbol"],
@@ -162,7 +172,7 @@ class HibachiAdapter(VenueAdapter):
         )
 
     def get_orderbook_top(self, symbol: str) -> OrderbookTop:
-        contracts = self._get_exchange_info()["futureContracts"]
+        contracts = self._contracts()
         contract = next(c for c in contracts if c["symbol"] == symbol)
         granularity = contract["orderbookGranularities"][0]  # finest
 

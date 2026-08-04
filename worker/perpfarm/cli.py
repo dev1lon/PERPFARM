@@ -187,10 +187,23 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
         )
+        # Group failures by venue: one venue under maintenance produces an error
+        # per market, which used to flood the log with a dozen identical lines.
+        by_venue: dict[str, list[tuple[str, str]]] = {}
         for market, msg in summary.errors:
-            click.echo(f"  error: {market}: {msg}", err=True)
-        if summary.errors:
-            raise click.ClickException(f"{len(summary.errors)} market(s) failed")
+            by_venue.setdefault(market.split(":", 1)[0], []).append((market, msg))
+        for venue, failures in by_venue.items():
+            click.echo(
+                f"  {venue}: {len(failures)} market(s) unavailable -- {failures[0][1]}",
+                err=True,
+            )
+        # A single venue going down must not fail the run: every other venue's
+        # snapshots were collected and are what the site serves. Only a run that
+        # stored nothing at all is a genuine failure worth alerting on.
+        if summary.errors and summary.written == 0:
+            raise click.ClickException(
+                f"no snapshots stored; {len(summary.errors)} market(s) failed"
+            )
 
 
 if __name__ == "__main__":
