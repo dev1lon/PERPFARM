@@ -38,8 +38,36 @@ interface RankingResponse {
   minVolumeUsd: number;
   minOpenInterestUsd: number;
   competition: { active: boolean; name: string };
+  /** Per-protocol live-feed status; a false `live` means the ranking fell back
+   *  to saved snapshots for that protocol. */
+  sources?: { venue: string; live: boolean }[];
   grouped: boolean;
   bands: Band[];
+}
+
+/** Names the protocols whose live feed is down, so the warning can be specific. */
+function StaleDataNotice({ data }: { data: RankingResponse }) {
+  const locale = useLocale();
+  const down = (data.sources ?? []).filter((s) => !s.live).map((s) => s.venue);
+  if (down.length === 0) return null;
+  const names = down.join(", ");
+  return (
+    <div className="mt-5 flex gap-3.5 rounded-[14px] border border-warning/40 bg-warning/[0.07] px-4 py-3.5">
+      <span className="mt-0.5 flex-none font-mono-num text-[13px] text-warning">!</span>
+      <div className="text-[13px] leading-[1.6] text-text-primary">
+        <span className="font-semibold">
+          {tr(locale, `${names}: live quotes unavailable`, `${names}: живые котировки недоступны`)}
+        </span>{" "}
+        <span className="text-text-muted">
+          {tr(
+            locale,
+            `The protocol's public API did not respond, so these numbers come from the last saved snapshots (${new Date(data.asOf).toLocaleString("en-US")}) — not live prices.`,
+            `Публичный API протокола не ответил, поэтому цифры взяты из последних сохранённых снимков (${new Date(data.asOf).toLocaleString("ru-RU")}) — это не живые котировки.`,
+          )}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 type Status = "idle" | "running" | "loaded" | "error";
@@ -440,6 +468,13 @@ function CostPerPointTest({
           `Объём цикла ${formatUsd(cycleVolume, { decimals: 0 })}. Сейчас есть только статистика за 24ч — диапазон за несколько недель потребует агрегации по сохранённым почасовым снимкам.`,
         )}
       </p>
+      <p className="pt-1.5 text-[12px] leading-[1.6] text-warning">
+        {tr(
+          locale,
+          "Open question: it is not confirmed whether this volume-per-point figure holds on high-OI or on medium-OI markets — the same volume may earn a different number of points depending on the market.",
+          "Открытый вопрос: не подтверждено, относится ли это значение «объём на поинт» к рынкам с высоким или средним OI — один и тот же объём может давать разное число поинтов в зависимости от рынка.",
+        )}
+      </p>
     </div>
   );
 }
@@ -474,6 +509,8 @@ function SameVenueResult({
   const bestOrders = orders(best.firstLimitSide);
   return (
     <>
+      <StaleDataNotice data={data} />
+
       {/* recommended route */}
       <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">

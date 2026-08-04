@@ -312,10 +312,18 @@ export async function GET(request: NextRequest) {
     const competitionActive = competitionIsActive();
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
+    // Track whether the venue's live quote feed answered. When it doesn't we
+    // still rank from saved snapshots, but the response says so explicitly so
+    // the UI can tell the user WHICH protocol's live data is missing rather
+    // than quietly showing stale numbers as if they were live.
+    let liveQuotesOk = true;
     const [rows, bookHistory, liveSideCosts] = await Promise.all([
       loadMarkets(),
       loadBookHistory(),
-      loadLiveSideCosts(fillNotionalUsd).catch(() => new Map<string, LiveSideCost>()),
+      loadLiveSideCosts(fillNotionalUsd).catch(() => {
+        liveQuotesOk = false;
+        return new Map<string, LiveSideCost>();
+      }),
     ]);
 
     const historyByPair = new Map<string, BookHistoryRow[]>();
@@ -437,6 +445,9 @@ export async function GET(request: NextRequest) {
         minVolumeUsd: MIN_VOLUME_USD,
         minOpenInterestUsd: MIN_OPEN_INTEREST_USD,
         competition: { active: competitionActive, name: "TradFi Trading Competition #5" },
+        // One entry per protocol whose data this run needs — ready for the
+        // cross-protocol case, where either side's feed can be down.
+        sources: [{ venue: "Variational", live: liveQuotesOk }],
         tradfiOnly,
         grouped,
         bands,
