@@ -10,37 +10,36 @@ import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import type { VenueSummary } from "@/lib/types";
 
-/* ---- real points-distribution logic (ported from VariationalLayoutPreview) ---- */
-const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
-const INITIAL_POINTS_REMAINING = 1_650_000;
+/* ---- points distribution (manual figures) ----
+   Distributed = 3.0M base + 150k per completed weekly drop + 20k per completed
+   competition. As of 2026-07-31 that is 3.0M + 34x150k + 5x20k = 8.2M. */
+const BASE_POINTS = 3_000_000;
 const WEEKLY_POINT_DISTRIBUTION = 150_000;
 const COMPETITION_POINT_DISTRIBUTION = 20_000;
-const COMPLETED_COMPETITION_DISTRIBUTIONS_AFTER_BASELINE = 1;
-const FIRST_TRACKED_DROP_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+/** Completed competitions so far — bump by one each time a competition ends. */
+const COMPLETED_COMPETITIONS = 5;
+/** A known weekly-drop day, with the number of farming weeks completed by then. */
+const WEEK_ANCHOR_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
+const WEEKS_AT_ANCHOR = 32;
+const REMAINING_AT_ANCHOR = 1_650_000;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function pointsProgress(now: number) {
-  const completedDrops =
-    now < FIRST_TRACKED_DROP_UTC
-      ? 0
-      : Math.min(
-          Math.floor((now - FIRST_TRACKED_DROP_UTC) / WEEK_MS) + 1,
-          Math.ceil(INITIAL_POINTS_REMAINING / WEEKLY_POINT_DISTRIBUTION),
-        );
-  const remaining = Math.max(0, INITIAL_POINTS_REMAINING - completedDrops * WEEKLY_POINT_DISTRIBUTION);
-  const completedCompetitions =
-    COMPLETED_COMPETITION_DISTRIBUTIONS_AFTER_BASELINE + (now >= TRADFI_COMPETITION_END_UTC ? 1 : 0);
+  const weeksSinceAnchor = Math.max(0, Math.floor((now - WEEK_ANCHOR_UTC) / WEEK_MS));
+  const weeksFarmed = WEEKS_AT_ANCHOR + weeksSinceAnchor;
+  const remaining = Math.max(0, REMAINING_AT_ANCHOR - weeksSinceAnchor * WEEKLY_POINT_DISTRIBUTION);
   const distributed =
-    INITIAL_POINTS_DISTRIBUTED +
-    completedDrops * WEEKLY_POINT_DISTRIBUTION +
-    completedCompetitions * COMPETITION_POINT_DISTRIBUTION;
+    BASE_POINTS +
+    weeksFarmed * WEEKLY_POINT_DISTRIBUTION +
+    COMPLETED_COMPETITIONS * COMPETITION_POINT_DISTRIBUTION;
   return {
     distributed,
     remaining,
+    weeksFarmed,
     weeksRemaining: Math.ceil(remaining / WEEKLY_POINT_DISTRIBUTION),
-    nextDrop: FIRST_TRACKED_DROP_UTC + completedDrops * WEEK_MS,
+    nextDrop: WEEK_ANCHOR_UTC + (weeksSinceAnchor + 1) * WEEK_MS,
     pct: Math.round((distributed / (distributed + remaining)) * 100),
   };
 }
@@ -288,15 +287,16 @@ function ActivityAndDistribution() {
               <span>{tr(locale, "Remaining", "Осталось")} <span className="font-mono-num text-text-primary">{compactPoints(p.remaining)}</span></span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {[
+              [tr(locale, "Weeks farmed", "Недель фарма"), String(p.weeksFarmed), "text-text-primary"],
               [tr(locale, "Weekly drop", "В неделю"), `+${compactPoints(WEEKLY_POINT_DISTRIBUTION)}`, "text-positive"],
               [tr(locale, "Weeks left", "Недель"), String(p.weeksRemaining), "text-text-primary"],
               [tr(locale, "Next drop", "След. дроп"), "", "text-text-primary"],
             ].map(([label, value, cls], i) => (
               <div key={i} className="flex flex-col gap-1.5 rounded-xl bg-surface-2 p-3">
                 <div className="text-[11px] text-text-muted">{label}</div>
-                {i === 2 ? (
+                {i === 3 ? (
                   <div suppressHydrationWarning className="font-mono-num text-[14px] text-text-primary">{countdown(now, p.nextDrop)}</div>
                 ) : (
                   <div className={`font-mono-num text-[16px] ${cls}`}>{value}</div>
