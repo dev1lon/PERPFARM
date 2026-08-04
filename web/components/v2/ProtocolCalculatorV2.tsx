@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatUsd } from "@/lib/format";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
@@ -510,6 +510,23 @@ function SameVenueResult({
   setOiFilter: (v: BandKey) => void;
 }) {
   const locale = useLocale();
+  // Switching band changes the list length, which would otherwise slide the
+  // page under the finger. Anchor the filter row: remember where it sat, then
+  // scroll by the delta after the new list renders.
+  const filterRowRef = useRef<HTMLDivElement>(null);
+  const anchorTop = useRef<number | null>(null);
+  const changeFilter = (k: BandKey) => {
+    anchorTop.current = filterRowRef.current?.getBoundingClientRect().top ?? null;
+    setExpanded(null); // a row expanded in another band must not stay open here
+    setOiFilter(k);
+  };
+  useLayoutEffect(() => {
+    if (anchorTop.current === null) return;
+    const next = filterRowRef.current?.getBoundingClientRect().top;
+    if (next !== undefined) window.scrollBy(0, next - anchorTop.current);
+    anchorTop.current = null;
+  }, [oiFilter]);
+
   if (!data || !best) {
     return <div className="pf-skeleton mt-5 h-80 rounded-[20px] border border-border bg-surface-1" />;
   }
@@ -602,12 +619,12 @@ function SameVenueResult({
           </div>
           <div className="flex flex-col items-end gap-2">
             {grouped && (
-              <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
+              <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
                 {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setOiFilter(k)}
+                    onClick={() => changeFilter(k)}
                     className={`pf-transition rounded-[7px] px-3 py-1.5 text-[12px] font-semibold ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                   >
                     {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
@@ -681,12 +698,15 @@ function SameVenueResult({
                         <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
                         <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
                       </div>
-                      <div className="flex items-center gap-2 pl-[26px] font-mono-num text-[11px] text-text-muted">
-                        <span>OI {compactUsd(p.openInterestUsd)}</span>
-                        <span className="text-text-dim">·</span>
-                        <span>{o.entry}</span>
-                        <span className="text-text-dim">→</span>
-                        <span>{o.exit}</span>
+                      {/* One line, never wrapping: a long OI ($403.5M) used to
+                          break the order labels mid-word and give rows uneven
+                          heights. Slashes lose their padding to fit. */}
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap pl-[26px] font-mono-num text-[10px] text-text-muted">
+                        OI {compactUsd(p.openInterestUsd)}
+                        <span className="text-text-dim"> · </span>
+                        {o.entry.replace(/ \/ /g, "/")}
+                        <span className="text-text-dim"> → </span>
+                        {o.exit.replace(/ \/ /g, "/")}
                       </div>
                     </div>
                   </button>
