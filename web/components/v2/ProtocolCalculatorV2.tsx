@@ -101,7 +101,7 @@ function costTierLabel(locale: Locale, tier: CostTier): string {
 function CostTierBadge({ costTier }: { costTier: CostTier }) {
   const locale = useLocale();
   return (
-    <span title={tr(locale, "Based on 24h spread and quote-impact data; this is not a liquidation-risk score.", "На основе 24ч спреда и quote impact; это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
+    <span title={tr(locale, "Based on 24h spread and quote-impact data; this is not a liquidation-risk score.", "На основе 24ч спреда и quote impact; это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
       <span className={`h-[5px] w-[5px] rounded-full ${COST_TIER_DOT[costTier]}`} />
       {costTierLabel(locale, costTier)}
     </span>
@@ -530,6 +530,9 @@ function SameVenueResult({
   if (!data || !best) {
     return <div className="pf-skeleton mt-5 h-80 rounded-[20px] border border-border bg-surface-1" />;
   }
+  // Eligibility only means something while a competition is running — once it
+  // ends the flag would claim a benefit that no longer exists.
+  const showEligible = data.competition.active;
   const bestOrders = orders(best.firstLimitSide);
   return (
     <>
@@ -538,11 +541,11 @@ function SameVenueResult({
       {/* recommended route */}
       <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="w-full font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent sm:w-auto">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
-            {best.competitionEligible && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+            {showEligible && best.competitionEligible && (
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                 {tr(locale, "Competition eligible", "Eligible для конкурса")}
               </span>
@@ -667,7 +670,7 @@ function SameVenueResult({
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
-                        {p.competitionEligible && (
+                        {showEligible && p.competitionEligible && (
                           <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                         )}
                       </div>
@@ -692,7 +695,7 @@ function SameVenueResult({
                         <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
-                        {p.competitionEligible && (
+                        {showEligible && p.competitionEligible && (
                           <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                         )}
                         <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
@@ -714,8 +717,8 @@ function SameVenueResult({
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
                         <CostTierBadge costTier={p.costTier} />
-                        {p.competitionEligible && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                        {showEligible && p.competitionEligible && (
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                             {tr(locale, "Competition eligible", "Eligible для конкурса")}
                           </span>
