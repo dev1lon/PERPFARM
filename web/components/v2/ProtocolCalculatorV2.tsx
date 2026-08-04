@@ -340,16 +340,23 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
       {status === "error" && (
         <div className="mt-5 rounded-2xl border border-negative/40 bg-negative/10 p-4 text-[14px] text-negative">{errorMessage}</div>
       )}
-      {status === "running" && (
+      {/* The scan bar stays up until the pairs are actually on screen — the
+          fetch continues after the scan animation, and a gap here reads as an
+          empty result. */}
+      {(status === "running" || (status === "loaded" && ranHedge === "variational" && !data)) && (
         <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14">
           <div className="h-0.5 w-52 overflow-hidden rounded bg-white/10">
             <div className="pf-scan h-full w-1/3 bg-accent" />
           </div>
-          <div className="font-mono-num text-[13px] text-accent">{tr(locale, "Scanning eligible markets…", "Сканируем eligible-рынки…")}</div>
+          <div className="font-mono-num text-[13px] text-accent">
+            {status === "running"
+              ? tr(locale, "Scanning eligible markets…", "Сканируем eligible-рынки…")
+              : tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}
+          </div>
         </div>
       )}
 
-      {status === "loaded" && notionalUsd !== null && ranHedge === "variational" && (
+      {status === "loaded" && notionalUsd !== null && ranHedge === "variational" && data && (
         <SameVenueResult
           data={data}
           top={tablePairs}

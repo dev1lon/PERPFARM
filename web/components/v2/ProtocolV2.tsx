@@ -244,37 +244,57 @@ function ActivityAndDistribution() {
     <div className="mt-11">
       <H2>{tr(locale, "Protocol activity", "Активность протокола")}</H2>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        {/* competition */}
-        <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <div className="text-[17px] font-semibold text-text-primary">TradFi Trading Competition #5</div>
-              <div className="font-mono-num text-[12px] text-text-muted">2026-07-17 → 2026-07-31 · $20,000 {tr(locale, "prizes", "призы")}</div>
+        {/* Running activity, or an explicit "nothing running" state — an empty
+            slot would read as us forgetting to update it. */}
+        {competitionActive ? (
+          <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[17px] font-semibold text-text-primary">TradFi Trading Competition #5</div>
+                <div className="font-mono-num text-[12px] text-text-muted">2026-07-17 → 2026-07-31 · $20,000 {tr(locale, "prizes", "призы")}</div>
+              </div>
+              <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                <span className="h-[5px] w-[5px] rounded-full bg-positive" />
+                {tr(locale, "Active", "Активно")}
+              </span>
             </div>
-            <span className={`inline-flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${competitionActive ? "border-positive/30 bg-positive/10 text-positive" : "border-border bg-surface-2 text-text-muted"}`}>
-              <span className={`h-[5px] w-[5px] rounded-full ${competitionActive ? "bg-positive" : "bg-text-dim"}`} />
-              {competitionActive ? tr(locale, "Active", "Активно") : tr(locale, "Inactive", "Неактивно")}
-            </span>
-          </div>
-          <div className="text-[14px] leading-[1.62] text-text-muted">
-            {competitionActive
-              ? locale === "ru"
+            <div className="text-[14px] leading-[1.62] text-text-muted">
+              {locale === "ru"
                 ? "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi). Score: TradFi PnL × √TradFi volume."
-                : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."
-              : tr(
-                  locale,
-                  "The competition has ended. Its 20,000-point distribution is included in the tracked total.",
-                  "Турнир завершён. Его раздача 20 000 поинтов учтена в общем количестве.",
-                )}
+                : "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume."}
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Eligible", "Eligible")}</span>
+              <span className="text-text-primary">{tr(locale, "all TradFi markets", "все TradFi-рынки")}</span>
+            </div>
+            <a href="https://docs.variational.io/omni/trading-competition" target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-accent hover:text-accent-hover">
+              {tr(locale, "Competition rules ↗", "Правила конкурса ↗")}
+            </a>
           </div>
-          <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
-            <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Eligible", "Eligible")}</span>
-            <span className="text-text-primary">{tr(locale, "all TradFi markets", "все TradFi-рынки")}</span>
+        ) : (
+          <div className="flex flex-col justify-center gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+            <div className="flex items-center gap-2.5">
+              <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
+              <div className="text-[17px] font-semibold text-text-primary">
+                {tr(locale, "No activity running", "Нет активных активностей")}
+              </div>
+            </div>
+            <div className="text-[14px] leading-[1.62] text-text-muted">
+              {tr(
+                locale,
+                "Right now there is no competition or bonus that would increase the number of points you earn or lower their cost. We track this and it will appear here as soon as one starts.",
+                "Сейчас нет соревнований или бонусов, которые увеличили бы количество поинтов или снизили их стоимость. Мы это отслеживаем — как только что-то начнётся, оно появится здесь.",
+              )}
+            </div>
+            <div className="text-[13px] text-text-dim">
+              {tr(
+                locale,
+                "The last competition ended on 2026-07-31; its 20,000-point distribution is already counted in the total.",
+                "Последний турнир завершился 31.07.2026 — его раздача 20 000 поинтов уже учтена в общем количестве.",
+              )}
+            </div>
           </div>
-          <a href="https://docs.variational.io/omni/trading-competition" target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-accent hover:text-accent-hover">
-            {tr(locale, "Competition rules ↗", "Правила конкурса ↗")}
-          </a>
-        </div>
+        )}
 
         {/* points distribution */}
         <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
@@ -362,12 +382,16 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
         <Hero />
         <AwardsPanel />
 
+        {/* What is earning points right now — context the reader needs BEFORE
+            running numbers, so it sits above the calculator. */}
+        <ActivityAndDistribution />
+
         {/* Live calculator + recommended route + 10-pairs table (native, wired
             to the same pair-rankings / cross-rankings APIs). */}
         <ProtocolCalculatorV2 otherVenues={otherVenues} />
 
+        {/* General guidance comes after the concrete answer above. */}
         <HedgeRecommendations />
-        <ActivityAndDistribution />
         <FactorsAffectingPoints />
 
         {/* Native market-activity chart (live activity API, design SVG). */}
