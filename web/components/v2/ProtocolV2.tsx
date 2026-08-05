@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
-import { InfoTip, farmEstimateTip, otcPointTip, volumePerPointTip } from "@/components/v2/InfoTip";
-import { findProtocol, volumeLabel } from "@/lib/home-protocols";
+import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import type { VenueSummary } from "@/lib/types";
@@ -55,15 +54,6 @@ function countdown(now: number, nextDrop: number): string {
   return `${p[0]}d ${String(p[1]).padStart(2, "0")}:${String(p[2]).padStart(2, "0")}:${String(p[3]).padStart(2, "0")}`;
 }
 
-const POINT_TIERS: [string, string, string][] = [
-  ["Iron", "$0", "+0%"],
-  ["Bronze", "$1M", "+0.5%"],
-  ["Silver", "$5M", "+1%"],
-  ["Gold", "$25M", "+2%"],
-  ["Platinum", "$100M", "+3%"],
-  ["Diamond", "$750M", "+4%"],
-  ["Infinity", "$2.5B", "+5%"],
-];
 
 const TWITTER = "https://x.com/variational_io";
 const DOCS = "https://docs.variational.io/omni";
@@ -76,7 +66,6 @@ function H2({ children }: { children: React.ReactNode }) {
 
 function Hero() {
   const locale = useLocale();
-  const volumePerPointLabel = volumeLabel(findProtocol("variational")?.volumePerPointUsd);
   const metric = (label: string, value: string, valueClass = "text-text-primary", tip?: string) => (
     <div className="flex flex-col gap-1.5 rounded-[14px] border border-border bg-surface-1 px-4 py-3.5">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
@@ -106,9 +95,8 @@ function Hero() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2.5">
           {metric(tr(locale, "Season", "Сезон"), "Season 1")}
-          {metric(tr(locale, "Volume per point", "Объём на поинт"), volumePerPointLabel, "text-text-primary", volumePerPointTip(locale))}
           {metric(tr(locale, "Farm estimate", "Оценка фарма"), "$5–11/pt", "text-positive", farmEstimateTip(locale))}
           {metric(tr(locale, "OTC point price", "OTC цена поинта"), "$24", "text-text-primary", otcPointTip(locale))}
         </div>
@@ -119,62 +107,111 @@ function Hero() {
 
 function AwardsPanel() {
   const locale = useLocale();
-  const priority = (n: string, tone: "1" | "2", title: string, body: string) => (
-    <div
-      className="flex flex-col gap-2.5 rounded-2xl border p-[18px]"
-      style={{
-        borderColor: tone === "1" ? "rgba(77,141,255,0.3)" : "var(--border)",
-        background: "color-mix(in srgb, var(--bg) 55%, transparent)",
-      }}
-    >
-      <div className="flex items-center gap-2.5">
-        <span
-          className={`rounded-md px-2 py-0.5 font-mono-num text-[10px] font-medium ${tone === "1" ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}
-        >
-          {n}
-        </span>
-        <span className="text-[11px] text-text-muted">
-          {tone === "1" ? tr(locale, "strongest driver", "главный фактор") : tr(locale, "secondary", "вторичный")}
-        </span>
-      </div>
-      <div className="text-[17px] font-semibold text-text-primary">{title}</div>
-      <div className="text-[13px] leading-[1.55] text-text-muted">{body}</div>
-    </div>
-  );
+  // Every farming rule lives here, numbered, so nothing is repeated further
+  // down the page.
+  const items: { n: string; title: string; body: string; lead?: boolean }[] = [
+    {
+      n: "01",
+      lead: true,
+      title: tr(locale, "Farm RWA / TradFi markets first", "В первую очередь фармите RWA / TradFi рынки"),
+      body: tr(
+        locale,
+        "They execute cheaper than crypto pairs and award more points for the same volume — this holds even when no competition is running.",
+        "Их исполнение дешевле, чем у крипто-пар, а поинтов за тот же объём они дают больше — и это работает даже когда нет активного турнира.",
+      ),
+    },
+    {
+      n: "02",
+      lead: true,
+      title: tr(locale, "Prefer medium open interest", "Выбирайте средний open interest"),
+      body: tr(
+        locale,
+        "The lower the OI, the more points a market pays — but the thinner the book, so execution costs more. High OI is cheap to trade and pays the least. Medium OI is the balance point, which is why the recommended route is the cheapest medium-OI market.",
+        "Чем ниже OI, тем больше поинтов даёт рынок — но тем тоньше стакан, и исполнение дороже. Высокий OI дёшев в исполнении, но платит меньше всего. Средний OI — точка баланса, поэтому рекомендованный маршрут берётся из рынков среднего OI.",
+      ),
+    },
+    {
+      n: "03",
+      title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
+      body: tr(
+        locale,
+        "Resting LIMIT orders provide liquidity: they are more point-efficient than immediate MARKET orders and cost nothing to execute.",
+        "Лимитные ордера в стакане дают ликвидность: они эффективнее по поинтам, чем немедленные MARKET-ордера, и ничего не стоят при исполнении.",
+      ),
+    },
+    {
+      n: "04",
+      title: tr(locale, "Hold the position 12–24 hours", "Держите позицию 12–24 часа"),
+      body: tr(
+        locale,
+        "Holding time is a primary driver. Volume counts too, but only as a secondary one — there is no point stacking huge turnover, trade organically.",
+        "Время удержания — один из главных факторов. Объём тоже учитывается, но вторично: нет смысла набивать большой оборот, торгуйте органично.",
+      ),
+    },
+    {
+      n: "05",
+      title: tr(locale, "Look like an organic trader", "Выглядите как органический трейдер"),
+      body: tr(
+        locale,
+        "When you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as a trader rather than a farmer and adds a point.",
+        "Закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как трейдера, а не фармера, и добавит балл.",
+      ),
+    },
+    {
+      n: "06",
+      title: tr(locale, "Sign up with a referral code", "Регистрируйтесь по реферальному коду"),
+      body: tr(
+        locale,
+        "A referral adds +16% to your points. Reward tiers add a further multiplier as your 30-day volume grows.",
+        "Реферал добавляет +16% к поинтам. Reward-тиры дают дополнительный множитель по мере роста объёма за 30 дней.",
+      ),
+    },
+  ];
   return (
-    <div className="mt-11 grid gap-7 rounded-[20px] border p-[30px] lg:grid-cols-[1fr_380px]"
+    <div
+      className="mt-11 rounded-[20px] border p-6 sm:p-[30px]"
       style={{ borderColor: "rgba(77,141,255,0.2)", background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}
     >
-      <div className="flex flex-col gap-4">
-        <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">
-          {tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}
-        </div>
-        <div className="max-w-[640px] text-[24px] font-semibold leading-[1.42] tracking-[-0.015em] text-text-primary">
-          {tr(
-            locale,
-            "Keep exposure in medium-OI markets first. Volume is only the secondary driver.",
-            "В первую очередь держите позицию в рынках со средним OI. Объём — лишь вторичный фактор.",
-          )}
-        </div>
-        <div className="max-w-[620px] text-[15px] leading-[1.65] text-text-muted">
-          {tr(
-            locale,
-            "Passive LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders.",
-            "Пассивные LIMIT-ордера дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера.",
-          )}
-        </div>
-        <div className="max-w-[620px] rounded-xl px-3.5 py-3 text-[13px] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
-          {tr(
-            locale,
-            "Use a referral code on sign-up for a +16% boost. Tiers and an active competition can increase the result further.",
-            "Используйте реферальный код при регистрации — это +16% буста. Тиры и активное соревнование могут увеличить результат ещё сильнее.",
-          )}
-        </div>
+      <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">
+        {tr(locale, "How to farm Variational", "Как фармить Variational")}
       </div>
-      <div className="flex flex-col gap-2.5">
-        {priority("PRIORITY 1", "1", tr(locale, "Medium OI, 12–24h hold", "Средний OI, удержание 12–24 ч"), tr(locale, "Hold a hedged position in a medium-depth market for at least half a day.", "Держите хеджированную позицию в рынке средней глубины минимум полдня."))}
-        {priority("PRIORITY 2", "2", tr(locale, "Eligible volume", "Eligible-объём"), tr(locale, "Volume counts on every market and is only the secondary driver — there's no point stacking huge turnover, just trade organically.", "Объём считается на всех рынках и это лишь вторичный фактор — нет смысла набивать большой оборот, торгуйте органично."))}
+      <div className="max-w-[720px] pt-3 text-[22px] font-semibold leading-[1.4] tracking-[-0.015em] text-text-primary sm:text-[24px]">
+        {tr(
+          locale,
+          "Everything that decides how many points you earn, and what it costs you.",
+          "Всё, что определяет, сколько поинтов вы получите и во что это обойдётся.",
+        )}
       </div>
+      <ol className="grid gap-3 pt-6 lg:grid-cols-2">
+        {items.map((item) => (
+          <li
+            key={item.n}
+            className="flex gap-3.5 rounded-2xl border p-[18px]"
+            style={{
+              borderColor: item.lead ? "rgba(77,141,255,0.3)" : "var(--border)",
+              background: "color-mix(in srgb, var(--bg) 55%, transparent)",
+            }}
+          >
+            <span
+              className={`flex h-6 w-6 flex-none items-center justify-center rounded-md font-mono-num text-[11px] font-medium ${item.lead ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}
+            >
+              {item.n}
+            </span>
+            <span className="flex flex-col gap-1.5">
+              <span className="text-[16px] font-semibold text-text-primary">{item.title}</span>
+              <span className="text-[13px] leading-[1.6] text-text-muted">{item.body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <a
+        href="https://docs.variational.io/omni/"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-4 inline-block text-[13px] font-semibold text-accent hover:text-accent-hover"
+      >
+        {tr(locale, "Reward tiers and full program rules in the docs ↗", "Reward-тиры и полные правила программы в документации ↗")}
+      </a>
     </div>
   );
 }
@@ -334,43 +371,6 @@ function ActivityAndDistribution() {
   );
 }
 
-function FactorsAffectingPoints() {
-  const locale = useLocale();
-  return (
-    <div className="mt-11">
-      <H2>{tr(locale, "Factors affecting points", "Что влияет на поинты")}</H2>
-      <div className="mt-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
-        <p className="text-[15px] leading-[1.7] text-text-muted">
-          {tr(locale, "Passive LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders. On sign-up, use a referral code — it gives a +16% points boost.", "Пассивные LIMIT-ордера дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера. При регистрации используйте реферальный код — он даёт +16% буста.")}
-        </p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[28rem] text-left text-[13px]">
-            <thead>
-              <tr className="bg-surface-2 text-text-muted">
-                <th className="px-4 py-3 font-medium">{tr(locale, "Tier", "Тир")}</th>
-                <th className="px-4 py-3 font-medium">{tr(locale, "30-day volume to unlock", "Объём за 30 дней")}</th>
-                <th className="px-4 py-3 font-medium">{tr(locale, "Points boost", "Буст поинтов")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {POINT_TIERS.map(([tier, volume, boost]) => (
-                <tr key={tier} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium text-text-primary">{tier}</td>
-                  <td className="px-4 py-3 font-mono-num text-text-muted">{volume}</td>
-                  <td className="px-4 py-3 font-mono-num text-text-muted">{boost}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 text-[13px] leading-[1.6] text-text-muted">
-          {tr(locale, "Tier volume = personal volume + 0.2 × referred volume. The inviter also earns 1 point per 10 points earned by referred users.", "Объём тира = личный объём + 0.2 × объём рефералов. Пригласивший также получает 1 поинт за каждые 10 поинтов, заработанных рефералами.")}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /* ---- page ---- */
 
 export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
@@ -392,7 +392,6 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
 
         {/* General guidance comes after the concrete answer above. */}
         <HedgeRecommendations />
-        <FactorsAffectingPoints />
 
         {/* Native market-activity chart (live activity API, design SVG). */}
         <MarketActivityV2 />

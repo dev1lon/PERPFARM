@@ -7,7 +7,6 @@ import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
-import { findProtocol, volumeLabel } from "@/lib/home-protocols";
 
 type CostTier = "low" | "medium" | "high";
 interface PairRanking {
@@ -250,11 +249,15 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   // mandatory: pick the cheapest eligible medium-OI pair before considering its
   // execution-cost tier. Never just the global cheapest.
   const mediumByCost = [...(grouped ? bandPairs("medium") : flatPairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
-  const compActive = data?.competition?.active ?? false;
-  const greenPool = mediumByCost.filter((p) => p.costTier === "low");
-  const pool = greenPool.length ? greenPool : mediumByCost;
+  // Recommended = cheapest RWA/TradFi market in the MEDIUM-OI band. Medium OI
+  // balances points against execution cost (lower OI pays more but is thinner),
+  // and RWA markets both execute cheaper and pay more than crypto — with or
+  // without a running competition. Crypto is only the fallback.
+  const cheapPool = mediumByCost.filter((p) => p.costTier === "low");
+  const pool = cheapPool.length ? cheapPool : mediumByCost;
   const best =
-    (compActive ? mediumByCost.find((p) => p.competitionEligible) : undefined) ??
+    pool.find((p) => p.competitionEligible) ??
+    mediumByCost.find((p) => p.competitionEligible) ??
     pool[0] ??
     [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
 
@@ -387,105 +390,6 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   );
 }
 
-/**
- * TEST PANEL — cost per point.
- *
- *   cost per point = (cycle cost ÷ cycle volume) × volume-per-point
- *
- * `volume-per-point` is the MANUAL figure from home-protocols (never derived).
- * Every candidate basis is shown side by side so the right one can be chosen:
- * recommended vs global cheapest, planning median vs the typical 24h range.
- */
-function CostPerPointTest({
-  data,
-  best,
-  cheapest,
-}: {
-  data: RankingResponse;
-  best: PairRanking | undefined;
-  cheapest: PairRanking | undefined;
-}) {
-  const locale = useLocale();
-  const volumePerPoint = findProtocol("variational")?.volumePerPointUsd;
-  if (!volumePerPoint || !best) return null;
-
-  const cycleVolume = data.totalCycleVolumeUsd;
-  const perPoint = (cycleCost: number) => (cycleCost / cycleVolume) * volumePerPoint;
-  const fmtPt = (v: number) => `$${v.toFixed(2)}/pt`;
-
-  const rows: { label: string; cost: string; point: string; accent?: boolean }[] = [
-    {
-      label: tr(locale, `Recommended · ${best.pair} · 24h median`, `Рекомендованная · ${best.pair} · медиана 24ч`),
-      cost: formatUsd(best.cycleCostUsd),
-      point: fmtPt(perPoint(best.cycleCostUsd)),
-      accent: true,
-    },
-    {
-      label: tr(locale, `Recommended · ${best.pair} · typical 24h range`, `Рекомендованная · ${best.pair} · диапазон 24ч`),
-      cost: `${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`,
-      point: `${fmtPt(perPoint(best.costRangeLowUsd)).replace("/pt", "")}–${fmtPt(perPoint(best.costRangeHighUsd))}`,
-    },
-    {
-      label: tr(locale, `Recommended · ${best.pair} · latest sample`, `Рекомендованная · ${best.pair} · последний снимок`),
-      cost: formatUsd(best.latestCycleCostUsd),
-      point: fmtPt(perPoint(best.latestCycleCostUsd)),
-    },
-  ];
-  if (cheapest && cheapest.pair !== best.pair) {
-    rows.push({
-      label: tr(locale, `Cheapest overall · ${cheapest.pair} · 24h median`, `Самая дешёвая · ${cheapest.pair} · медиана 24ч`),
-      cost: formatUsd(cheapest.cycleCostUsd),
-      point: fmtPt(perPoint(cheapest.cycleCostUsd)),
-    });
-  }
-
-  return (
-    <div className="mt-8 rounded-[20px] border border-dashed border-warning/40 bg-surface-1 p-6">
-      <div className="flex flex-wrap items-center gap-2.5 pb-1">
-        <span className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] uppercase tracking-[0.08em] text-warning">
-          {tr(locale, "TEST", "ТЕСТ")}
-        </span>
-        <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Cost per point", "Стоимость поинта")}</h3>
-      </div>
-      <p className="max-w-[760px] pb-4 text-[13px] leading-[1.6] text-text-muted">
-        {tr(
-          locale,
-          `Execution cost converted to a per-point figure using the manual volume-per-point value (${volumeLabel(volumePerPoint)} of volume ≈ 1 point). Every basis is listed so we can settle on one.`,
-          `Стоимость исполнения, пересчитанная на один поинт по ручному значению «объём на поинт» (${volumeLabel(volumePerPoint)} объёма ≈ 1 поинт). Показаны все варианты базы, чтобы выбрать один.`,
-        )}
-      </p>
-      <div className="overflow-hidden rounded-[14px] border border-border">
-        <div className="grid grid-cols-[1fr_120px_130px] gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-[11px] text-text-dim">
-          <div>{tr(locale, "Basis", "База расчёта")}</div>
-          <div className="text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
-          <div className="text-right">{tr(locale, "Cost per point", "Стоимость поинта")}</div>
-        </div>
-        {rows.map((r) => (
-          <div key={r.label} className="grid grid-cols-[1fr_120px_130px] items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
-            <div className="text-[13px] text-text-primary">{r.label}</div>
-            <div className="text-right font-mono-num text-[13px] text-text-muted">{r.cost}</div>
-            <div className={`text-right font-mono-num text-[14px] ${r.accent ? "text-positive" : "text-text-primary"}`}>{r.point}</div>
-          </div>
-        ))}
-      </div>
-      <p className="pt-3 text-[12px] leading-[1.6] text-text-dim">
-        {tr(
-          locale,
-          `Cycle volume ${formatUsd(cycleVolume, { decimals: 0 })}. Only 24h statistics exist today — multi-week ranges need a longer aggregation over the saved hourly snapshots.`,
-          `Объём цикла ${formatUsd(cycleVolume, { decimals: 0 })}. Сейчас есть только статистика за 24ч — диапазон за несколько недель потребует агрегации по сохранённым почасовым снимкам.`,
-        )}
-      </p>
-      <p className="pt-1.5 text-[12px] leading-[1.6] text-warning">
-        {tr(
-          locale,
-          "Open question: it is not confirmed whether this volume-per-point figure holds on high-OI or on medium-OI markets — the same volume may earn a different number of points depending on the market.",
-          "Открытый вопрос: не подтверждено, относится ли это значение «объём на поинт» к рынкам с высоким или средним OI — один и тот же объём может давать разное число поинтов в зависимости от рынка.",
-        )}
-      </p>
-    </div>
-  );
-}
-
 function SameVenueResult({
   data,
   top,
@@ -544,6 +448,12 @@ function SameVenueResult({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="w-full font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent sm:w-auto">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
+            {best.competitionEligible && (
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                <span className="h-[5px] w-[5px] rounded-full bg-positive" />
+                {tr(locale, "RWA market", "RWA рынок")}
+              </span>
+            )}
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -610,9 +520,6 @@ function SameVenueResult({
         </div>
       </div>
 
-      {/* TEST: cost per point, shown on every basis so the right one can be picked */}
-      <CostPerPointTest data={data} best={best} cheapest={top[0]} />
-
       {/* 10 cheapest pairs */}
       <div className="pt-11">
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
@@ -670,8 +577,16 @@ function SameVenueResult({
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.competitionEligible && (
+                          <span
+                            title={tr(locale, "RWA / TradFi market — cheaper to execute and pays more points", "RWA / TradFi рынок — дешевле в исполнении и даёт больше поинтов")}
+                            className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive"
+                          >
+                            RWA
+                          </span>
+                        )}
                         {showEligible && p.competitionEligible && (
-                          <span title="Competition eligible" className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
+                          <span title="Competition eligible" className="rounded-[5px] border border-accent/40 px-1.5 py-0.5 font-mono-num text-[9px] text-accent">CE</span>
                         )}
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
