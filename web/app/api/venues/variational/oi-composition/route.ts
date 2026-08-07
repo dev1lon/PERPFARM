@@ -72,6 +72,37 @@ export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
+    // `?probe=1` reports what the venue's own feed says about a listing, so the
+    // asset class can come from the protocol instead of a hand-kept list.
+    if (new URL(request.url).searchParams.get("probe") === "1") {
+      const response = await fetch(
+        "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats",
+        {
+          signal: AbortSignal.timeout(8_000),
+          headers: {
+            Accept: "application/json",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+          },
+        },
+      );
+      const payload = (await response.json()) as { listings?: Record<string, unknown>[] };
+      const listings = payload.listings ?? [];
+      const pick = (ticker: string) => listings.find((l) => l.ticker === ticker);
+      const strip = (l: Record<string, unknown> | undefined) =>
+        l === undefined
+          ? null
+          : Object.fromEntries(Object.entries(l).filter(([, v]) => typeof v !== "object" || v === null));
+      return NextResponse.json({
+        topLevelKeys: Object.keys(payload),
+        listingKeys: listings[0] ? Object.keys(listings[0]) : [],
+        xau: strip(pick("XAU")),
+        xaut: strip(pick("XAUT")),
+        paxg: strip(pick("PAXG")),
+        btc: strip(pick("BTC")),
+      });
+    }
+
     // `?detail=1` lists every market with its category — used to audit the
     // split against third-party dashboards.
     if (new URL(request.url).searchParams.get("detail") === "1") {
