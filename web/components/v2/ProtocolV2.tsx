@@ -8,6 +8,7 @@ import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
+import { OiCompositionChart } from "@/components/v2/OiCompositionChart";
 import type { VenueSummary } from "@/lib/types";
 
 /* ---- points distribution (manual figures) ----
@@ -395,6 +396,9 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
 
         {/* Native market-activity chart (live activity API, design SVG). */}
         <MarketActivityV2 />
+
+        {/* Fourth chart: how open interest splits across BTC / TradFi / crypto. */}
+        <OiCompositionChart />
 
         <div className="mt-14 flex items-center justify-between border-t border-border pt-7 text-[13px] text-text-muted">
           <span>{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span>

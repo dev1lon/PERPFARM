@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
+import { TRADFI_TICKERS } from "@/lib/tradfi";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +25,6 @@ const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const QUOTE_SIZE_KEY = /^size_(\d+)([km])$/;
 
-// The stats feed exposes ticker/name but not an asset-class field. Keep the
-// TradFi universe explicit so eligible pairs can be badged during the
-// competition. Covers the stocks, ETFs, metals and commodities listed by Omni.
-const TRADFI_TICKERS = new Set([
-  "AAOI", "AAPL", "AMD", "AMZN", "ANTHROPIC", "ARM", "AVGO", "BBX", "BOT", "BRKB", "BX", "BZ",
-  "COST", "CBRS", "CL", "COIN", "COST", "CRM", "CRCL", "DRAM", "EBAY", "EWJ", "EWY", "EWT", "EWZ",
-  "GME", "GOOGL", "HD", "HIMS", "HOOD", "HPE", "INTC", "JPM", "LITE", "LLY", "META", "MRVL", "MSFT",
-  "MSTR", "MU", "NATGAS", "NBIS", "NFLX", "NOK", "NVO", "NVDA", "OPENAI", "ORCL", "PAXG", "PLTR",
-  "QCOM", "QQQ", "RIVN", "RKLB", "SNDK", "SOXL", "SPCX", "STXX", "STRC", "TSLA", "TSM", "UBER",
-  "URNM", "US500", "USAR", "WMT", "XAG", "XAU", "XAUT", "XPD", "XPT",
-]);
 
 type MarketRow = {
   book_ts: string;
