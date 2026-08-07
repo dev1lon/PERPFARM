@@ -53,9 +53,39 @@ async function loadComposition(): Promise<Row[]> {
   return rows;
 }
 
-export async function GET() {
+/** Latest reading per market, so a share can be traced back to the tickers. */
+async function loadLatestByPair(): Promise<{ pair: string; oi: string | number | null }[]> {
+  const { rows } = await getPool().query<{ pair: string; oi: string | number | null }>(
+    `WITH v AS (SELECT id FROM venues WHERE slug = 'variational')
+     SELECT DISTINCT ON (s.market_id) m.symbol_canonical AS pair, s.open_interest_usd AS oi
+     FROM volume_snapshots s
+     JOIN markets m ON m.id = s.market_id
+     WHERE m.venue_id = (SELECT id FROM v)
+       AND s.open_interest_usd IS NOT NULL
+       AND s.ts >= now() - interval '48 hours'
+     ORDER BY s.market_id, s.ts DESC`,
+  );
+  return rows;
+}
+
+export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
+
+    // `?detail=1` lists every market with its category — used to audit the
+    // split against third-party dashboards.
+    if (new URL(request.url).searchParams.get("detail") === "1") {
+      const rows = await loadLatestByPair();
+      const markets = rows
+        .map((row) => ({
+          pair: row.pair,
+          openInterestUsd: num(row.oi) * 2,
+          category: row.pair === "BTC" ? "btc" : TRADFI_TICKER_LIST.includes(row.pair) ? "tradfi" : "other",
+        }))
+        .sort((a, b) => b.openInterestUsd - a.openInterestUsd);
+      return NextResponse.json({ count: markets.length, markets });
+    }
+
     const rows = await loadComposition();
 
     const series = rows
