@@ -72,6 +72,41 @@ export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
+    // `?paths=1` looks for a venue endpoint that publishes the asset class.
+    if (new URL(request.url).searchParams.get("paths") === "1") {
+      const base = "https://omni-client-api.prod.ap-northeast-1.variational.io";
+      const candidates = [
+        "/metadata/exchange-info",
+        "/metadata/listings",
+        "/metadata/markets",
+        "/metadata/instruments",
+        "/metadata/assets",
+        "/metadata/categories",
+        "/metadata/config",
+        "/metadata",
+      ];
+      const results = await Promise.all(
+        candidates.map(async (path) => {
+          try {
+            const r = await fetch(base + path, {
+              signal: AbortSignal.timeout(7_000),
+              headers: {
+                Accept: "application/json",
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+              },
+            });
+            if (!r.ok) return { path, status: r.status };
+            const body = (await r.text()).slice(0, 900);
+            return { path, status: r.status, sample: body };
+          } catch (e) {
+            return { path, status: "error", detail: e instanceof Error ? e.message : "failed" };
+          }
+        }),
+      );
+      return NextResponse.json({ results });
+    }
+
     // `?probe=1` reports what the venue's own feed says about a listing, so the
     // asset class can come from the protocol instead of a hand-kept list.
     if (new URL(request.url).searchParams.get("probe") === "1") {
