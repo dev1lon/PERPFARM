@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 
 const VARIATIONAL_STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
 const VARIATIONAL_OMNI_URL = "https://www.variational.io/omni";
@@ -172,6 +173,13 @@ function valueFromDuneRow(row: Record<string, unknown>, names: string[]): unknow
   return found?.[1];
 }
 
+function getVerifiedBackfill(metric: "volume" | "openInterest"): ActivityPoint[] {
+  return VARIATIONAL_ACTIVITY_BACKFILL
+    .map((point) => ({ date: point.date, value: metric === "volume" ? point.volume : point.openInterest }))
+    .filter((point): point is { date: string; value: number } => point.value !== null)
+    .slice(-HISTORY_DAYS);
+}
+
 /**
  * Dune exposes saved-query results through an authenticated read-only API.
  * The default Variational query is a current active-addresses snapshot; an
@@ -230,8 +238,9 @@ async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
   }
 }
 
-// Later sources win per date: DefiLlama forms the base OI history, our own
-// snapshots overwrite it on the days we have first-party data for.
+// Later sources win per date. Third-party history only fills any holes; the
+// verified daily export wins next, and our own saved snapshots are canonical
+// whenever they exist.
 function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
   const values = new Map<string, number>();
   for (const source of sources) {
@@ -264,11 +273,14 @@ export async function GET() {
   const defiLlamaOiHistory = defiLlamaOiResult.status === "fulfilled" ? defiLlamaOiResult.value : [];
   const observedVolumeHistory = observedVolumeResult.status === "fulfilled" ? observedVolumeResult.value : [];
   const observedOiHistory = observedOiResult.status === "fulfilled" ? observedOiResult.value : [];
+  const verifiedVolumeHistory = getVerifiedBackfill("volume");
+  const verifiedOiHistory = getVerifiedBackfill("openInterest");
   const live = liveResult.status === "fulfilled" ? liveResult.value : { volume24h: null, openInterest: null };
-  // Volume past days: our own snapshots only. OI past days: DefiLlama base,
-  // overwritten by our snapshots where we have them. Both: today from Variational.
-  const volumeHistory = withCurrentPoint(observedVolumeHistory, live.volume24h);
-  const openInterest = withCurrentPoint(mergeHistory(defiLlamaOiHistory, observedOiHistory), live.openInterest);
+  // The supplied daily export covers gaps before our cron began. For both
+  // metrics, PerpFarm's own snapshots replace it on the same date; the live
+  // Variational reading then replaces today's provisional daily point.
+  const volumeHistory = withCurrentPoint(mergeHistory(verifiedVolumeHistory, observedVolumeHistory), live.volume24h);
+  const openInterest = withCurrentPoint(mergeHistory(defiLlamaOiHistory, verifiedOiHistory, observedOiHistory), live.openInterest);
   const uniqueTraders = uniqueTradersResult.status === "fulfilled"
     ? uniqueTradersResult.value ?? OFFICIAL_UNIQUE_TRADERS_FLOOR
     : OFFICIAL_UNIQUE_TRADERS_FLOOR;
