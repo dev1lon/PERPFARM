@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 
-const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch";
+const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y";
 
 type FdvMarket = {
   threshold: string;

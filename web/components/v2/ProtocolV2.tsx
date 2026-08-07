@@ -408,11 +408,12 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
             to the same pair-rankings / cross-rankings APIs). */}
         <ProtocolCalculatorV2 otherVenues={otherVenues} />
 
-        <FdvMarketsV2 />
-
         {/* Points distribution belongs with the market charts, below the route
             decision rather than above the calculator. */}
         <ActivityAndDistribution />
+
+        {/* Polymarket FDV expectations sit immediately before activity. */}
+        <FdvMarketsV2 />
 
         {/* Native market-activity chart (live activity API, design SVG). */}
         <MarketActivityV2 />
