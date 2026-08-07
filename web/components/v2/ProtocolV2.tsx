@@ -224,20 +224,19 @@ function HedgeRecommendations() {
     title: string,
     body: string,
     tags: [string, "ok" | "warn" | "neutral"][],
-    projectHref?: string,
+    projectSlug?: string,
   ) => (
     <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
         <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
-        {projectHref ? (
-          <a
-            href={projectHref}
-            target="_blank"
-            rel="noreferrer"
-            className="pf-transition text-[16px] font-semibold text-text-primary underline decoration-accent/70 underline-offset-4 hover:text-accent"
-          >
-            {title} ↗
-          </a>
+        {projectSlug ? (
+          <div className="text-[16px] font-semibold text-text-primary">
+            {title}{" "}
+            <Link href={`/${projectSlug}`} className="pf-transition hover:text-accent">
+              <span className="underline decoration-accent/70 underline-offset-4">{nameOf(projectSlug)}</span>{" "}
+              <span aria-hidden>↗</span>
+            </Link>
+          </div>
         ) : (
           <div className="text-[16px] font-semibold text-text-primary">{title}</div>
         )}
@@ -276,10 +275,10 @@ function HedgeRecommendations() {
         )}
         {card(
           "txflow",
-          "Variational × TxFlow",
+          "Variational ×",
           tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retropoint farming.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальный фарм ретро-поинтов."),
           [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retropoints", "Фарм ретро-поинтов"), "neutral"]],
-          "https://app.txflow.com/",
+          "txflow",
         )}
       </div>
     </div>
