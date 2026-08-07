@@ -20,8 +20,7 @@
 services:
   # The one cron. Hourly market-data sync
   # (worker/perpfarm/jobs/sync_snapshots.py) writes
-  # book_snapshots/funding_snapshots/volume_snapshots per active market and an
-  # hourly Polymarket Variational-FDV snapshot (the live web app reads these).
+  # book_snapshots/funding_snapshots/volume_snapshots per active market.
   # Folded in so nothing else needs its own cron:
   #  - refresh-catalog runs first EACH hour (new venues/markets + manual YAML),
   #    so new listings enter the DB and get collected the same hour;

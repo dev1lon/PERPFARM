@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getPool } from "@/lib/db";
 
 const POLYMARKET_EVENT_URL = "https://gamma-api.polymarket.com/events/slug/variational-fdv-above-one-day-after-launch";
 
-// The worker writes this event once per UTC hour. Force dynamic handling so a
-// newly written snapshot is available to the page without a Vercel cache lag.
-export const dynamic = "force-dynamic";
+// The FDV panel has no local history. Cache Polymarket's current market view
+// at the edge for one hour instead of storing duplicate odds in Postgres.
+export const revalidate = 3600;
 
 type FdvMarket = {
   threshold: string;
@@ -17,7 +16,6 @@ type FdvMarketResponse = {
   asOf: string;
   eventVolume: number | null;
   markets: FdvMarket[];
-  source: "hourly-snapshot" | "live-fallback";
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -51,45 +49,9 @@ function sortMarkets(markets: FdvMarket[]): FdvMarket[] {
   return markets.sort((a, b) => thresholdValue(a.threshold) - thresholdValue(b.threshold));
 }
 
-async function getLatestSnapshot(): Promise<FdvMarketResponse | null> {
-  try {
-    const { rows } = await getPool().query<{
-      ts: Date | string;
-      threshold: string;
-      probability_pct: number | string;
-      volume_usd: number | string;
-      event_volume_usd: number | string | null;
-    }>(
-      `SELECT ts, threshold, probability_pct, volume_usd, event_volume_usd
-       FROM variational_fdv_market_snapshots
-       WHERE ts = (SELECT MAX(ts) FROM variational_fdv_market_snapshots)`,
-    );
-    if (rows.length === 0) return null;
-
-    const markets = sortMarkets(rows.map((row) => ({
-      threshold: row.threshold,
-      probability: Number(row.probability_pct),
-      volume: Number(row.volume_usd),
-    }))).filter((market) => Number.isFinite(market.probability) && Number.isFinite(market.volume));
-    if (markets.length === 0) return null;
-
-    return {
-      asOf: new Date(rows[0].ts).toISOString(),
-      eventVolume: asNumber(rows[0].event_volume_usd),
-      markets,
-      source: "hourly-snapshot",
-    };
-  } catch {
-    // The migration is applied separately from the Vercel deploy. Before the
-    // first snapshot exists, retain a live public fallback instead of blanking
-    // the FDV panel.
-    return null;
-  }
-}
-
-async function getLiveFallback(): Promise<FdvMarketResponse> {
+async function getLiveMarkets(): Promise<FdvMarketResponse> {
   const response = await fetch(POLYMARKET_EVENT_URL, {
-    cache: "no-store",
+    next: { revalidate: 3600 },
     signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error(`Polymarket returned ${response.status}`);
@@ -119,16 +81,14 @@ async function getLiveFallback(): Promise<FdvMarketResponse> {
     asOf: new Date().toISOString(),
     eventVolume: asNumber(payload.volume),
     markets,
-    source: "live-fallback",
   };
 }
 
 export async function GET() {
-  const snapshot = await getLatestSnapshot();
-  if (snapshot) return NextResponse.json(snapshot);
-
   try {
-    return NextResponse.json(await getLiveFallback());
+    return NextResponse.json(await getLiveMarkets(), {
+      headers: { "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=3600" },
+    });
   } catch {
     return NextResponse.json({ error: "Could not load Polymarket FDV markets" }, { status: 502 });
   }

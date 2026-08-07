@@ -15,7 +15,6 @@ type FdvMarketResponse = {
   asOf: string;
   eventVolume: number | null;
   markets: FdvMarket[];
-  source: "hourly-snapshot" | "live-fallback";
 };
 
 function compactUsd(value: number | null): string {
@@ -96,9 +95,7 @@ export function FdvMarketsV2() {
               ))}
             </div>
             <div className="pt-4 text-[12px] text-text-dim">
-              {data.source === "hourly-snapshot"
-                ? tr(locale, "Hourly snapshot", "Часовой снимок")
-                : tr(locale, "Live fallback", "Live-данные до первого снимка")}
+              {tr(locale, "Polymarket · refreshes hourly", "Polymarket · обновляется каждый час")}
               {" · "}
               <span className="font-mono-num text-text-muted">
                 {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US", {

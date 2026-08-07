@@ -105,9 +105,8 @@ volume_snapshots = Table(
     UniqueConstraint("market_id", "ts", name="uq_volume_market_ts"),
 )
 
-# Polymarket's Variational-FDV event is a small, protocol-specific market set.
-# Keep one row per FDV threshold per UTC hour so the website can serve the
-# latest coherent observation and chart history later without live-page fetches.
+# Legacy table retained in metadata because migration 0005 was applied in
+# production. The web app now reads Polymarket directly and no worker writes it.
 variational_fdv_market_snapshots = Table(
     "variational_fdv_market_snapshots",
     metadata,
