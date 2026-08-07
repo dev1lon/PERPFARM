@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 
@@ -15,8 +16,8 @@ interface Composition {
 const CATS = ["other", "tradfi", "btc"] as const;
 type Cat = (typeof CATS)[number];
 
-// Fixed hues (not theme tokens): the copied PNG must look the same for everyone,
-// and the three shares need to stay distinguishable side by side.
+// Fixed hues rather than theme tokens: the three shares must stay
+// distinguishable from each other in either theme.
 const COLORS: Record<Cat, string> = {
   btc: "#4d8dff", // accent blue
   tradfi: "#e2792f", // TradFi orange, as on the reference chart
@@ -33,13 +34,25 @@ const pct = (part: number, total: number) => (total > 0 ? (part / total) * 100 :
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 const fmtDay = (iso: string, locale: Locale) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", { day: "numeric", month: "short" });
+/** Full date for the reading currently shown, e.g. "August 7, 2026". */
+const fmtFullDay = (iso: string, locale: Locale) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+/** Six evenly spaced tick positions (or every point when the series is short). */
+function tickIndexes(n: number): number[] {
+  if (n <= 6) return Array.from({ length: n }, (_, i) => i);
+  return Array.from({ length: 6 }, (_, k) => Math.round((k * (n - 1)) / 5));
+}
 
 export function OiCompositionChart() {
   const locale = useLocale();
   const [data, setData] = useState<Composition | null>(null);
   const [error, setError] = useState(false);
   const [hi, setHi] = useState<number | null>(null);
-  const [copied, setCopied] = useState<"ok" | "fail" | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,118 +81,19 @@ export function OiCompositionChart() {
     if (t) pick(t.clientX);
   };
 
-  /** Renders the chart to a PNG on the clipboard, watermarked with PerpFarm. */
-  async function copyImage() {
-    if (n < 2) return;
-    try {
-      const W = 1600;
-      const H = 900;
-      const canvas = document.createElement("canvas");
-      canvas.width = W;
-      canvas.height = H;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("no 2d context");
-
-      const pad = { top: 120, right: 60, bottom: 70, left: 90 };
-      const plotW = W - pad.left - pad.right;
-      const plotH = H - pad.top - pad.bottom;
-
-      ctx.fillStyle = "#070a12";
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.fillStyle = "#f3f6fc";
-      ctx.font = "600 40px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText(tr(locale, "Open interest over time", "Открытый интерес по времени"), pad.left, 66);
-      ctx.fillStyle = "#8b96ad";
-      ctx.font = "400 22px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText("Variational · BTC / TradFi / Other crypto", pad.left, 100);
-
-      // Watermark: logo mark + wordmark, mirroring the reference chart's corner.
-      const bx = W - pad.right - 200;
-      ctx.fillStyle = "#4d8dff";
-      ctx.beginPath();
-      ctx.roundRect(bx, 44, 34, 34, 10);
-      ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.roundRect(bx + 10, 52, 5, 12, 2.5);
-      ctx.roundRect(bx + 19, 52, 5, 18, 2.5);
-      ctx.fill();
-      ctx.fillStyle = "#e8ecf5";
-      ctx.font = "700 26px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText("PerpFarm", bx + 46, 70);
-
-      // Gridlines at 0/25/50/75/100%.
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.fillStyle = "#78849c";
-      ctx.font = "400 18px 'JetBrains Mono', monospace";
-      ctx.lineWidth = 1;
-      for (let g = 0; g <= 4; g++) {
-        const y = pad.top + (plotH * g) / 4;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(pad.left + plotW, y);
-        ctx.stroke();
-        ctx.fillText(`${100 - g * 25}%`, 28, y + 6);
-      }
-
-      // 100%-stacked areas, bottom-up.
-      const X = (i: number) => pad.left + (i / (n - 1)) * plotW;
-      let base = series.map(() => 0);
-      for (const cat of CATS) {
-        const tops = series.map((p, i) => base[i] + pct(p[cat], p.total));
-        ctx.fillStyle = COLORS[cat];
-        ctx.beginPath();
-        ctx.moveTo(X(0), pad.top + plotH * (1 - base[0] / 100));
-        for (let i = 0; i < n; i++) ctx.lineTo(X(i), pad.top + plotH * (1 - tops[i] / 100));
-        for (let i = n - 1; i >= 0; i--) ctx.lineTo(X(i), pad.top + plotH * (1 - base[i] / 100));
-        ctx.closePath();
-        ctx.fill();
-        base = tops;
-      }
-
-      // Date axis + legend.
-      ctx.fillStyle = "#78849c";
-      ctx.font = "400 18px 'JetBrains Mono', monospace";
-      for (const i of [0, Math.round((n - 1) / 2), n - 1]) {
-        const label = fmtDay(series[i].date, locale);
-        const w = ctx.measureText(label).width;
-        ctx.fillText(label, Math.min(Math.max(X(i) - w / 2, pad.left), pad.left + plotW - w), H - 30);
-      }
-      let lx = pad.left;
-      for (const cat of [...CATS].reverse()) {
-        ctx.fillStyle = COLORS[cat];
-        ctx.beginPath();
-        ctx.roundRect(lx, H - 62, 16, 16, 4);
-        ctx.fill();
-        const label = catLabel(locale, cat);
-        ctx.fillStyle = "#cfd8ea";
-        ctx.font = "500 20px 'Plus Jakarta Sans', system-ui, sans-serif";
-        ctx.fillText(label, lx + 24, H - 48);
-        lx += 24 + ctx.measureText(label).width + 34;
-      }
-
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
-      if (!blob) throw new Error("no blob");
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      setCopied("ok");
-    } catch {
-      setCopied("fail");
-    }
-    window.setTimeout(() => setCopied(null), 2200);
-  }
-
-  // Stacked bands as SVG paths (0-100 space, y flipped by the viewBox).
+  // Stacked bands as SVG paths. The viewBox keeps the plot's real aspect ratio
+  // (1000x300) instead of stretching a 1000x100 box, so edges stay crisp.
+  const VB_W = 1000;
+  const VB_H = 300;
   const bands: { cat: Cat; d: string }[] = [];
   if (n > 1) {
     let base = series.map(() => 0);
     for (const cat of CATS) {
       const tops = series.map((p, i) => base[i] + pct(p[cat], p.total));
-      const X = (i: number) => (i / (n - 1)) * 1000;
-      const up = tops.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${(100 - v).toFixed(2)}`).join(" ");
-      const down = base
-        .map((v, i) => `L${X(n - 1 - i).toFixed(1)} ${(100 - base[n - 1 - i]).toFixed(2)}`)
-        .join(" ");
+      const X = (i: number) => (i / (n - 1)) * VB_W;
+      const Y = (v: number) => ((100 - v) / 100) * VB_H;
+      const up = tops.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(2)}`).join(" ");
+      const down = base.map((_, i) => `L${X(n - 1 - i).toFixed(1)} ${Y(base[n - 1 - i]).toFixed(2)}`).join(" ");
       bands.push({ cat, d: `${up} ${down} Z` });
       base = tops;
     }
@@ -188,30 +102,9 @@ export function OiCompositionChart() {
   return (
     <div className="mt-11">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
-        <div>
-          <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
-            {tr(locale, "Open interest composition", "Состав открытого интереса")}
-          </h2>
-          <div className="text-[14px] text-text-muted">
-            {tr(locale, "Share of open interest by category, one reading per day.", "Доля открытого интереса по категориям, одно значение в день.")}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={copyImage}
-          disabled={n < 2}
-          className="pf-transition flex items-center gap-2 rounded-[10px] border border-border bg-bg px-3.5 py-2 text-[13px] font-semibold text-text-muted hover:border-text-muted/50 hover:text-text-primary disabled:opacity-40"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="9" y="9" width="12" height="12" rx="2" />
-            <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-          </svg>
-          {copied === "ok"
-            ? tr(locale, "Copied", "Скопировано")
-            : copied === "fail"
-              ? tr(locale, "Copy failed", "Не удалось")
-              : tr(locale, "Copy", "Копировать")}
-        </button>
+        <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
+          {tr(locale, "Open interest composition", "Состав открытого интереса")}
+        </h2>
       </div>
 
       <div className="rounded-[18px] border border-border bg-surface-1 px-6 pb-5 pt-5">
@@ -242,33 +135,38 @@ export function OiCompositionChart() {
                   <span className="font-mono-num text-[15px] text-text-primary">{fmtPct(pct(shown[cat], shown.total))}</span>
                 </span>
               ))}
-              <span className="font-mono-num text-[12px] text-text-dim">{fmtDay(shown.date, locale)}</span>
+              <span className="ml-auto font-mono-num text-[12px] text-text-dim">{fmtFullDay(shown.date, locale)}</span>
             </div>
 
             <div
               ref={plotRef}
-              className="relative h-[300px] touch-pan-y"
+              className="relative h-[300px] overflow-hidden rounded-lg touch-pan-y"
               onMouseMove={onMove}
               onMouseLeave={() => setHi(null)}
               onTouchStart={onTouch}
               onTouchMove={onTouch}
               onTouchEnd={() => setHi(null)}
             >
-              <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+              <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
                 {bands.map((b) => (
-                  <path key={b.cat} d={b.d} fill={COLORS[b.cat]} />
+                  <path key={b.cat} d={b.d} fill={COLORS[b.cat]} shapeRendering="geometricPrecision" />
                 ))}
-                {[25, 50, 75].map((y) => (
-                  <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="rgba(255,255,255,0.14)" strokeWidth="0.3" />
+                {[25, 50, 75].map((p) => (
+                  <line key={p} x1="0" y1={(p / 100) * VB_H} x2={VB_W} y2={(p / 100) * VB_H} stroke="rgba(255,255,255,0.16)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                 ))}
               </svg>
+              {/* Brand mark sits on the plot itself, as on the reference chart. */}
+              <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-lg bg-black/35 px-2.5 py-1.5 backdrop-blur-[2px]">
+                <Image src="/icon.svg" alt="" aria-hidden width={18} height={18} className="h-[18px] w-[18px] rounded-[5px]" />
+                <span className="text-[13px] font-bold tracking-tight text-white">PerpFarm</span>
+              </div>
               {hi !== null && (
-                <div className="pointer-events-none absolute bottom-0 top-0 w-px bg-white/60" style={{ left: `${(hi / (n - 1)) * 100}%` }} />
+                <div className="pointer-events-none absolute bottom-0 top-0 w-px bg-white/70" style={{ left: `${(hi / (n - 1)) * 100}%` }} />
               )}
             </div>
 
             <div className="flex justify-between pt-2.5">
-              {[0, Math.round((n - 1) / 2), n - 1].map((i) => (
+              {tickIndexes(n).map((i) => (
                 <span key={i} className="font-mono-num text-[11px] text-text-dim">{fmtDay(series[i].date, locale)}</span>
               ))}
             </div>
