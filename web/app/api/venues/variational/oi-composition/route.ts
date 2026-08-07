@@ -105,6 +105,9 @@ export async function GET(request: Request) {
         total: listings.length,
         zeroFundingCount: zero.length,
         zeroFundingNamed: zero.sort().map((t) => `${t} = ${named[t]}`),
+        allNamed: Object.entries(named)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([t, n]) => `${t}=${n}`),
         intervalCounts: Object.fromEntries(Object.entries(intervals).map(([k, v]) => [k, v.length])),
         nonZeroSample: nonZero.slice(0, 30),
       });
