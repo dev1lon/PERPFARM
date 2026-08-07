@@ -451,7 +451,7 @@ function SameVenueResult({
             {best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
-                {tr(locale, "RWA market", "RWA рынок")}
+                TradFi
               </span>
             )}
             {showEligible && best.competitionEligible && (
@@ -579,10 +579,10 @@ function SameVenueResult({
                         <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
                         {p.competitionEligible && (
                           <span
-                            title={tr(locale, "RWA / TradFi market — cheaper to execute and pays more points", "RWA / TradFi рынок — дешевле в исполнении и даёт больше поинтов")}
+                            title={tr(locale, "TradFi market — cheaper to execute and pays more points", "TradFi рынок — дешевле в исполнении и даёт больше поинтов")}
                             className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive"
                           >
-                            RWA
+                            TradFi
                           </span>
                         )}
                         {showEligible && p.competitionEligible && (
