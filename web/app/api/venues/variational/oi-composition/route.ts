@@ -72,6 +72,30 @@ export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
+    // `?review=1` lists the venue's own instrument names for everything NOT
+    // classified as TradFi. Names identify the asset class ("Apple Inc.",
+    // "Brent Oil"), so this is how the list above gets refreshed when new
+    // markets list.
+    if (new URL(request.url).searchParams.get("review") === "1") {
+      const response = await fetch(
+        "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats",
+        {
+          signal: AbortSignal.timeout(8_000),
+          headers: {
+            Accept: "application/json",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+          },
+        },
+      );
+      const payload = (await response.json()) as { listings?: Record<string, unknown>[] };
+      const rest = (payload.listings ?? [])
+        .map((l) => ({ ticker: String(l.ticker ?? ""), name: String(l.name ?? "") }))
+        .filter((l) => !TRADFI_TICKER_LIST.includes(l.ticker))
+        .sort((a, b) => a.ticker.localeCompare(b.ticker));
+      return NextResponse.json({ count: rest.length, unclassified: rest.map((l) => `${l.ticker}=${l.name}`) });
+    }
+
     // `?detail=1` lists every market with its category — used to audit the
     // split against third-party dashboards.
     if (new URL(request.url).searchParams.get("detail") === "1") {
