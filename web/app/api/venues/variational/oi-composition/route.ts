@@ -98,12 +98,14 @@ export async function GET(request: Request) {
         const key = String(l.funding_interval_s ?? "?");
         (intervals[key] ??= []).push(ticker);
       }
+      const named = Object.fromEntries(
+        listings.map((l) => [String(l.ticker ?? ""), String(l.name ?? "")]),
+      );
       return NextResponse.json({
         total: listings.length,
         zeroFundingCount: zero.length,
-        zeroFunding: zero.sort(),
+        zeroFundingNamed: zero.sort().map((t) => `${t} = ${named[t]}`),
         intervalCounts: Object.fromEntries(Object.entries(intervals).map(([k, v]) => [k, v.length])),
-        intervalSample: Object.fromEntries(Object.entries(intervals).map(([k, v]) => [k, v.slice(0, 40).sort()])),
         nonZeroSample: nonZero.slice(0, 30),
       });
     }
