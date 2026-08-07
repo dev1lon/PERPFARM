@@ -135,7 +135,11 @@ export function OiCompositionChart() {
                   <span className="font-mono-num text-[15px] text-text-primary">{fmtPct(pct(shown[cat], shown.total))}</span>
                 </span>
               ))}
-              <span className="ml-auto font-mono-num text-[12px] text-text-dim">{fmtFullDay(shown.date, locale)}</span>
+              {/* Brand mark sits above the plot, opposite the category shares. */}
+              <span className="ml-auto flex items-center gap-2 self-center">
+                <Image src="/icon.svg" alt="" aria-hidden width={18} height={18} className="h-[18px] w-[18px] rounded-[5px]" />
+                <span className="text-[13px] font-bold tracking-tight text-text-primary">PerpFarm</span>
+              </span>
             </div>
 
             <div
@@ -155,10 +159,9 @@ export function OiCompositionChart() {
                   <line key={p} x1="0" y1={(p / 100) * VB_H} x2={VB_W} y2={(p / 100) * VB_H} stroke="rgba(255,255,255,0.16)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                 ))}
               </svg>
-              {/* Brand mark sits on the plot itself, as on the reference chart. */}
-              <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-lg bg-black/35 px-2.5 py-1.5 backdrop-blur-[2px]">
-                <Image src="/icon.svg" alt="" aria-hidden width={18} height={18} className="h-[18px] w-[18px] rounded-[5px]" />
-                <span className="text-[13px] font-bold tracking-tight text-white">PerpFarm</span>
+              {/* The reading's date rides on the plot, following the cursor. */}
+              <div className="pointer-events-none absolute right-3 top-3 rounded-lg bg-black/35 px-2.5 py-1.5 font-mono-num text-[12px] text-white backdrop-blur-[2px]">
+                {fmtFullDay(shown.date, locale)}
               </div>
               {hi !== null && (
                 <div className="pointer-events-none absolute bottom-0 top-0 w-px bg-white/70" style={{ left: `${(hi / (n - 1)) * 100}%` }} />
