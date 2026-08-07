@@ -23,12 +23,12 @@ export const TRADFI_TICKERS = new Set([
   "GME", "GOOGL", "HD", "HIMS", "HOOD", "HPE", "IBM", "INTC", "IREN", "JPM", "LITE", "LLY",
   "META", "MRVL", "MSFT", "MSTR", "MU", "NFLX", "NOK", "NVDA", "NVO", "ORCL", "PAYP", "PLTR",
   "QCOM", "RIVN", "RKLB", "SHAZ", "SKHY", "SNDK", "SNOW", "SONY", "STRC", "STXX", "TSLA", "TSM",
-  "TTWO", "UBER", "USAR", "VISA", "WEN", "WMT",
+  "TTWO", "UBER", "USAR", "VISA", "WEN", "WMT", "ZM",
   // Pre-IPO
   "ANTHROPIC", "NBIS", "OPENAI", "QNTX",
   // ETFs and indices
-  "DRAM", "EWJ", "EWY", "EWZ", "IWM", "KSTR", "QQQ", "SOXL", "SPCX", "URNM", "US500", "UVXY",
-  "XBI", "XLE",
+  "DRAM", "EWJ", "EWT", "EWY", "EWZ", "IWM", "KSTR", "QQQ", "SOXL", "SPCX", "URNM", "US500",
+  "UVXY", "XBI", "XLE",
   // Commodities and metals (spot / futures, not tokenised)
   "BZ", "CL", "COPPER", "NATGAS", "XAG", "XAU", "XPD", "XPT",
 ]);
