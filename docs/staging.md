@@ -30,7 +30,7 @@ this command is run against the staging database.
 |---|---:|
 | `DATABASE_URL` | yes |
 | `DUNE_API_KEY` | optional |
-| `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional |
+| `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional override; defaults to `5754146` |
 | `DEFILLAMA_API_KEY` | optional |
 
 Push test changes to `staging`; merge to `main` only after the preview and

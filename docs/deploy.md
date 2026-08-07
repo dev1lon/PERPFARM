@@ -37,7 +37,7 @@ Vercel:
 
 - `DATABASE_URL`
 - optional `DUNE_API_KEY`
-- optional `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID`
+- optional `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` override (defaults to `5754146`)
 - optional `DEFILLAMA_API_KEY`
 
 Render cron:

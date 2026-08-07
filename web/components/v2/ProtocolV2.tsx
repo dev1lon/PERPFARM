@@ -9,6 +9,7 @@ import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import { OiCompositionChart } from "@/components/v2/OiCompositionChart";
+import { FdvMarketsV2 } from "@/components/v2/FdvMarketsV2";
 import type { VenueSummary } from "@/lib/types";
 
 /* ---- points distribution (manual figures) ----
@@ -110,11 +111,10 @@ function AwardsPanel() {
   const locale = useLocale();
   // Every farming rule lives here, numbered, so nothing is repeated further
   // down the page.
-  const items: { n: string; title: string; body: string; lead?: boolean }[] = [
+  const items: { n: string; title: string; body: string }[] = [
     {
       n: "01",
-      lead: true,
-      title: tr(locale, "Farm RWA / TradFi markets first", "В первую очередь фармите RWA / TradFi рынки"),
+      title: tr(locale, "Farm TradFi markets first", "В первую очередь фармите TradFi-рынки"),
       body: tr(
         locale,
         "They execute cheaper than crypto pairs and award more points for the same volume — this holds even when no competition is running.",
@@ -123,7 +123,6 @@ function AwardsPanel() {
     },
     {
       n: "02",
-      lead: true,
       title: tr(locale, "Prefer medium open interest", "Выбирайте средний open interest"),
       body: tr(
         locale,
@@ -133,15 +132,6 @@ function AwardsPanel() {
     },
     {
       n: "03",
-      title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
-      body: tr(
-        locale,
-        "Resting LIMIT orders provide liquidity: they are more point-efficient than immediate MARKET orders and cost nothing to execute.",
-        "Лимитные ордера в стакане дают ликвидность: они эффективнее по поинтам, чем немедленные MARKET-ордера, и ничего не стоят при исполнении.",
-      ),
-    },
-    {
-      n: "04",
       title: tr(locale, "Hold the position 12–24 hours", "Держите позицию 12–24 часа"),
       body: tr(
         locale,
@@ -150,12 +140,21 @@ function AwardsPanel() {
       ),
     },
     {
+      n: "04",
+      title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
+      body: tr(
+        locale,
+        "Resting LIMIT orders provide liquidity: they are more point-efficient than immediate MARKET orders.",
+        "Лимитные ордера в стакане дают ликвидность: они эффективнее по поинтам, чем немедленные MARKET-ордера.",
+      ),
+    },
+    {
       n: "05",
       title: tr(locale, "Look like an organic trader", "Выглядите как органический трейдер"),
       body: tr(
         locale,
-        "When you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as a trader rather than a farmer and adds a point.",
-        "Закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как трейдера, а не фармера, и добавит балл.",
+        "When you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+        "Закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
       ),
     },
     {
@@ -163,8 +162,8 @@ function AwardsPanel() {
       title: tr(locale, "Sign up with a referral code", "Регистрируйтесь по реферальному коду"),
       body: tr(
         locale,
-        "A referral adds +16% to your points. Reward tiers add a further multiplier as your 30-day volume grows.",
-        "Реферал добавляет +16% к поинтам. Reward-тиры дают дополнительный множитель по мере роста объёма за 30 дней.",
+        "Important: find a referral link with the full +16% points boost — many links give only 12–15%. Reward tiers add a further multiplier as your 30-day volume grows.",
+        "Важно: найдите реферальную ссылку, которая даёт именно +16% к поинтам: многие ссылки дают только 12–15%. Reward-тиры дают дополнительный множитель по мере роста объёма за 30 дней.",
       ),
     },
   ];
@@ -189,12 +188,12 @@ function AwardsPanel() {
             key={item.n}
             className="flex gap-3.5 rounded-2xl border p-[18px]"
             style={{
-              borderColor: item.lead ? "rgba(77,141,255,0.3)" : "var(--border)",
+              borderColor: "var(--border)",
               background: "color-mix(in srgb, var(--bg) 55%, transparent)",
             }}
           >
             <span
-              className={`flex h-6 w-6 flex-none items-center justify-center rounded-md font-mono-num text-[11px] font-medium ${item.lead ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}
+              className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-accent font-mono-num text-[11px] font-medium text-white"
             >
               {item.n}
             </span>
@@ -220,11 +219,28 @@ function AwardsPanel() {
 function HedgeRecommendations() {
   const locale = useLocale();
   const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
-  const card = (slug: string, title: string, body: string, tags: [string, "ok" | "warn" | "neutral"][]) => (
+  const card = (
+    slug: string,
+    title: string,
+    body: string,
+    tags: [string, "ok" | "warn" | "neutral"][],
+    projectHref?: string,
+  ) => (
     <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
         <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
-        <div className="text-[16px] font-semibold text-text-primary">{title}</div>
+        {projectHref ? (
+          <a
+            href={projectHref}
+            target="_blank"
+            rel="noreferrer"
+            className="pf-transition text-[16px] font-semibold text-text-primary underline decoration-accent/70 underline-offset-4 hover:text-accent"
+          >
+            {title} ↗
+          </a>
+        ) : (
+          <div className="text-[16px] font-semibold text-text-primary">{title}</div>
+        )}
       </div>
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
       <div className="mt-auto flex gap-2">
@@ -261,8 +277,9 @@ function HedgeRecommendations() {
         {card(
           "txflow",
           "Variational × TxFlow",
-          tr(locale, "Early perp-dex focused on RWA, like Variational. Potential retropoint farming.", "Ранний perp-dex с фокусом на RWA, как и Variational. Потенциальный фарм ретро-поинтов."),
+          tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retropoint farming.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальный фарм ретро-поинтов."),
           [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retropoints", "Фарм ретро-поинтов"), "neutral"]],
+          "https://app.txflow.com/",
         )}
       </div>
     </div>
@@ -383,16 +400,19 @@ export function ProtocolV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
         <Hero />
         <AwardsPanel />
 
-        {/* What is earning points right now — context the reader needs BEFORE
-            running numbers, so it sits above the calculator. */}
-        <ActivityAndDistribution />
+        {/* General hedge guidance comes before the calculator, so the reader
+            can choose the right counterparty before running a route. */}
+        <HedgeRecommendations />
 
         {/* Live calculator + recommended route + 10-pairs table (native, wired
             to the same pair-rankings / cross-rankings APIs). */}
         <ProtocolCalculatorV2 otherVenues={otherVenues} />
 
-        {/* General guidance comes after the concrete answer above. */}
-        <HedgeRecommendations />
+        <FdvMarketsV2 />
+
+        {/* Points distribution belongs with the market charts, below the route
+            decision rather than above the calculator. */}
+        <ActivityAndDistribution />
 
         {/* Native market-activity chart (live activity API, design SVG). */}
         <MarketActivityV2 />

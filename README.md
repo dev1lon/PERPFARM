@@ -59,10 +59,13 @@ Environment variables:
 |---|---:|---|
 | `DATABASE_URL` | production | Postgres/Supabase connection |
 | `DUNE_API_KEY` | optional | Dune Users history |
-| `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional | compatible Dune query |
+| `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional | overrides the default Variational active-addresses query (`5754146`) |
 | `DEFILLAMA_API_KEY` | optional | DefiLlama Pro endpoint, if configured |
 
 The public Variational and DefiLlama OI endpoints need no authentication.
+For Dune, the key must belong to the query owner or the query must be public;
+otherwise Dune returns `Query not found or private` and the page falls back to
+the public Omni figure.
 Historical charts show only API or saved observations; screenshots are not
 turned into generated daily data.
 

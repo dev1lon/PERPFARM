@@ -508,8 +508,8 @@ function SameVenueResult({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system reads you as an organic trader rather than a farmer and adds a point.",
-                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система засчитает вас как органического трейдера, а не фармера, и добавит балл.",
+                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
               )}
             </div>
           </div>

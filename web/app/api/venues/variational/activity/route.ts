@@ -9,6 +9,10 @@ const OFFICIAL_UNIQUE_TRADERS_FLOOR = 50_000;
 // How far back real first-party/DefiLlama observations may reach.
 const HISTORY_DAYS = 180;
 const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
+// This is the public "Variational: Active Addresses" query. The environment
+// value remains an override, but the live chart should work when only the API
+// key is configured in Vercel.
+const DEFAULT_DUNE_VARIATIONAL_USERS_QUERY_ID = "5754146";
 
 function defiLlamaUrl(path: string): string {
   const apiKey = process.env.DEFILLAMA_API_KEY;
@@ -161,24 +165,27 @@ async function getOfficialUniqueTraders(): Promise<number | null> {
 }
 
 function valueFromDuneRow(row: Record<string, unknown>, names: string[]): unknown {
-  const found = Object.entries(row).find(([key]) => names.includes(key.toLowerCase().replace(/[^a-z0-9]/g, "")));
+  const found = Object.entries(row).find(([key]) => {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return names.some((name) => normalized === name || normalized.includes(name));
+  });
   return found?.[1];
 }
 
 /**
  * Dune exposes saved-query results through an authenticated read-only API.
- * Configure a query from Variational's official dashboard that returns a
- * date/day plus either unique traders or daily active-address columns. Until
- * then, retain only Omni's published 50K+ current snapshot rather than
- * inventing user history.
+ * The default Variational query is a current active-addresses snapshot; an
+ * override may instead return date/day plus unique-trader or daily
+ * active-address columns. Until Dune is accessible, retain only Omni's
+ * published 50K+ current snapshot rather than inventing user history.
  */
 async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
   const apiKey = process.env.DUNE_API_KEY;
-  const queryId = process.env.DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID;
-  if (!apiKey || !queryId) return null;
+  const queryId = process.env.DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID ?? DEFAULT_DUNE_VARIATIONAL_USERS_QUERY_ID;
+  if (!apiKey) return null;
 
   try {
-    const response = await fetch(`${DUNE_RESULTS_URL}/${encodeURIComponent(queryId)}/results?limit=100`, {
+    const response = await fetch(`${DUNE_RESULTS_URL}/${encodeURIComponent(queryId)}/results?limit=1000`, {
       headers: { "X-Dune-Api-Key": apiKey },
       next: { revalidate: 60 * 60 },
       signal: AbortSignal.timeout(8_000),
@@ -188,13 +195,14 @@ async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
     const rows = isRecord(payload) && isRecord(payload.result) && Array.isArray(payload.result.rows)
       ? payload.result.rows
       : [];
+    const hasDateColumn = rows.some((row) => isRecord(row) && valueFromDuneRow(row, ["date", "day", "blockdate", "period"]) !== undefined);
     const byDate = new Map<string, number>();
     let metric: DuneUserSeries["metric"] = "uniqueTraders";
     for (const row of rows) {
       if (!isRecord(row)) continue;
       const rawDate = valueFromDuneRow(row, ["date", "day", "blockdate", "period"]);
       const uniqueCount = asNumber(valueFromDuneRow(row, ["uniquetraders", "uniqueusers", "traders", "users"]));
-      const activeCount = asNumber(valueFromDuneRow(row, ["activeaddresses", "activeusers", "addresscount"]));
+      const activeCount = asNumber(valueFromDuneRow(row, ["activeaddresses", "activeusers", "addresscount", "currentliveaddresses", "liveaddresses"]));
       const newAddresses = asNumber(valueFromDuneRow(row, ["newaddress", "newaddresses"]));
       const returningAddresses = asNumber(valueFromDuneRow(row, ["returningaddress", "returningaddresses"]));
       const combinedActive = activeCount ?? (
@@ -205,7 +213,14 @@ async function getDuneUniqueTraders(): Promise<DuneUserSeries | null> {
       const value = uniqueCount ?? combinedActive;
       if (uniqueCount === null && combinedActive !== null) metric = "activeAddresses";
       const parsedDate = rawDate instanceof Date ? rawDate : new Date(String(rawDate));
-      const date = Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().slice(0, 10);
+      // Query 5754146 is a current-address snapshot rather than a daily
+      // series. It has one row and no date, so tag it with today's date and
+      // still show the exact live count instead of falling back to 50K+.
+      const date = hasDateColumn
+        ? (Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().slice(0, 10))
+        : rows.length === 1
+          ? new Date().toISOString().slice(0, 10)
+          : null;
       if (date !== null && value !== null && value >= 0) byDate.set(date, value);
     }
     const points = [...byDate].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
