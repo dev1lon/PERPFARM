@@ -15,6 +15,7 @@ type FdvMarketResponse = {
   asOf: string;
   eventVolume: number | null;
   markets: FdvMarket[];
+  source: "hourly-snapshot" | "live-fallback";
 };
 
 function compactUsd(value: number | null): string {
@@ -34,12 +35,21 @@ export function FdvMarketsV2() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/venues/variational/fdv-market")
-      .then((response) => (response.ok ? response.json() as Promise<FdvMarketResponse> : Promise.reject(new Error("failed"))))
-      .then((response) => active && setData(response))
-      .catch(() => active && setError(true));
+    const load = () => {
+      fetch("/api/venues/variational/fdv-market")
+        .then((response) => (response.ok ? response.json() as Promise<FdvMarketResponse> : Promise.reject(new Error("failed"))))
+        .then((response) => {
+          if (!active) return;
+          setData(response);
+          setError(false);
+        })
+        .catch(() => active && setError(true));
+    };
+    load();
+    const refresh = window.setInterval(load, 60 * 60 * 1_000);
     return () => {
       active = false;
+      window.clearInterval(refresh);
     };
   }, []);
 
@@ -86,6 +96,21 @@ export function FdvMarketsV2() {
               ))}
             </div>
             <div className="pt-4 text-[12px] text-text-dim">
+              {data.source === "hourly-snapshot"
+                ? tr(locale, "Hourly snapshot", "Часовой снимок")
+                : tr(locale, "Live fallback", "Live-данные до первого снимка")}
+              {" · "}
+              <span className="font-mono-num text-text-muted">
+                {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "UTC",
+                  timeZoneName: "short",
+                })}
+              </span>
+              {" · "}
               {tr(locale, "Total event volume", "Общий объём события")} <span className="font-mono-num text-text-muted">{compactUsd(data.eventVolume)}</span>
             </div>
           </>

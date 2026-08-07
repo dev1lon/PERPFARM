@@ -9,6 +9,7 @@ from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.catalog import refresh_catalog
 from perpfarm.jobs.fee_watch import run_fee_watch
+from perpfarm.jobs.polymarket_fdv import run_polymarket_fdv_snapshot
 from perpfarm.jobs.sync_snapshots import run_sync_snapshots
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -187,6 +188,14 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
         )
+        # Polymarket's Variational FDV event is a single hourly snapshot, not
+        # a critical market-data dependency. A temporary Gamma API outage must
+        # never discard all orderbook/funding/volume observations.
+        try:
+            fdv = run_polymarket_fdv_snapshot(engine)
+            click.echo(f"polymarket-fdv: {fdv.written} market(s) at {fdv.ts.isoformat()}")
+        except Exception as exc:  # noqa: BLE001 -- keep the main hourly sync resilient
+            click.echo(f"  polymarket-fdv skipped: {exc}", err=True)
         # Group failures by venue: one venue under maintenance produces an error
         # per market, which used to flood the log with a dozen identical lines.
         by_venue: dict[str, list[tuple[str, str]]] = {}
