@@ -72,6 +72,42 @@ export async function GET(request: Request) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
+    // `?classify=1` tests whether the venue's own funding field separates RWA
+    // from crypto, which would remove the need for a hand-kept ticker list.
+    if (new URL(request.url).searchParams.get("classify") === "1") {
+      const response = await fetch(
+        "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats",
+        {
+          signal: AbortSignal.timeout(8_000),
+          headers: {
+            Accept: "application/json",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+          },
+        },
+      );
+      const payload = (await response.json()) as { listings?: Record<string, unknown>[] };
+      const listings = payload.listings ?? [];
+      const zero: string[] = [];
+      const nonZero: string[] = [];
+      const intervals: Record<string, string[]> = {};
+      for (const l of listings) {
+        const ticker = String(l.ticker ?? "");
+        const rate = Number(l.funding_rate);
+        (Number.isFinite(rate) && rate === 0 ? zero : nonZero).push(ticker);
+        const key = String(l.funding_interval_s ?? "?");
+        (intervals[key] ??= []).push(ticker);
+      }
+      return NextResponse.json({
+        total: listings.length,
+        zeroFundingCount: zero.length,
+        zeroFunding: zero.sort(),
+        intervalCounts: Object.fromEntries(Object.entries(intervals).map(([k, v]) => [k, v.length])),
+        intervalSample: Object.fromEntries(Object.entries(intervals).map(([k, v]) => [k, v.slice(0, 40).sort()])),
+        nonZeroSample: nonZero.slice(0, 30),
+      });
+    }
+
     // `?paths=1` looks for a venue endpoint that publishes the asset class.
     if (new URL(request.url).searchParams.get("paths") === "1") {
       const base = "https://omni-client-api.prod.ap-northeast-1.variational.io";
