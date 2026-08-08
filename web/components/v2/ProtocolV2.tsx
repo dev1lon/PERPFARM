@@ -181,41 +181,30 @@ function AwardsPanel() {
         {tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}
       </div>
 
-      <div className="grid gap-7 pt-4 lg:grid-cols-[minmax(0,1fr)_475px] lg:gap-12">
-        <div className="max-w-[700px]">
-          <h2 className="text-[24px] font-semibold leading-[1.4] tracking-[-0.02em] text-text-primary sm:text-[30px]">
-            {tr(
-              locale,
-              "Keep exposure in medium-OI markets first. Volume is only the secondary driver.",
-              "Сначала держите позицию на рынках со средним OI. Объём — лишь вторичный фактор.",
-            )}
-          </h2>
-          <p className="pt-4 text-[16px] leading-[1.6] text-text-muted">
-            {tr(
-              locale,
-              "Points reward a well-held delta-neutral position before turnover. Optimize the route, then let volume follow naturally.",
-              "Поинты в первую очередь зависят от дельта-нейтральной позиции и времени удержания, а не от оборота. Сначала выберите маршрут, затем наращивайте объём естественно.",
-            )}
-          </p>
-        </div>
+      <p className="pt-2 text-[15px] leading-[1.6] text-text-muted">
+        {tr(
+          locale,
+          "Points are driven first by medium OI and holding time; volume helps, but comes second.",
+          "Главные факторы поинтов — средний OI и время удержания; объём помогает, но идёт вторым.",
+        )}
+      </p>
 
-        <div className="grid gap-3">
-          {priorities.map((priority) => (
-            <div
-              key={priority.label}
-              className={`rounded-[18px] border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className={`rounded-full px-2.5 py-1 font-mono-num text-[11px] font-semibold uppercase tracking-[0.04em] ${priority.primary ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}>
-                  {priority.label}
-                </span>
-                <span className="text-[13px] text-text-muted">{priority.kicker}</span>
-              </div>
-              <h3 className="pt-4 text-[20px] font-semibold tracking-[-0.018em] text-text-primary">{priority.title}</h3>
-              <p className="pt-3 text-[14px] leading-[1.6] text-text-muted">{priority.body}</p>
+      <div className="grid gap-3 pt-5 sm:grid-cols-2">
+        {priorities.map((priority) => (
+          <div
+            key={priority.label}
+            className={`rounded-[18px] border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}
+          >
+            <div className="flex items-center gap-3">
+              <span className={`rounded-full px-2.5 py-1 font-mono-num text-[11px] font-semibold uppercase tracking-[0.04em] ${priority.primary ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}>
+                {priority.label}
+              </span>
+              <span className="text-[13px] text-text-muted">{priority.kicker}</span>
             </div>
-          ))}
-        </div>
+            <h3 className="pt-4 text-[19px] font-semibold tracking-[-0.018em] text-text-primary">{priority.title}</h3>
+            <p className="pt-2.5 text-[14px] leading-[1.6] text-text-muted">{priority.body}</p>
+          </div>
+        ))}
       </div>
 
       <div className="mt-8 border-t border-border/80 pt-6">
