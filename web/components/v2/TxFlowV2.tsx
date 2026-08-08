@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
-import { OiCompositionChart } from "@/components/v2/OiCompositionChart";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { InfoTip } from "@/components/v2/InfoTip";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
@@ -50,5 +49,5 @@ function MarketImpliedFdv() {
 
 export function TxFlowV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
   const locale = useLocale();
-  return <div><SiteHeaderV2 /><div className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-10"><Hero /><MechanicsPanel /><HedgeRecommendations /><ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug="txflow" /><MarketImpliedFdv /><MarketActivityV2 venueSlug="txflow" /><OiCompositionChart venueSlug="txflow" /><div className="mt-14 flex items-center justify-between border-t border-border pt-7 text-[13px] text-text-muted"><span>{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span></div></div></div>;
+  return <div><SiteHeaderV2 /><div className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-10"><Hero /><MechanicsPanel /><HedgeRecommendations /><ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug="txflow" /><MarketImpliedFdv /><MarketActivityV2 venueSlug="txflow" /><div className="mt-14 flex items-center justify-between border-t border-border pt-7 text-[13px] text-text-muted"><span>{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span></div></div></div>;
 }

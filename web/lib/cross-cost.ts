@@ -40,6 +40,7 @@ export type CrossPair = {
   longVenue: string;
   shortVenue: string;
   execCostUsd: number;
+  feeCostUsd: number;
   fundingUsd: number;
   cycleCostUsd: number;
 };
@@ -154,6 +155,7 @@ function round(p: CrossPair): CrossPair {
     oiBUsd: Math.round(p.oiBUsd),
     volume24hMinUsd: Math.round(p.volume24hMinUsd),
     execCostUsd: Number(p.execCostUsd.toFixed(2)),
+    feeCostUsd: Number(p.feeCostUsd.toFixed(2)),
     fundingUsd: Number(p.fundingUsd.toFixed(2)),
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
   };
@@ -198,6 +200,9 @@ export async function computeCrossRankings(
 
     // Four taker fills (open+close on each venue); 2*fill = accountVolume per venue.
     const execCostUsd = (accountVolumeUsd * (bpsA + bpsB)) / 10_000;
+    const feeA = asNumber(ra.taker_bps) ?? 0;
+    const feeB = asNumber(rb.taker_bps) ?? 0;
+    const feeCostUsd = (accountVolumeUsd * (feeA + feeB)) / 10_000;
     // Long the lower-funding venue, short the higher -> favourable (<=0) delta.
     const fA = asNumber(ra.funding) ?? 0;
     const fB = asNumber(rb.funding) ?? 0;
@@ -213,6 +218,7 @@ export async function computeCrossRankings(
       longVenue,
       shortVenue,
       execCostUsd,
+      feeCostUsd,
       fundingUsd,
       cycleCostUsd,
       oiKey: Math.min(oiA, oiB) * 2,
