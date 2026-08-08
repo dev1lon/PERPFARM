@@ -9,7 +9,7 @@ type CrossPair = {
   pair: string; oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
-  fundingUsd: number; cycleCostUsd: number;
+  fundingUsd: number | null; cycleCostUsd: number;
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {

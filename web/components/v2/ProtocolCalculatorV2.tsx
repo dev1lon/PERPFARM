@@ -23,7 +23,7 @@ export interface PairRanking {
   spreadCostUsd: number;
   slippageCostUsd: number;
   costTier: CostTier;
-  fundingUsd?: number;
+  fundingUsd?: number | null;
   feeCostUsd?: number;
   entryOrders?: string;
   exitOrders?: string;
@@ -541,7 +541,7 @@ export function RouteResults({
             {isCross && (
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "Fees included", "Комиссии включены")}</div><div className="font-mono-num text-[17px] text-text-primary">{formatUsd(best.feeCostUsd ?? 0)}</div></div>
-                <div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5 text-[11px] text-text-muted">{tr(locale, "Funding · 12h", "Funding · 12ч")}<InfoTip text={tr(locale, "Estimated funding for a 12-hour hold, using the average funding rate observed over the past 24 hours. Funding can move and may be positive or negative.", "Оценка funding за удержание 12 часов по средней ставке за последние 24 часа. Funding меняется и может быть как положительным, так и отрицательным.")} /></div><div className={"font-mono-num text-[17px] " + ((best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd ?? 0)}</div></div>
+                <div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5 text-[11px] text-text-muted">{tr(locale, "Funding · 12h", "Funding · 12ч")}<InfoTip text={tr(locale, "Estimated funding for a 12-hour hold, using the average funding rate observed over the past 24 hours. Funding can move and may be positive or negative.", "Оценка funding за удержание 12 часов по средней ставке за последние 24 часа. Funding меняется и может быть как положительным, так и отрицательным.")} /></div><div className={"font-mono-num text-[17px] " + (best.fundingUsd === null ? "text-text-muted" : (best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd)}</div></div>
               </div>
             )}
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
@@ -724,9 +724,9 @@ export function RouteResults({
                             // are a large part of the total.
                             [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
                             [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
-                            [tr(locale, "Funding · 12h", "Фандинг · 12ч"), p.fundingUsd ?? 0],
+                            [tr(locale, "Funding · 12h", "Фандинг · 12ч"), p.fundingUsd],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0],
-                          ] as [string, number][]
+                          ] as [string, number | null][]
                         ).map(([k, v]) => (
                           <div
                             key={k}

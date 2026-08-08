@@ -24,9 +24,8 @@ const MAIN_OI_BANDS = {
   medium: 100_000,
   low: 10_000,
 } as const;
-/** A 24-hour average beyond 500% a year means the market is dislocated (or the
- *  feed is wrong). Either way it is not a route worth recommending, and a
- *  single bad rate must never win the "cheapest" sort. */
+/** A 24-hour average beyond 500% a year is likely a bad feed/unit. Funding is
+ * informational, so that must not hide an otherwise valid execution route. */
 const MAX_ABS_FUNDING_ANNUALIZED = 5;
 
 type VenueMarketRow = {
@@ -61,7 +60,7 @@ export type CrossPair = {
   feeCostUsd: number;
   spreadCostUsd: number;
   slippageCostUsd: number;
-  fundingUsd: number;
+  fundingUsd: number | null;
   cycleCostUsd: number;
 };
 
@@ -198,7 +197,7 @@ function round(p: CrossPair): CrossPair {
     volume24hMinUsd: Math.round(p.volume24hMinUsd),
     execCostUsd: Number(p.execCostUsd.toFixed(2)),
     feeCostUsd: Number(p.feeCostUsd.toFixed(2)),
-    fundingUsd: Number(p.fundingUsd.toFixed(2)),
+    fundingUsd: p.fundingUsd === null ? null : Number(p.fundingUsd.toFixed(2)),
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
   };
 }
@@ -264,18 +263,18 @@ export async function computeCrossRankings(
     const spreadCostUsd = (accountVolumeUsd * takerSide.spreadBps) / 10_000;
     const slippageCostUsd = (accountVolumeUsd * takerSide.impactBps) / 10_000;
 
-    // Funding is the whole point of a cross route, so an unknown or absurd
-    // rate disqualifies the pair instead of silently scoring as zero income.
+    // Funding is displayed separately. It must never exclude an otherwise
+    // executable pair now that route ranking uses execution cost only.
     const fA = asNumber(ra.funding);
     const fB = asNumber(rb.funding);
-    if (fA === null || fB === null) { drops.noFunding++; continue; }
-    if (Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED) { drops.wildFunding++; continue; }
     // The requested protocol is always the main leg: long it, short the hedge.
     // That leaves funding visibly positive or negative instead of choosing a
     // direction just because it makes funding look favourable.
     const longVenue = slugA;
     const shortVenue = slugB;
-    const fundingUsd = (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
+    const fundingUsd = fA === null || fB === null || Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED
+      ? null
+      : (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
     // Funding is informative, not part of the execution-cost ranking: it can
     // move either way during the hold and is shown separately in the UI.
     const cycleCostUsd = execCostUsd;
