@@ -173,9 +173,10 @@ export function ProtocolCalculatorV2({
 }) {
   const locale = useLocale();
   const homeName = venueSlug === "txflow" ? "TxFlow" : "Variational";
-  const hedgeOptions = venueSlug === "txflow"
-    ? [{ slug: "txflow", name: "TxFlow" }]
-    : [{ slug: "variational", name: "Variational" }, ...otherVenues.map((v) => ({ slug: v.slug, name: v.name }))];
+  const hedgeOptions = [
+    ...(venueSlug === "txflow" ? [{ slug: "txflow", name: "TxFlow" }] : [{ slug: "variational", name: "Variational" }]),
+    ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
+  ];
 
   const [hedge, setHedge] = useState<string>(venueSlug);
   const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
@@ -387,13 +388,13 @@ export function ProtocolCalculatorV2({
         />
       )}
 
-      {venueSlug === "variational" && status === "loaded" && notionalUsd !== null && ranHedge !== venueSlug && (
+      {status === "loaded" && notionalUsd !== null && ranHedge !== venueSlug && (
         <div className="pf-rise mt-5">
           <CrossPairRankings
             key={`${ranHedge}-${notionalUsd}`}
-            venueSlug="variational"
+            venueSlug={venueSlug}
             hedgeSlug={ranHedge}
-            homeName="Variational"
+            homeName={homeName}
             hedgeName={hedgeName}
             accountVolumeUsd={notionalUsd}
           />

@@ -9,7 +9,7 @@
  * `status` drives the badge (live = emerald, others = amber/neutral).
  */
 
-export type PointsStatus = "live" | "teased" | "mainnet" | "ended";
+export type PointsStatus = "live" | "teased" | "retro" | "mainnet" | "ended";
 
 export interface HomeProtocol {
   slug: string;
@@ -35,7 +35,7 @@ export const TIER_S: HomeProtocol[] = [
 /** Early stage — medium cards with a status badge, no metric grid. */
 export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", status: "mainnet" },
-  { slug: "txflow", name: "TxFlow", status: "mainnet" },
+  { slug: "txflow", name: "TxFlow", status: "retro" },
 ];
 
 /** Radar — compact tiles, name only. */

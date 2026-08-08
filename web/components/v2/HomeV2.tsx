@@ -67,6 +67,8 @@ function statusLabel(locale: Locale, status: PointsStatus): string {
       return tr(locale, "Points live", "Поинты идут");
     case "teased":
       return tr(locale, "Points teased", "Поинты анонсированы");
+    case "retro":
+      return tr(locale, "Retro points", "Ретро-поинты");
     case "mainnet":
       return tr(locale, "Mainnet", "Mainnet");
     case "ended":
