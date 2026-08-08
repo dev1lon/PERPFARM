@@ -340,6 +340,7 @@ export async function selfMatchCheapest(slug: string, accountVolumeUsd: number):
     if (oi * 2 < MIN_OPEN_INTEREST_USD) continue;
     // Two market legs pay; the two resting limit legs pay the maker fee.
     const cost = (accountVolumeUsd * (side.taker + side.maker)) / 10_000;
+    if (!Number.isFinite(cost)) continue;
     if (cheapest === null || cost < cheapest) cheapest = cost;
   }
   return cheapest;
@@ -374,6 +375,7 @@ export async function cheapestPartner(
     const ranking = await computeCrossRankings(slug, partner, referenceVolumeUsd);
     const cheapest = ranking.bands
       .flatMap((band) => band.pairs)
+      .filter((p) => Number.isFinite(p.cycleCostUsd))
       .reduce<number | null>((min, p) => (min === null || p.cycleCostUsd < min ? p.cycleCostUsd : min), null);
     if (cheapest !== null && (best === null || cheapest < best.cycleCostUsd)) {
       best = { partnerSlug: partner, cycleCostUsd: cheapest };

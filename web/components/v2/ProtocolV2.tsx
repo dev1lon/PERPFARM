@@ -248,7 +248,7 @@ function HedgeRecommendations() {
     fetch("/api/venues/variational/cheapest-route")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (active && d?.partnerSlug) setCheapest(d);
+        if (active && d?.partnerSlug && typeof d.cycleCostUsd === "number" && Number.isFinite(d.cycleCostUsd)) setCheapest(d);
       })
       .catch(() => {});
     return () => {
@@ -309,8 +309,8 @@ function HedgeRecommendations() {
           cheapest
             ? tr(
                 locale,
-                `Cheapest route right now, picked by comparing every venue with live data: about ${formatUsd(cheapest.cycleCostUsd)} per full hedge cycle.`,
-                `Сейчас самый дешёвый маршрут — выбран сравнением всех площадок с живыми данными: около ${formatUsd(cheapest.cycleCostUsd)} за полный хедж-цикл.`,
+                `Cheapest route in the latest hourly snapshot, picked by comparing every eligible venue: about ${formatUsd(cheapest.cycleCostUsd)} per full hedge cycle.`,
+                `Самый дешёвый маршрут в последнем часовом снимке — выбран сравнением всех eligible-площадок: около ${formatUsd(cheapest.cycleCostUsd)} за полный хедж-цикл.`,
               )
             : tr(locale, "Approved delta-neutral setup with two accounts.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами."),
           [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],

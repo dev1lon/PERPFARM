@@ -1,5 +1,5 @@
-export function formatUsd(value: number | null, opts: { decimals?: number } = {}): string {
-  if (value === null || Number.isNaN(value)) return "n/a";
+export function formatUsd(value: number | null | undefined, opts: { decimals?: number } = {}): string {
+  if (value == null || !Number.isFinite(value)) return "n/a";
   const decimals = opts.decimals ?? 2;
   const sign = value < 0 ? "-" : "";
   return `${sign}$${Math.abs(value).toLocaleString("en-US", {

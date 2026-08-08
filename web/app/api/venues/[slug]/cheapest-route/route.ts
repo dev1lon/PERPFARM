@@ -14,7 +14,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     const { slug } = await params;
     const best = await cheapestPartner(slug, REFERENCE_VOLUME_USD);
     return NextResponse.json(
-      { slug, partnerSlug: best?.partnerSlug ?? null },
+      {
+        slug,
+        partnerSlug: best?.partnerSlug ?? null,
+        // The recommendations card renders this fixed-size reference route;
+        // return the cost with the partner rather than making its UI infer it.
+        cycleCostUsd: best?.cycleCostUsd ?? null,
+      },
       { headers: { "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=3600" } },
     );
   } catch (error) {
