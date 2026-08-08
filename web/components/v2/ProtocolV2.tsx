@@ -263,21 +263,18 @@ function HedgeRecommendations() {
   ) => (
     <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
-        <div className="flex items-center gap-1.5">
-          <ProtocolMark slug="variational" name="Variational" size={30} radius={9} />
-          <span className="text-text-dim">×</span>
-          <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
-        </div>
         {projectSlug ? (
-          <div className="text-[16px] font-semibold text-text-primary">
-            {title}{" "}
+          <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary">
+            <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
+            <span>Variational ×</span>
+            <ProtocolMark slug={projectSlug} name={nameOf(projectSlug)} size={22} radius={7} />
             <Link href={`/${projectSlug}`} className="pf-transition hover:text-accent">
-              <span className="underline decoration-accent/70 underline-offset-4">{nameOf(projectSlug)}</span>{" "}
+              <span className="underline decoration-accent/70 underline-offset-4">{nameOf(projectSlug)}</span>
               <span aria-hidden>↗</span>
             </Link>
           </div>
         ) : (
-          <div className="text-[16px] font-semibold text-text-primary">{title}</div>
+          <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary"><ProtocolMark slug="variational" name="Variational" size={22} radius={7} /><span>Variational ×</span><ProtocolMark slug={slug} name={nameOf(slug)} size={22} radius={7} /><span>{nameOf(slug)}</span></div>
         )}
       </div>
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
