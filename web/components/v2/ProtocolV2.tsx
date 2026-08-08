@@ -261,7 +261,8 @@ function HedgeRecommendations() {
     tags: [string, "ok" | "warn" | "neutral"][],
     projectSlug?: string,
   ) => (
-    <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="relative flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+      {tags.some(([t]) => t === tr(locale, "Lowest cost", "Дешевле всего")) && <div className="absolute right-4 top-4"><InfoTip text={tr(locale, "This route is recalculated from the hourly market snapshots and refreshes once an hour.", "Этот маршрут пересчитывается по часовым снимкам рынка и обновляется раз в час.")} /></div>}
       <div className="flex items-center gap-2.5">
         {projectSlug ? (
           <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary">
@@ -293,7 +294,6 @@ function HedgeRecommendations() {
             >
               {t}
             </span>
-            {t === tr(locale, "Lowest cost", "Дешевле всего") && <InfoTip text={tr(locale, "This route is recalculated from the hourly market snapshots and refreshes once an hour.", "Этот маршрут пересчитывается по часовым снимкам рынка и обновляется раз в час.")} />}
           </>
         ))}
       </div>
