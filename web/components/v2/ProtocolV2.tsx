@@ -109,110 +109,141 @@ function Hero() {
 
 function AwardsPanel() {
   const locale = useLocale();
-  // Every farming rule lives here, numbered, so nothing is repeated further
-  // down the page.
-  const items: { n: string; title: string; body: string }[] = [
+  const priorities = [
+    {
+      label: "Priority 1",
+      kicker: tr(locale, "strongest driver", "главный фактор"),
+      title: tr(locale, "Medium OI, 12–24h hold", "Средний OI, удержание 12–24ч"),
+      body: tr(
+        locale,
+        "Hold a delta-neutral position in a medium-depth market for at least half a day.",
+        "Удерживайте дельта-нейтральную позицию на рынке со средней глубиной хотя бы полдня.",
+      ),
+      primary: true,
+    },
+    {
+      label: "Priority 2",
+      kicker: tr(locale, "secondary", "вторично"),
+      title: tr(locale, "Eligible volume", "Подходящий объём"),
+      body: tr(
+        locale,
+        "Volume counts on every market, but it is secondary — don't stack turnover; trade organically.",
+        "Объём учитывается на каждом рынке, но вторичен — не набивайте оборот, торгуйте органично.",
+      ),
+      primary: false,
+    },
+  ];
+  const tips = [
     {
       n: "01",
       title: tr(locale, "Farm TradFi markets first", "В первую очередь фармите TradFi-рынки"),
       body: tr(
         locale,
-        "They execute cheaper than crypto pairs and award more points for the same volume — this holds even when no competition is running.",
-        "Их исполнение дешевле, чем у крипто-пар, а поинтов за тот же объём они дают больше — и это работает даже когда нет активного турнира.",
+        "They execute cheaper than crypto pairs and award more points for the same volume.",
+        "Их исполнение дешевле, чем у крипто-пар, а поинтов за тот же объём они дают больше.",
       ),
     },
     {
       n: "02",
-      title: tr(locale, "Prefer medium open interest", "Выбирайте средний open interest"),
+      title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
       body: tr(
         locale,
-        "The lower the OI, the more points a market pays — but the thinner the book, so execution costs more. High OI is cheap to trade and pays the least. Medium OI is the balance point, which is why the recommended route is the cheapest medium-OI market.",
-        "Чем ниже OI, тем больше поинтов даёт рынок — но тем тоньше стакан, и исполнение дороже. Высокий OI дёшев в исполнении, но платит меньше всего. Средний OI — точка баланса, поэтому рекомендованный маршрут берётся из рынков среднего OI.",
+        "Resting LIMIT orders provide liquidity and are more point-efficient than immediate MARKET orders.",
+        "Лимитные ордера в стакане дают ликвидность и эффективнее по поинтам, чем немедленные MARKET-ордера.",
       ),
     },
     {
       n: "03",
-      title: tr(locale, "Hold the position 12–24 hours", "Держите позицию 12–24 часа"),
+      title: tr(locale, "Look like an organic trader", "Выглядите как органический трейдер"),
       body: tr(
         locale,
-        "Holding time is a primary driver. Volume counts too, but only as a secondary one — there is no point stacking huge turnover, trade organically.",
-        "Время удержания — один из главных факторов. Объём тоже учитывается, но вторично: нет смысла набивать большой оборот, торгуйте органично.",
+        "When you close a leg by MARKET, set a take-profit one cent above/below the current price.",
+        "Закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены.",
       ),
     },
     {
       n: "04",
-      title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
+      title: tr(locale, "Use a full +16% referral", "Используйте реферал на полные +16%"),
       body: tr(
         locale,
-        "Resting LIMIT orders provide liquidity: they are more point-efficient than immediate MARKET orders.",
-        "Лимитные ордера в стакане дают ликвидность: они эффективнее по поинтам, чем немедленные MARKET-ордера.",
-      ),
-    },
-    {
-      n: "05",
-      title: tr(locale, "Look like an organic trader", "Выглядите как органический трейдер"),
-      body: tr(
-        locale,
-        "When you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-        "Закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
-      ),
-    },
-    {
-      n: "06",
-      title: tr(locale, "Sign up with a referral code", "Регистрируйтесь по реферальному коду"),
-      body: tr(
-        locale,
-        "Important: find a referral link with the full +16% points boost — many links give only 12–15%. Reward tiers add a further multiplier as your 30-day volume grows.",
-        "Важно: найдите реферальную ссылку, которая даёт именно +16% к поинтам: многие ссылки дают только 12–15%. Reward-тиры дают дополнительный множитель по мере роста объёма за 30 дней.",
+        "Many referral links give only 12–15%; reward tiers add another multiplier as 30-day volume grows.",
+        "Многие рефералы дают только 12–15%; reward-тиры добавляют множитель по мере роста объёма за 30 дней.",
       ),
     },
   ];
+
   return (
-    <div
+    <section
       className="mt-11 rounded-[20px] border p-6 sm:p-[30px]"
       style={{ borderColor: "rgba(77,141,255,0.2)", background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}
     >
       <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">
-        {tr(locale, "How to farm Variational", "Как фармить Variational")}
+        {tr(locale, "How Variational awards points", "Как Variational начисляет поинты")}
       </div>
-      <div className="max-w-[720px] pt-3 text-[22px] font-semibold leading-[1.4] tracking-[-0.015em] text-text-primary sm:text-[24px]">
-        {tr(
-          locale,
-          "Everything that decides how many points you earn, and what it costs you.",
-          "Всё, что определяет, сколько поинтов вы получите и во что это обойдётся.",
-        )}
-      </div>
-      <ol className="grid gap-3 pt-6 lg:grid-cols-2">
-        {items.map((item) => (
-          <li
-            key={item.n}
-            className="flex gap-3.5 rounded-2xl border p-[18px]"
-            style={{
-              borderColor: "var(--border)",
-              background: "color-mix(in srgb, var(--bg) 55%, transparent)",
-            }}
-          >
-            <span
-              className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-accent font-mono-num text-[11px] font-medium text-white"
+
+      <div className="grid gap-7 pt-4 lg:grid-cols-[minmax(0,1fr)_475px] lg:gap-12">
+        <div className="max-w-[700px]">
+          <h2 className="text-[24px] font-semibold leading-[1.4] tracking-[-0.02em] text-text-primary sm:text-[30px]">
+            {tr(
+              locale,
+              "Keep exposure in medium-OI markets first. Volume is only the secondary driver.",
+              "Сначала держите позицию на рынках со средним OI. Объём — лишь вторичный фактор.",
+            )}
+          </h2>
+          <p className="pt-4 text-[16px] leading-[1.6] text-text-muted">
+            {tr(
+              locale,
+              "Points reward a well-held delta-neutral position before turnover. Optimize the route, then let volume follow naturally.",
+              "Поинты в первую очередь зависят от дельта-нейтральной позиции и времени удержания, а не от оборота. Сначала выберите маршрут, затем наращивайте объём естественно.",
+            )}
+          </p>
+        </div>
+
+        <div className="grid gap-3">
+          {priorities.map((priority) => (
+            <div
+              key={priority.label}
+              className={`rounded-[18px] border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}
             >
-              {item.n}
-            </span>
-            <span className="flex flex-col gap-1.5">
-              <span className="text-[16px] font-semibold text-text-primary">{item.title}</span>
-              <span className="text-[13px] leading-[1.6] text-text-muted">{item.body}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
+              <div className="flex items-center gap-3">
+                <span className={`rounded-full px-2.5 py-1 font-mono-num text-[11px] font-semibold uppercase tracking-[0.04em] ${priority.primary ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}>
+                  {priority.label}
+                </span>
+                <span className="text-[13px] text-text-muted">{priority.kicker}</span>
+              </div>
+              <h3 className="pt-4 text-[20px] font-semibold tracking-[-0.018em] text-text-primary">{priority.title}</h3>
+              <p className="pt-3 text-[14px] leading-[1.6] text-text-muted">{priority.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8 border-t border-border/80 pt-6">
+        <h3 className="text-[15px] font-semibold text-text-primary">{tr(locale, "Practical tips", "Практические советы")}</h3>
+        <ol className="grid gap-3 pt-4 sm:grid-cols-2">
+          {tips.map((tip) => (
+            <li key={tip.n} className="flex gap-3.5 rounded-2xl border border-border bg-bg/45 p-[18px]">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-accent font-mono-num text-[11px] font-medium text-white">
+                {tip.n}
+              </span>
+              <span className="flex flex-col gap-1.5">
+                <span className="text-[15px] font-semibold text-text-primary">{tip.title}</span>
+                <span className="text-[13px] leading-[1.6] text-text-muted">{tip.body}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       <a
         href="https://docs.variational.io/omni/"
         target="_blank"
         rel="noreferrer"
-        className="mt-4 inline-block text-[13px] font-semibold text-accent hover:text-accent-hover"
+        className="mt-5 inline-block text-[13px] font-semibold text-accent hover:text-accent-hover"
       >
         {tr(locale, "Reward tiers and full program rules in the docs ↗", "Reward-тиры и полные правила программы в документации ↗")}
       </a>
-    </div>
+    </section>
   );
 }
 
