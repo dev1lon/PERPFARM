@@ -24,9 +24,6 @@ const MAIN_OI_BANDS = {
   medium: 100_000,
   low: 10_000,
 } as const;
-/** A 24-hour average beyond 500% a year is likely a bad feed/unit. Funding is
- * informational, so that must not hide an otherwise valid execution route. */
-const MAX_ABS_FUNDING_ANNUALIZED = 5;
 
 type VenueMarketRow = {
   slug: string;
@@ -272,7 +269,7 @@ export async function computeCrossRankings(
     // direction just because it makes funding look favourable.
     const longVenue = slugA;
     const shortVenue = slugB;
-    const fundingUsd = fA === null || fB === null || Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED
+    const fundingUsd = fA === null || fB === null
       ? null
       : (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
     // Funding is informative, not part of the execution-cost ranking: it can

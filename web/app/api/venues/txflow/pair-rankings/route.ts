@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 const INFO_URL = "https://api.txflow.com/info";
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
-// Shared with the Variational ranking so both calculators band OI identically.
-const HIGH_OI_USD = 20_000_000;
-const MEDIUM_OI_USD = 3_000_000;
-const MIN_PAIRS_FOR_BANDS = 15;
+// TxFlow OI bands: fixed product thresholds, not quantiles or Variational's
+// much larger OI universe.
+const HIGH_OI_USD = 300_000;
+const MEDIUM_OI_USD = 100_000;
+const LOW_OI_USD = 10_000;
 // One definition of TxFlow's fees, shared with the cross-protocol model.
 const TXFLOW_FEES = publishedFees("txflow")!;
 const MAKER_FEE_BPS = TXFLOW_FEES.makerBps; // 0.01425%
@@ -188,13 +189,9 @@ export async function GET(request: NextRequest) {
         return null;
       }
     });
-    const pairs = rows.filter((row): row is NonNullable<typeof row> => row !== null).sort((left, right) => left.cycleCostUsd - right.cycleCostUsd);
+    const pairs = rows.filter((row): row is NonNullable<typeof row> => row !== null).filter((row) => row.openInterestUsd >= LOW_OI_USD).sort((left, right) => left.cycleCostUsd - right.cycleCostUsd);
     if (pairs.length === 0) throw new Error("No TxFlow markets are currently quotable for this size");
-    const ois = pairs.map((pair) => pair.openInterestUsd);
-
-    // Same OI split the Variational ranking uses, so both calculators offer the
-    // same High / Medium / Low control. Thresholds are shared, not per-venue —
-    // if TxFlow's book warrants its own they can be tuned here later.
+    // Fixed OI bands: High >$300k, Medium $100k–$300k, Low $10k–$100k.
     const band = (key: "high" | "medium" | "low", of: typeof pairs) => {
       const bandOis = of.map((pair) => pair.openInterestUsd);
       return {
@@ -203,14 +200,12 @@ export async function GET(request: NextRequest) {
         pairs: of.slice(0, 10),
       };
     };
-    const grouped = pairs.length >= MIN_PAIRS_FOR_BANDS;
-    const bands = grouped
-      ? [
-          band("high", pairs.filter((p) => p.openInterestUsd > HIGH_OI_USD)),
-          band("medium", pairs.filter((p) => p.openInterestUsd > MEDIUM_OI_USD && p.openInterestUsd <= HIGH_OI_USD)),
-          band("low", pairs.filter((p) => p.openInterestUsd <= MEDIUM_OI_USD)),
-        ]
-      : [{ key: "all" as const, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs }];
+    const grouped = true;
+    const bands = [
+      band("high", pairs.filter((p) => p.openInterestUsd > HIGH_OI_USD)),
+      band("medium", pairs.filter((p) => p.openInterestUsd >= MEDIUM_OI_USD && p.openInterestUsd <= HIGH_OI_USD)),
+      band("low", pairs.filter((p) => p.openInterestUsd >= LOW_OI_USD && p.openInterestUsd < MEDIUM_OI_USD)),
+    ].filter((band) => band.pairs.length > 0);
     return NextResponse.json({
       asOf: new Date().toISOString(),
       fillNotionalUsd,
@@ -218,7 +213,7 @@ export async function GET(request: NextRequest) {
       totalCycleVolumeUsd: accountVolumeUsd * 2,
       holdHours: 0,
       minVolumeUsd: 0,
-      minOpenInterestUsd: 0,
+      minOpenInterestUsd: LOW_OI_USD,
       competition: { active: false, name: "" },
       sources: [{ venue: "TxFlow", live: true }],
       grouped,

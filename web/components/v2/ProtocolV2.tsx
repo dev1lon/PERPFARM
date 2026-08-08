@@ -280,18 +280,21 @@ function HedgeRecommendations() {
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
       <div className="mt-auto flex gap-2">
         {tags.map(([t, tone]) => (
-          <span
-            key={t}
-            className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-              tone === "ok"
-                ? "border-positive/30 bg-positive/10 text-positive"
-                : tone === "warn"
-                  ? "border-warning/30 bg-warning/10 text-warning"
-                  : "border-border bg-surface-2 text-text-muted"
-            }`}
-          >
-            {t}
-          </span>
+          <>
+            <span
+              key={t}
+              className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                tone === "ok"
+                  ? "border-positive/30 bg-positive/10 text-positive"
+                  : tone === "warn"
+                    ? "border-warning/30 bg-warning/10 text-warning"
+                    : "border-border bg-surface-2 text-text-muted"
+              }`}
+            >
+              {t}
+            </span>
+            {t === tr(locale, "Lowest cost", "Дешевле всего") && <InfoTip text={tr(locale, "This route is recalculated from the hourly market snapshots and refreshes once an hour.", "Этот маршрут пересчитывается по часовым снимкам рынка и обновляется раз в час.")} />}
+          </>
         ))}
       </div>
     </div>
@@ -306,13 +309,7 @@ function HedgeRecommendations() {
         {card(
           cheapest?.partnerSlug ?? "variational",
           `Variational × ${nameOf(cheapest?.partnerSlug ?? "variational")}`,
-          cheapest
-            ? tr(
-                locale,
-                "Cheapest route in the latest hourly snapshot, picked by comparing every eligible venue.",
-                "Самый дешёвый маршрут в последнем часовом снимке — выбран сравнением всех eligible-площадок.",
-              )
-            : tr(locale, "Approved delta-neutral setup with two accounts.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами."),
+          tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью."),
           [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
           cheapest && cheapest.partnerSlug !== "variational" ? cheapest.partnerSlug : undefined,
         )}
