@@ -155,11 +155,14 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        ORDER BY s.market_id, s.ts DESC
      ),
      fund AS (
+       -- Averaged over 24h, not a week: the hold this prices is 12-24h, so a
+       -- day of readings is the relevant window, and a week of history keeps
+       -- carrying rates recorded before an adapter's units were corrected.
        SELECT f.market_id, AVG(f.funding_rate_annualized) AS funding
        FROM funding_snapshots f
        JOIN markets m ON m.id = f.market_id
        JOIN v ON v.id = m.venue_id
-       WHERE f.ts >= now() - interval '7 days'
+       WHERE f.ts >= now() - interval '24 hours'
        GROUP BY f.market_id
      ),
      fee AS (
