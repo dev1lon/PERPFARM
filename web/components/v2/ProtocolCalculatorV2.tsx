@@ -164,17 +164,26 @@ function HedgeDropdown({
   );
 }
 
-export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
+export function ProtocolCalculatorV2({
+  otherVenues,
+  venueSlug = "variational",
+}: {
+  otherVenues: VenueSummary[];
+  venueSlug?: "variational" | "txflow";
+}) {
   const locale = useLocale();
-  const hedgeOptions = [{ slug: "variational", name: "Variational" }, ...otherVenues.map((v) => ({ slug: v.slug, name: v.name }))];
+  const homeName = venueSlug === "txflow" ? "TxFlow" : "Variational";
+  const hedgeOptions = venueSlug === "txflow"
+    ? [{ slug: "txflow", name: "TxFlow" }]
+    : [{ slug: "variational", name: "Variational" }, ...otherVenues.map((v) => ({ slug: v.slug, name: v.name }))];
 
-  const [hedge, setHedge] = useState("variational");
+  const [hedge, setHedge] = useState<string>(venueSlug);
   const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
   const [tradfiOnly, setTradfiOnly] = useState(false);
 
   const [status, setStatus] = useState<Status>("idle");
   const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
-  const [ranHedge, setRanHedge] = useState("variational");
+  const [ranHedge, setRanHedge] = useState<string>(venueSlug);
   const [appliedTradfiOnly, setAppliedTradfiOnly] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [data, setData] = useState<RankingResponse | null>(null);
@@ -185,15 +194,15 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
   const requested = Number(accountVolumeInput);
   const validVolume = Number.isFinite(requested) && requested >= 1_000 && requested <= 200_000;
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
-  const sameVenue = hedge === "variational";
+  const sameVenue = hedge === venueSlug;
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
   // Same-venue run pulls the live pair-rankings; cross uses CrossPairRankings.
   useEffect(() => {
-    if (status !== "loaded" || notionalUsd == null || ranHedge !== "variational") return;
+    if (status !== "loaded" || notionalUsd == null || ranHedge !== venueSlug) return;
     let active = true;
-    fetch(`/api/venues/variational/pair-rankings?accountVolumeUsd=${notionalUsd}&tradfiOnly=${appliedTradfiOnly}`)
+    fetch(`/api/venues/${venueSlug}/pair-rankings?accountVolumeUsd=${notionalUsd}&tradfiOnly=${appliedTradfiOnly}`)
       .then(async (r) => {
         if (r.ok) return r.json() as Promise<RankingResponse>;
         const payload = await r.json().catch(() => null) as { error?: string } | null;
@@ -213,7 +222,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
     return () => {
       active = false;
     };
-  }, [status, notionalUsd, appliedTradfiOnly, ranHedge, locale]);
+  }, [status, notionalUsd, appliedTradfiOnly, ranHedge, locale, venueSlug]);
 
   function run() {
     if (!validVolume) {
@@ -269,8 +278,8 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Farm points on", "Фармим поинты на")}</div>
             <div className="flex h-[50px] items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/10 px-3.5">
-              <ProtocolMark slug="variational" name="Variational" size={26} radius={8} />
-              <span className="text-[15px] font-semibold text-text-primary">Variational</span>
+              <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={8} />
+              <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
               <span className="ml-auto font-mono-num text-[10px] tracking-[0.08em] text-accent">SELECTED</span>
             </div>
           </div>
@@ -346,7 +355,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
       {/* The scan bar stays up until the pairs are actually on screen — the
           fetch continues after the scan animation, and a gap here reads as an
           empty result. */}
-      {(status === "running" || (status === "loaded" && ranHedge === "variational" && !data)) && (
+      {(status === "running" || (status === "loaded" && ranHedge === venueSlug && !data)) && (
         <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14">
           <div className="h-0.5 w-52 overflow-hidden rounded bg-white/10">
             <div className="pf-scan h-full w-1/3 bg-accent" />
@@ -359,13 +368,15 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
         </div>
       )}
 
-      {status === "loaded" && notionalUsd !== null && ranHedge === "variational" && data && (
+      {status === "loaded" && notionalUsd !== null && ranHedge === venueSlug && data && (
         <SameVenueResult
           data={data}
           top={tablePairs}
           best={best}
           notionalUsd={notionalUsd}
-          hedgeName="Variational"
+          hedgeName={homeName}
+          homeSlug={venueSlug}
+          homeName={homeName}
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
@@ -374,7 +385,7 @@ export function ProtocolCalculatorV2({ otherVenues }: { otherVenues: VenueSummar
         />
       )}
 
-      {status === "loaded" && notionalUsd !== null && ranHedge !== "variational" && (
+      {venueSlug === "variational" && status === "loaded" && notionalUsd !== null && ranHedge !== venueSlug && (
         <div className="pf-rise mt-5">
           <CrossPairRankings
             key={`${ranHedge}-${notionalUsd}`}
@@ -396,6 +407,8 @@ function SameVenueResult({
   best,
   notionalUsd,
   hedgeName,
+  homeSlug,
+  homeName,
   expanded,
   setExpanded,
   grouped,
@@ -407,6 +420,8 @@ function SameVenueResult({
   best: PairRanking | undefined;
   notionalUsd: number;
   hedgeName: string;
+  homeSlug: "variational" | "txflow";
+  homeName: string;
   expanded: string | null;
   setExpanded: (v: string | null) => void;
   grouped: boolean;
@@ -472,15 +487,15 @@ function SameVenueResult({
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug="variational" name="Variational" size={26} radius={8} />
-                  <div className="text-[16px] font-semibold text-text-primary">Variational</div>
+                  <ProtocolMark slug={homeSlug} name={homeName} size={26} radius={8} />
+                  <div className="text-[16px] font-semibold text-text-primary">{homeName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
               </div>
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug="variational" name={hedgeName} size={26} radius={8} />
+                  <ProtocolMark slug={homeSlug} name={hedgeName} size={26} radius={8} />
                   <div className="text-[16px] font-semibold text-text-primary">{hedgeName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
@@ -515,7 +530,7 @@ function SameVenueResult({
           </div>
           {/* The 3D route is decorative; phones skip it to save space + battery. */}
           <div className="hidden border-t border-border lg:block lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-            <RouteMap mode="result" pair={best.pair} longLabel="Variational" shortLabel={hedgeName} height={360} />
+            <RouteMap mode="result" pair={best.pair} longLabel={homeName} shortLabel={hedgeName} height={360} />
           </div>
         </div>
       </div>
@@ -591,11 +606,11 @@ function SameVenueResult({
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
-                        <span className="text-[13px] text-text-primary">Variational</span>
+                        <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={7} />
+                        <span className="text-[13px] text-text-primary">{homeName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug="variational" name={hedgeName} size={22} radius={7} />
+                        <ProtocolMark slug={homeSlug} name={hedgeName} size={22} radius={7} />
                         <span className="text-[13px] text-text-primary">{hedgeName}</span>
                       </div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
@@ -644,15 +659,15 @@ function SameVenueResult({
                         <div className="flex flex-col gap-2 rounded-[12px] border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
-                            <span className="text-[15px] font-semibold text-text-primary">Variational</span>
+                            <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={7} />
+                            <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
                         </div>
                         <div className="flex flex-col gap-2 rounded-[12px] border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug="variational" name={hedgeName} size={22} radius={7} />
+                            <ProtocolMark slug={homeSlug} name={hedgeName} size={22} radius={7} />
                             <span className="text-[15px] font-semibold text-text-primary">{hedgeName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>

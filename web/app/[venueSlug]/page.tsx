@@ -47,7 +47,7 @@ export default async function VenuePage({
     return <ProtocolV2 otherVenues={otherVenues} />;
   }
   if (venueSlug === "txflow") {
-    return <TxFlowV2 />;
+    return <TxFlowV2 otherVenues={otherVenues} />;
   }
   return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog!.name} meta={venueRow?.meta ?? null} />;
 }
