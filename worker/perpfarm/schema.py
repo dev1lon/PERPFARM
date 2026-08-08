@@ -120,6 +120,25 @@ variational_fdv_market_snapshots = Table(
 )
 Index("idx_variational_fdv_market_snapshots_ts", variational_fdv_market_snapshots.c.ts.desc())
 
+# One published recommendation per home venue and hourly snapshot run.  The
+# website reads this table directly: loading a page must never kick off a
+# route-wide calculation or a market API crawl.
+hedge_route_recommendations = Table(
+    "hedge_route_recommendations",
+    metadata,
+    Column("id", BigInteger, primary_key=True),
+    Column("venue_id", Integer, ForeignKey("venues.id"), nullable=False),
+    Column("partner_venue_id", Integer, ForeignKey("venues.id"), nullable=False),
+    Column("ts", TIMESTAMP(timezone=True), nullable=False),
+    Column("cycle_cost_usd", Numeric, nullable=False),
+    UniqueConstraint("venue_id", "ts", name="uq_hedge_route_recommendations_venue_ts"),
+)
+Index(
+    "idx_hedge_route_recommendations_venue_ts",
+    hedge_route_recommendations.c.venue_id,
+    hedge_route_recommendations.c.ts.desc(),
+)
+
 fee_schedules = Table(
     "fee_schedules",
     metadata,

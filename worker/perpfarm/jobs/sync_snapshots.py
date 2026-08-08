@@ -23,6 +23,7 @@ from sqlalchemy import Engine, inspect, select
 
 from perpfarm.adapters.base import MarketUnavailable, OrderbookTop, VenueAdapter
 from perpfarm.adapters.registry import FIXTURE_SLUGS, build_adapter
+from perpfarm.jobs.hedge_recommendations import run_hedge_recommendations
 from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
 
 
@@ -135,5 +136,12 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
             continue
 
         summary.written += 1
+
+    # This is deliberately after every market write. The compact hedge card
+    # must describe one coherent hourly snapshot run, never calculate every
+    # venue when somebody opens a page.
+    recommendations = run_hedge_recommendations(engine, ts=ts)
+    if recommendations.errors:
+        summary.errors.extend(("hedge-recommendations", error) for error in recommendations.errors)
 
     return summary
