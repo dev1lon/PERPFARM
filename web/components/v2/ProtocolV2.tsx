@@ -263,7 +263,11 @@ function HedgeRecommendations() {
   ) => (
     <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center gap-2.5">
-        <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
+        <div className="flex items-center gap-1.5">
+          <ProtocolMark slug="variational" name="Variational" size={30} radius={9} />
+          <span className="text-text-dim">×</span>
+          <ProtocolMark slug={slug} name={nameOf(slug)} size={30} radius={9} />
+        </div>
         {projectSlug ? (
           <div className="text-[16px] font-semibold text-text-primary">
             {title}{" "}
