@@ -5,7 +5,7 @@ const HISTORY_DAYS = 180;
 const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
 const DUNE_TXFLOW_VOLUME_24H_QUERY_ID = "6678797";
 const DUNE_TXFLOW_OI_QUERY_ID = "6678737";
-const DUNE_TXFLOW_ACTIVE_TRADERS_QUERY_ID = "6679475";
+const DUNE_TXFLOW_TOTAL_TRADERS_QUERY_ID = "6678847";
 
 // Dune is TxFlow's official analytics source. The supplied daily CSV keeps
 // history complete; all current headline readings come from Dune, never from
@@ -54,24 +54,6 @@ function latestDuneValue(rows: Record<string, unknown>[], names: string[]): numb
   return null;
 }
 
-function duneActiveTraderSeries(rows: Record<string, unknown>[]): ActivityPoint[] {
-  const byDate = new Map<string, number>();
-  for (const row of rows) {
-    const rawDate = valueFromDuneRow(row, ["date", "day", "blockdate", "period"]);
-    const parsed = new Date(String(rawDate));
-    if (Number.isNaN(parsed.valueOf())) continue;
-    // Query 6679475 is the daily Traders chart. Prefer its daily column and
-    // deliberately exclude the cumulative all-time line.
-    const daily = asNumber(valueFromDuneRow(row, ["dailytraders", "dailyactiveusers", "dailyusers", "traders"]));
-    if (daily !== null) byDate.set(parsed.toISOString().slice(0, 10), daily);
-  }
-  return [...byDate].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date)).slice(-HISTORY_DAYS);
-}
-
-function latestHistoryValue(history: ActivityPoint[]): number | null {
-  return history.at(-1)?.value ?? null;
-}
-
 function withCurrentPoint(history: ActivityPoint[], value: number | null): ActivityPoint[] {
   if (value === null) return history;
   const today = new Date().toISOString().slice(0, 10);
@@ -82,10 +64,10 @@ function withCurrentPoint(history: ActivityPoint[], value: number | null): Activ
 
 export async function GET() {
   try {
-    const [volumeRows, oiRows, traderRows] = await Promise.all([
+    const [volumeRows, oiRows, totalTraderRows] = await Promise.all([
       duneRows(DUNE_TXFLOW_VOLUME_24H_QUERY_ID),
       duneRows(DUNE_TXFLOW_OI_QUERY_ID),
-      duneRows(DUNE_TXFLOW_ACTIVE_TRADERS_QUERY_ID),
+      duneRows(DUNE_TXFLOW_TOTAL_TRADERS_QUERY_ID),
     ]);
     const volumeFromDune = latestDuneValue(volumeRows, ["totalvolume24h", "volume24h", "totalvolume"]);
     const oiFromDune = latestDuneValue(oiRows, ["totaloilatest1h", "totaloi", "openinterest", "oi"]);
@@ -96,7 +78,11 @@ export async function GET() {
         .map((point) => ({ date: point.date, value: point.openInterest })),
       oiFromDune,
     );
-    const activeTraders = duneActiveTraderSeries(traderRows);
+    // Query 6678847 is the protocol's all-time distinct-address card. It is
+    // the correct user count; the dashboard's "cumulative traders" line sums
+    // daily traders and can count one wallet multiple times.
+    const totalTraders = latestDuneValue(totalTraderRows, ["totaltraders", "uniquetraders", "uniqueusers"]);
+    const totalTraderPoint = totalTraders === null ? [] : [{ date: new Date().toISOString().slice(0, 10), value: totalTraders }];
     if (volumeHistory.length === 0 && oiHistory.length === 0) throw new Error("TxFlow activity is unavailable");
 
     return NextResponse.json({
@@ -112,10 +98,10 @@ export async function GET() {
         latest: oiFromDune,
       },
       uniqueTraders: {
-        series: activeTraders,
-        latest: latestHistoryValue(activeTraders),
+        series: totalTraderPoint,
+        latest: totalTraders,
         source: "dune",
-        metric: "activeAddresses",
+        metric: "uniqueTraders",
       },
     });
   } catch {
