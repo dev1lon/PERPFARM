@@ -263,22 +263,9 @@ export function ProtocolCalculatorV2({
   const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
     .slice(0, 10);
-  // Recommended = cheapest MEDIUM-OI pair with low execution cost; relax to any
-  // medium-OI if none are green. During an active competition, eligibility is
-  // mandatory: pick the cheapest eligible medium-OI pair before considering its
-  // execution-cost tier. Never just the global cheapest.
-  const mediumByCost = [...(grouped ? bandPairs("medium") : flatPairs)].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
-  // Recommended = cheapest RWA/TradFi market in the MEDIUM-OI band. Medium OI
-  // balances points against execution cost (lower OI pays more but is thinner),
-  // and RWA markets both execute cheaper and pay more than crypto — with or
-  // without a running competition. Crypto is only the fallback.
-  const cheapPool = mediumByCost.filter((p) => p.costTier === "low");
-  const pool = cheapPool.length ? cheapPool : mediumByCost;
-  const best =
-    pool.find((p) => p.competitionEligible) ??
-    mediumByCost.find((p) => p.competitionEligible) ??
-    pool[0] ??
-    [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
+  // `Hedge with` defines the route. Inside that selected route, recommend only
+  // the pair with the minimum execution cost — no Medium-OI or TradFi bias.
+  const best = [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
 
   return (
     <div className="mt-10">
