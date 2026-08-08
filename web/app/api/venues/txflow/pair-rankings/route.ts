@@ -9,7 +9,6 @@ const MAKER_FEE_BPS = 1.5;
 const TAKER_FEE_BPS = 4.5;
 
 type CostTier = "low" | "medium" | "high";
-type Level = { px: string; sz: string };
 type Market = {
   name: string;
   index: number;

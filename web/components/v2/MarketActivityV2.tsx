@@ -16,7 +16,7 @@ type Range = 30 | 90 | 180;
 
 /** Native market-activity chart. Every plotted point comes from the activity
  * API or a saved observation; unavailable historical ranges stay disabled. */
-export function MarketActivityV2() {
+export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
   const locale = useLocale();
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [error, setError] = useState(false);
@@ -25,14 +25,14 @@ export function MarketActivityV2() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/venues/variational/activity")
+    fetch(`/api/venues/${venueSlug}/activity`)
       .then((r) => (r.ok ? (r.json() as Promise<ActivityResponse>) : Promise.reject(new Error("failed"))))
       .then((r) => active && setData(r))
       .catch(() => active && setError(true));
     return () => {
       active = false;
     };
-  }, []);
+  }, [venueSlug]);
 
   const isVolume = metric === "volume";
   const isUsers = metric === "uniqueTraders";

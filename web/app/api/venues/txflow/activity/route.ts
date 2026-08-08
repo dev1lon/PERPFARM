@@ -61,7 +61,11 @@ export async function GET() {
     return NextResponse.json({
       asOf: new Date().toISOString(),
       days: HISTORY_DAYS,
-      openInterest: { series, latest, source: "defillama" },
+      // DefiLlama publishes TxFlow OI history on the public feed. It does not
+      // publish matching historical volume or user counts, so those tabs keep
+      // the shared UI but honestly show their unavailable state.
+      volume: { series: [], observedDays: 0, latest24h: null },
+      openInterest: { series, latest },
     });
   } catch {
     return NextResponse.json({ error: "Could not load TxFlow open interest" }, { status: 502 });

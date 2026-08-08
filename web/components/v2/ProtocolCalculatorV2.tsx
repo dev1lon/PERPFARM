@@ -195,6 +195,7 @@ export function ProtocolCalculatorV2({
   const validVolume = Number.isFinite(requested) && requested >= 1_000 && requested <= 200_000;
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
   const sameVenue = hedge === venueSlug;
+  const isTxFlow = venueSlug === "txflow";
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
@@ -276,7 +277,7 @@ export function ProtocolCalculatorV2({
       <div className="rounded-[20px] border border-border bg-surface-1 px-7 py-6">
         <div className="grid items-end gap-5 lg:grid-cols-[1fr_1fr_1fr_132px]">
           <div className={field}>
-            <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Farm points on", "Фармим поинты на")}</div>
+            <div className="text-[12px] font-medium text-text-muted">{isTxFlow ? tr(locale, "Trade on", "Торгуем на") : tr(locale, "Farm points on", "Фармим поинты на")}</div>
             <div className="flex h-[50px] items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/10 px-3.5">
               <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={8} />
               <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
@@ -377,6 +378,7 @@ export function ProtocolCalculatorV2({
           hedgeName={homeName}
           homeSlug={venueSlug}
           homeName={homeName}
+          isTxFlow={isTxFlow}
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
@@ -409,6 +411,7 @@ function SameVenueResult({
   hedgeName,
   homeSlug,
   homeName,
+  isTxFlow,
   expanded,
   setExpanded,
   grouped,
@@ -422,6 +425,7 @@ function SameVenueResult({
   hedgeName: string;
   homeSlug: "variational" | "txflow";
   homeName: string;
+  isTxFlow: boolean;
   expanded: string | null;
   setExpanded: (v: string | null) => void;
   grouped: boolean;
@@ -481,7 +485,7 @@ function SameVenueResult({
           <div className="px-6 py-6">
             <div className="flex items-baseline gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <div className="text-[14px] text-text-muted">{tr(locale, `medium OI, deep enough for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `средний OI, хватает глубины на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}</div>
+              <div className="text-[14px] text-text-muted">{isTxFlow ? tr(locale, `live L2 depth for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `живая L2-глубина на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`) : tr(locale, `medium OI, deep enough for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `средний OI, хватает глубины на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}</div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
@@ -507,10 +511,10 @@ function SameVenueResult({
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [
-                  tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"),
+                  tr(locale, isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                  isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
@@ -523,8 +527,8 @@ function SameVenueResult({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-                "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
+                isTxFlow ? "Live estimate: this route uses the current L2 book and VIP-0 maker/taker fees; it is not a points estimate." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+                isTxFlow ? "Live-оценка: маршрут использует текущий L2-стакан и VIP-0 maker/taker комиссии; это не оценка поинтов." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
               )}
             </div>
           </div>
@@ -540,7 +544,7 @@ function SameVenueResult({
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
           <div>
             <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-            <div className="text-[14px] text-text-muted">{tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
+            <div className="text-[14px] text-text-muted">{isTxFlow ? tr(locale, `Sorted by current full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по текущей стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`) : tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
           </div>
           <div className="flex flex-col items-end gap-2">
             {grouped && (

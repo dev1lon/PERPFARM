@@ -48,7 +48,7 @@ function tickIndexes(n: number): number[] {
   return Array.from({ length: 6 }, (_, k) => Math.round((k * (n - 1)) / 5));
 }
 
-export function OiCompositionChart() {
+export function OiCompositionChart({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
   const locale = useLocale();
   const [data, setData] = useState<Composition | null>(null);
   const [error, setError] = useState(false);
@@ -57,14 +57,14 @@ export function OiCompositionChart() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/venues/variational/oi-composition")
+    fetch(`/api/venues/${venueSlug}/oi-composition`)
       .then((r) => (r.ok ? (r.json() as Promise<Composition>) : Promise.reject(new Error("failed"))))
       .then((d) => active && setData(d))
       .catch(() => active && setError(true));
     return () => {
       active = false;
     };
-  }, []);
+  }, [venueSlug]);
 
   const series = data?.series ?? [];
   const n = series.length;
