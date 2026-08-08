@@ -6,12 +6,15 @@ import { RouteResults, type PairRanking, type RankingResponse } from "@/componen
 
 type CrossPair = {
   pair: string; oiAUsd: number; oiBUsd: number; volume24hMinUsd: number;
-  longVenue: string; shortVenue: string; execCostUsd: number; feeCostUsd: number;
+  longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
+  execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number; cycleCostUsd: number;
 };
+type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
   asOf: string; accountVolumeUsd: number; fillNotionalUsd: number; totalCycleVolumeUsd: number;
-  holdHours: number; minVolumeUsd: number; grouped: boolean; bands: { pairs: CrossPair[] }[];
+  holdHours: number; minVolumeUsd: number; grouped: boolean;
+  bands: { key: CrossBandKey; pairs: CrossPair[] }[];
 };
 
 export function CrossPairRankings({
@@ -24,36 +27,56 @@ export function CrossPairRankings({
   const [response, setResponse] = useState<CrossResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [oiFilter, setOiFilter] = useState<CrossBandKey>("all");
 
   useEffect(() => {
     let active = true;
-    setResponse(null); setError(null); setExpanded(null);
     const url = "/api/venues/" + venueSlug + "/cross-rankings?hedge=" + encodeURIComponent(hedgeSlug) + "&accountVolumeUsd=" + accountVolumeUsd + "&tradfiOnly=" + tradfiOnly;
     fetch(url).then(async (result) => {
       if (!result.ok) throw new Error((await result.json()).error ?? "request failed");
       return result.json() as Promise<CrossResponse>;
-    }).then((data) => active && setResponse(data)).catch((reason) => active && setError(reason instanceof Error ? reason.message : "request failed"));
+    }).then((data) => {
+      if (!active) return;
+      setError(null);
+      setExpanded(null);
+      setResponse(data);
+    }).catch((reason) => {
+      if (!active) return;
+      setResponse(null);
+      setError(reason instanceof Error ? reason.message : "request failed");
+    });
     return () => { active = false; };
   }, [venueSlug, hedgeSlug, accountVolumeUsd, tradfiOnly]);
 
-  const pairs = useMemo<PairRanking[]>(() => (response?.bands ?? []).flatMap((band) => band.pairs).map((pair) => ({
-    pair: pair.pair,
-    openInterestUsd: Math.min(pair.oiAUsd, pair.oiBUsd),
-    volume24hUsd: pair.volume24hMinUsd,
-    competitionEligible: tradfiOnly,
-    firstLimitSide: "long" as const,
-    cycleCostUsd: pair.cycleCostUsd,
-    latestCycleCostUsd: pair.cycleCostUsd,
-    costRangeLowUsd: pair.cycleCostUsd,
-    costRangeHighUsd: pair.cycleCostUsd,
-    spreadCostUsd: Math.max(0, pair.execCostUsd - pair.feeCostUsd),
-    slippageCostUsd: 0,
-    costTier: "low" as const,
-    fundingUsd: pair.fundingUsd,
-    feeCostUsd: pair.feeCostUsd,
-    entryOrders: "MARKET / MARKET",
-    exitOrders: "MARKET / MARKET",
-  })).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10), [response, tradfiOnly]);
+  // Order labels read LONG / SHORT. The model decides which venue rests the
+  // limits, so the label follows that choice instead of claiming all-taker.
+  const pairs = useMemo<PairRanking[]>(() => {
+    const bands = response?.bands ?? [];
+    const source = oiFilter === "all" || !response?.grouped
+      ? bands.flatMap((band) => band.pairs)
+      : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
+    return source.map((pair) => {
+    const longIsMaker = pair.longVenue === pair.makerVenue;
+    return {
+      pair: pair.pair,
+      openInterestUsd: Math.min(pair.oiAUsd, pair.oiBUsd),
+      volume24hUsd: pair.volume24hMinUsd,
+      competitionEligible: tradfiOnly,
+      firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
+      cycleCostUsd: pair.cycleCostUsd,
+      latestCycleCostUsd: pair.cycleCostUsd,
+      costRangeLowUsd: pair.cycleCostUsd,
+      costRangeHighUsd: pair.cycleCostUsd,
+      spreadCostUsd: pair.spreadCostUsd,
+      slippageCostUsd: pair.slippageCostUsd,
+      costTier: "low" as const,
+      fundingUsd: pair.fundingUsd,
+      feeCostUsd: pair.feeCostUsd,
+      entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
+      exitOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
+    };
+    }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
+  }, [response, tradfiOnly, oiFilter]);
 
   if (!response && !error) return <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
   if (!response || pairs.length === 0) return <div className="mt-5 rounded-2xl border border-negative/40 bg-negative/10 p-4 text-[14px] text-negative">{error ?? tr(locale, "No liquid cross-venue pairs found.", "Ликвидных кросс-площадочных пар не найдено.")}</div>;
@@ -67,7 +90,7 @@ export function CrossPairRankings({
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
     minVolumeUsd: response.minVolumeUsd, minOpenInterestUsd: 0, competition: { active: false, name: "" },
-    grouped: false, bands: [{ key: "all", pairs }],
+    grouped: response.grouped, bands: [{ key: "all", pairs }],
   };
-  return <RouteResults data={data} top={pairs} best={pairs[0]} notionalUsd={accountVolumeUsd} hedgeName={bestShortName} homeName={bestLongName} homeSlug={bestLongSlug} hedgeSlug={bestShortSlug} isTxFlow={false} expanded={expanded} setExpanded={setExpanded} grouped={false} oiFilter="all" setOiFilter={() => {}} />;
+  return <RouteResults data={data} top={pairs} best={pairs[0]} notionalUsd={accountVolumeUsd} hedgeName={bestShortName} homeName={bestLongName} homeSlug={bestLongSlug} hedgeSlug={bestShortSlug} isTxFlow={false} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
 }

@@ -199,7 +199,6 @@ export function ProtocolCalculatorV2({
   const requested = Number(accountVolumeInput);
   const validVolume = Number.isFinite(requested) && requested >= 1_000 && requested <= 200_000;
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
-  const sameVenue = hedge === venueSlug;
   const isTxFlow = venueSlug === "txflow";
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
@@ -543,8 +542,8 @@ export function RouteResults({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                isCross ? "Net cost includes taker fees on both protocols, spread, quote impact and the estimated 24h funding delta from a seven-day average." : isTxFlow ? "Live estimate: this route uses the current L2 book and VIP-0 maker/taker fees; it is not a points estimate." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-                isCross ? "Net cost включает taker-комиссии обеих площадок, спред, impact и оценочную funding-дельту за 24ч по среднему за семь дней." : isTxFlow ? "Live-оценка: маршрут использует текущий L2-стакан и VIP-0 maker/taker комиссии; это не оценка поинтов." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
+                isCross ? "Net cost includes taker fees on both protocols, spread, quote impact and the estimated 24h funding delta from a seven-day average." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+                isCross ? "Net cost включает taker-комиссии обеих площадок, спред, impact и оценочную funding-дельту за 24ч по среднему за семь дней." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
               )}
             </div>
           </div>
@@ -714,13 +713,29 @@ export function RouteResults({
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                         {(
                           [
+                            // Real values, not placeholders: on a same-venue
+                            // Variational route funding nets to zero and fees
+                            // are 0%, but on TxFlow and on cross routes both
+                            // are a large part of the total.
                             [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
                             [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
-                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), 0],
-                            [tr(locale, "Fees", "Комиссии"), 0],
+                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), p.fundingUsd ?? 0],
+                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0],
                           ] as [string, number][]
                         ).map(([k, v]) => (
-                          <div key={k} className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5">
+                          <div
+                            key={k}
+                            title={
+                              k === tr(locale, "Fees", "Комиссии") && (p.feeCostUsd ?? 0) > 0
+                                ? tr(
+                                    locale,
+                                    "Priced at the fee a new account pays after the 5% referral discount. Above VIP 0 the fees are lower.",
+                                    "Считается по комиссии нового аккаунта со скидкой 5% за регистрацию по рефералу. Выше VIP 0 комиссии ниже.",
+                                  )
+                                : undefined
+                            }
+                            className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5"
+                          >
                             <span className="text-[12px] text-text-muted">{k}</span>
                             <span className="font-mono-num text-[13px] text-text-primary">{formatUsd(v)}</span>
                           </div>

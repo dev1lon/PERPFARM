@@ -15,8 +15,14 @@ import { TRADFI_TICKERS } from "@/lib/tradfi";
 
 const HOLD_HOURS = 24;
 const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
+/** Same gross-OI floor the single-venue ranking uses, applied to BOTH venues. */
+const MIN_OPEN_INTEREST_USD = 50_000;
 const MIN_PAIRS_FOR_BANDS = 15;
 const HOURS_PER_YEAR = 8_760;
+/** A 7-day average beyond 500% a year means the market is dislocated (or the
+ *  feed is wrong). Either way it is not a route worth recommending, and a
+ *  single bad rate must never win the "cheapest" sort. */
+const MAX_ABS_FUNDING_ANNUALIZED = 5;
 
 type VenueMarketRow = {
   slug: string;
@@ -30,6 +36,7 @@ type VenueMarketRow = {
   open_interest_usd: string | number | null;
   funding: string | number | null;
   taker_bps: string | number | null;
+  maker_bps: string | number | null;
 };
 
 export type CrossPair = {
@@ -39,8 +46,14 @@ export type CrossPair = {
   volume24hMinUsd: number;
   longVenue: string;
   shortVenue: string;
+  /** Venue the resting LIMIT orders sit on (the cheaper side to be passive). */
+  makerVenue: string;
+  /** Venue the MARKET orders cross. */
+  takerVenue: string;
   execCostUsd: number;
   feeCostUsd: number;
+  spreadCostUsd: number;
+  slippageCostUsd: number;
   fundingUsd: number;
   cycleCostUsd: number;
 };
@@ -82,21 +95,37 @@ function impactAtNotional(notional: number, anchors: Array<[number, number | nul
   return points[points.length - 1][1];
 }
 
-// One market leg's cost in bps on its venue: taker fee + half-spread + impact.
-function legBps(
+/** What one venue costs, in bps of the turnover done on it, per order type.
+ *
+ *  A resting LIMIT is filled at its own price: it pays the maker fee and
+ *  crosses nothing, so it carries no half-spread and no quote impact. A MARKET
+ *  order pays the taker fee and crosses the book.
+ *
+ *  Missing fee data returns null rather than 0 — a venue with no fee schedule
+ *  is unknown, not free, and silently pricing it at zero is what made TxFlow
+ *  look cheaper than it is. */
+function venueBps(
   row: VenueMarketRow,
   fillNotionalUsd: number,
   impactMode: "average" | "cheapest" = "average",
-): number | null {
+): { maker: number; taker: number; spreadBps: number; impactBps: number; makerFee: number; takerFee: number } | null {
   const spread = asNumber(row.spread_bps);
   const impact = quoteCurveImpactBps(row.quote_curve_json, fillNotionalUsd, impactMode) ?? impactAtNotional(fillNotionalUsd, [
     [10_000, asNumber(row.impact_bps_10k)],
     [50_000, asNumber(row.impact_bps_50k)],
     [100_000, asNumber(row.impact_bps_100k)],
   ]);
-  if (spread === null || impact === null) return null;
-  const fee = asNumber(row.taker_bps) ?? 0;
-  return fee + spread / 2 + impact;
+  const takerFee = asNumber(row.taker_bps);
+  const makerFee = asNumber(row.maker_bps);
+  if (spread === null || impact === null || takerFee === null || makerFee === null) return null;
+  return {
+    maker: makerFee,
+    taker: takerFee + spread / 2 + impact,
+    spreadBps: spread / 2,
+    impactBps: impact,
+    makerFee,
+    takerFee,
+  };
 }
 
 async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
@@ -128,14 +157,14 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        GROUP BY f.market_id
      ),
      fee AS (
-       SELECT DISTINCT ON (venue_id) venue_id, taker_bps
+       SELECT DISTINCT ON (venue_id) venue_id, taker_bps, maker_bps
        FROM fee_schedules
        WHERE effective_from <= CURRENT_DATE AND venue_id IN (SELECT id FROM v)
        ORDER BY venue_id, effective_from DESC, created_at DESC
      )
      SELECT v.slug, m.symbol_canonical AS pair,
             book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
-            vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps
+            vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps, fee.maker_bps
      FROM markets m
      JOIN v ON v.id = m.venue_id
      JOIN book ON book.market_id = m.id
@@ -193,25 +222,45 @@ export async function computeCrossRankings(
     const volB = asNumber(rb.volume_24h_usd);
     const oiA = asNumber(ra.open_interest_usd);
     const oiB = asNumber(rb.open_interest_usd);
-    const bpsA = legBps(ra, fillNotionalUsd);
-    const bpsB = legBps(rb, fillNotionalUsd);
-    if (volA === null || volB === null || oiA === null || oiB === null || bpsA === null || bpsB === null) continue;
-    if (oiA <= 0 || oiB <= 0 || volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) continue;
+    const costA = venueBps(ra, fillNotionalUsd);
+    const costB = venueBps(rb, fillNotionalUsd);
+    if (volA === null || volB === null || oiA === null || oiB === null || costA === null || costB === null) continue;
+    if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) continue;
+    // Gross OI (both sides) on each venue must clear the same floor the
+    // single-venue ranking uses; a $30k market is not hedgeable at size.
+    if (oiA * 2 < MIN_OPEN_INTEREST_USD || oiB * 2 < MIN_OPEN_INTEREST_USD) continue;
 
-    // Four taker fills (open+close on each venue); 2*fill = accountVolume per venue.
-    const execCostUsd = (accountVolumeUsd * (bpsA + bpsB)) / 10_000;
-    const feeA = asNumber(ra.taker_bps) ?? 0;
-    const feeB = asNumber(rb.taker_bps) ?? 0;
-    const feeCostUsd = (accountVolumeUsd * (feeA + feeB)) / 10_000;
+    // Which venue should rest the LIMIT orders? Try both assignments and keep
+    // the cheaper: passive on the venue whose maker fee beats what its taker
+    // side (fee + half-spread + impact) would have cost.
+    const restOnA = costA.maker + costB.taker;
+    const restOnB = costB.maker + costA.taker;
+    const [makerVenue, takerVenue, makerSide, takerSide] =
+      restOnA <= restOnB ? [slugA, slugB, costA, costB] : [slugB, slugA, costB, costA];
+
+    // Each venue turns over `accountVolumeUsd` across its open and close.
+    const execCostUsd = (accountVolumeUsd * (makerSide.maker + takerSide.taker)) / 10_000;
+    const feeCostUsd = (accountVolumeUsd * (makerSide.makerFee + takerSide.takerFee)) / 10_000;
+    const spreadCostUsd = (accountVolumeUsd * takerSide.spreadBps) / 10_000;
+    const slippageCostUsd = (accountVolumeUsd * takerSide.impactBps) / 10_000;
+
+    // Funding is the whole point of a cross route, so an unknown or absurd
+    // rate disqualifies the pair instead of silently scoring as zero income.
+    const fA = asNumber(ra.funding);
+    const fB = asNumber(rb.funding);
+    if (fA === null || fB === null) continue;
+    if (Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED) continue;
     // Long the lower-funding venue, short the higher -> favourable (<=0) delta.
-    const fA = asNumber(ra.funding) ?? 0;
-    const fB = asNumber(rb.funding) ?? 0;
     const [longVenue, shortVenue, fLong, fShort] = fA <= fB ? [slugA, slugB, fA, fB] : [slugB, slugA, fB, fA];
     const fundingUsd = (fillNotionalUsd * (fLong - fShort) * HOLD_HOURS) / HOURS_PER_YEAR;
     const cycleCostUsd = execCostUsd + fundingUsd;
 
     candidates.push({
       pair: sym,
+      makerVenue,
+      takerVenue,
+      spreadCostUsd,
+      slippageCostUsd,
       oiAUsd: oiA * 2,
       oiBUsd: oiB * 2,
       volume24hMinUsd: Math.min(volA, volB),
@@ -267,9 +316,11 @@ export async function selfMatchCheapest(slug: string, accountVolumeUsd: number):
   for (const r of rows) {
     const vol = asNumber(r.volume_24h_usd);
     const oi = asNumber(r.open_interest_usd);
-    const bps = legBps(r, fillNotionalUsd, "cheapest");
-    if (vol === null || oi === null || bps === null || oi <= 0 || vol < MIN_VOLUME_USD) continue;
-    const cost = (accountVolumeUsd * bps) / 10_000; // 2 market legs
+    const side = venueBps(r, fillNotionalUsd, "cheapest");
+    if (vol === null || oi === null || side === null || vol < MIN_VOLUME_USD) continue;
+    if (oi * 2 < MIN_OPEN_INTEREST_USD) continue;
+    // Two market legs pay; the two resting limit legs pay the maker fee.
+    const cost = (accountVolumeUsd * (side.taker + side.maker)) / 10_000;
     if (cheapest === null || cost < cheapest) cheapest = cost;
   }
   return cheapest;

@@ -5,8 +5,16 @@ export const dynamic = "force-dynamic";
 const INFO_URL = "https://api.txflow.com/info";
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
-const MAKER_FEE_BPS = 1.5;
-const TAKER_FEE_BPS = 4.5;
+// TxFlow VIP 0 is 0.0150% maker / 0.0450% taker; signing up through a referral
+// takes 5% off, which is what a new account actually pays. Higher VIP tiers pay
+// less still, so this is the conservative end of the range.
+// Shared with the Variational ranking so both calculators band OI identically.
+const HIGH_OI_USD = 20_000_000;
+const MEDIUM_OI_USD = 3_000_000;
+const MIN_PAIRS_FOR_BANDS = 15;
+const REFERRAL_FEE_DISCOUNT = 0.95;
+const MAKER_FEE_BPS = 1.5 * REFERRAL_FEE_DISCOUNT; // 0.01425%
+const TAKER_FEE_BPS = 4.5 * REFERRAL_FEE_DISCOUNT; // 0.04275%
 
 type CostTier = "low" | "medium" | "high";
 type Market = {
@@ -147,13 +155,18 @@ export async function GET(request: NextRequest) {
         const sellBps = (mid - sellVwap) / mid * 10_000;
         const marketBps = Math.min(buyBps, sellBps);
         const firstLimitSide = buyBps <= sellBps ? "short" : "long";
-        // A delta-neutral cycle executes two maker and two taker fills, each
-        // at the requested half-account notional. The active side uses its
-        // real L2 VWAP; the resting side uses TxFlow's published VIP-0 maker fee.
+        // A delta-neutral cycle executes two maker and two taker fills, each at
+        // the requested half-account notional. The active side crosses its real
+        // L2 book; the resting side pays the maker fee only.
         const cycleCostUsd = 2 * fillNotionalUsd * (marketBps + TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
         const spreadBps = (ask - bid) / mid * 10_000;
         const spreadCostUsd = 2 * fillNotionalUsd * (spreadBps / 2) / 10_000;
+        // Whatever the market order pays beyond the half-spread, i.e. how far it
+        // walks the book. Zero on a book deep enough to fill at the top level.
         const slippageCostUsd = 2 * fillNotionalUsd * Math.max(marketBps - spreadBps / 2, 0) / 10_000;
+        // Fees are most of the cost here and must be reported, not implied:
+        // at $10k fills they are $12 of a $12.03 cycle.
+        const feeCostUsd = 2 * fillNotionalUsd * (TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
         return {
           pair: market.baseCurrency,
           openInterestUsd: Math.round(mark * oiBase),
@@ -167,6 +180,9 @@ export async function GET(request: NextRequest) {
           costRangeHighUsd: Number(cycleCostUsd.toFixed(2)),
           spreadCostUsd: Number(spreadCostUsd.toFixed(2)),
           slippageCostUsd: Number(slippageCostUsd.toFixed(2)),
+          feeCostUsd: Number(feeCostUsd.toFixed(2)),
+          // Equal long and short on the SAME venue: funding cancels out.
+          fundingUsd: 0,
           costTier: costTier(marketBps),
         };
       } catch {
@@ -176,6 +192,26 @@ export async function GET(request: NextRequest) {
     const pairs = rows.filter((row): row is NonNullable<typeof row> => row !== null).sort((left, right) => left.cycleCostUsd - right.cycleCostUsd);
     if (pairs.length === 0) throw new Error("No TxFlow markets are currently quotable for this size");
     const ois = pairs.map((pair) => pair.openInterestUsd);
+
+    // Same OI split the Variational ranking uses, so both calculators offer the
+    // same High / Medium / Low control. Thresholds are shared, not per-venue —
+    // if TxFlow's book warrants its own they can be tuned here later.
+    const band = (key: "high" | "medium" | "low", of: typeof pairs) => {
+      const bandOis = of.map((pair) => pair.openInterestUsd);
+      return {
+        key,
+        oiRangeUsd: [bandOis.length ? Math.min(...bandOis) : 0, bandOis.length ? Math.max(...bandOis) : 0],
+        pairs: of.slice(0, 10),
+      };
+    };
+    const grouped = pairs.length >= MIN_PAIRS_FOR_BANDS;
+    const bands = grouped
+      ? [
+          band("high", pairs.filter((p) => p.openInterestUsd > HIGH_OI_USD)),
+          band("medium", pairs.filter((p) => p.openInterestUsd > MEDIUM_OI_USD && p.openInterestUsd <= HIGH_OI_USD)),
+          band("low", pairs.filter((p) => p.openInterestUsd <= MEDIUM_OI_USD)),
+        ]
+      : [{ key: "all" as const, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs }];
     return NextResponse.json({
       asOf: new Date().toISOString(),
       fillNotionalUsd,
@@ -186,8 +222,8 @@ export async function GET(request: NextRequest) {
       minOpenInterestUsd: 0,
       competition: { active: false, name: "" },
       sources: [{ venue: "TxFlow", live: true }],
-      grouped: false,
-      bands: [{ key: "all", oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs }],
+      grouped,
+      bands,
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load TxFlow market data" }, { status: 502 });

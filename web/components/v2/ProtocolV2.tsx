@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { formatUsd } from "@/lib/format";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
@@ -239,6 +240,21 @@ function AwardsPanel() {
 function HedgeRecommendations() {
   const locale = useLocale();
   const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
+  // Which partner is actually cheapest is computed, not asserted: the endpoint
+  // compares the self-match route against every venue that has snapshot data.
+  const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number } | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/venues/variational/cheapest-route")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.partnerSlug) setCheapest(d);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const card = (
     slug: string,
     title: string,
@@ -288,10 +304,17 @@ function HedgeRecommendations() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {card(
-          "variational",
-          "Variational × Variational",
-          tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами — самый дешёвый маршрут."),
+          cheapest?.partnerSlug ?? "variational",
+          `Variational × ${nameOf(cheapest?.partnerSlug ?? "variational")}`,
+          cheapest
+            ? tr(
+                locale,
+                `Cheapest route right now, picked by comparing every venue with live data: about ${formatUsd(cheapest.cycleCostUsd)} per full hedge cycle.`,
+                `Сейчас самый дешёвый маршрут — выбран сравнением всех площадок с живыми данными: около ${formatUsd(cheapest.cycleCostUsd)} за полный хедж-цикл.`,
+              )
+            : tr(locale, "Approved delta-neutral setup with two accounts.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами."),
           [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
+          cheapest && cheapest.partnerSlug !== "variational" ? cheapest.partnerSlug : undefined,
         )}
         {card(
           "txflow",

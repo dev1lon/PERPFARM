@@ -148,16 +148,26 @@ class TxflowAdapter(VenueAdapter):
         return markets
 
     def get_funding(self, symbol: str) -> FundingData:
+        """Convert TxFlow's per-interval funding into this app's schema.
+
+        ``fundingRate`` is quoted in PERCENT per settlement interval, not as a
+        fraction: BTC reads ``0.00247934`` on an hourly interval, i.e. 0.0025%
+        per hour (~22% annualized), and the venue's own ``rateCap`` of ``0.03``
+        is a 0.03%/h ceiling. Reading it as a fraction inflates every rate a
+        hundredfold, which our schema then carries as ``funding_rate_annualized``
+        — a FRACTION everywhere else (Variational stores 0.1095 for 10.95%).
+        """
         ticker = self._ticker(symbol)
-        raw_rate = _float(ticker.get("fundingRate"))
+        raw_percent = _float(ticker.get("fundingRate"))
         interval_ms = _float(ticker.get("settlementIntervalMs"))
-        if raw_rate is None or interval_ms is None or interval_ms <= 0:
+        if raw_percent is None or interval_ms is None or interval_ms <= 0:
             raise MarketUnavailable(f"txflow: funding unavailable for {symbol}")
         interval_hours = interval_ms / 3_600_000.0
+        rate_per_interval = raw_percent / 100.0
         return FundingData(
-            funding_rate_raw=raw_rate,
+            funding_rate_raw=rate_per_interval,
             interval_hours=interval_hours,
-            funding_rate_annualized=raw_rate * (_HOURS_PER_YEAR / interval_hours),
+            funding_rate_annualized=rate_per_interval * (_HOURS_PER_YEAR / interval_hours),
         )
 
     def get_orderbook_top(self, symbol: str) -> OrderbookTop:
@@ -218,5 +228,8 @@ class TxflowAdapter(VenueAdapter):
         )
 
     def get_fees(self) -> FeeData:
-        # TxFlow's public VIP 0 schedule: maker 0.015%, taker 0.045%.
-        return FeeData(maker_bps=1.5, taker_bps=4.5, source_url=FEE_SOURCE_URL)
+        # TxFlow's public VIP 0 schedule is 0.0150% maker / 0.0450% taker.
+        # Signing up through a referral takes 5% off, which is what a new
+        # account actually pays, so that is what routes are priced at. Higher
+        # VIP tiers pay less, making this the conservative end of the range.
+        return FeeData(maker_bps=1.5 * 0.95, taker_bps=4.5 * 0.95, source_url=FEE_SOURCE_URL)
