@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
@@ -37,6 +38,42 @@ function MechanicsPanel() {
 }
 
 function HedgeRecommendations() {
+  const locale = useLocale();
+  const [partner, setPartner] = useState<string | null>(null);
+  const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/venues/txflow/cheapest-route")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (active && typeof data?.partnerSlug === "string") setPartner(data.partnerSlug); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const routePartner = partner ?? "txflow";
+  const routeName = nameOf(routePartner);
+  return (
+    <div className="mt-11">
+      <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2>
+      <div className="pb-4 pt-1.5 text-[14px] text-text-muted">{tr(locale, "General guidance for TxFlow, independent of the calculation below.", "Общие рекомендации по TxFlow, независимо от расчёта ниже.")}</div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+          <div className="flex items-center gap-2.5"><ProtocolMark slug={routePartner} name={routeName} size={30} radius={9} /><div className="text-[16px] font-semibold text-text-primary">TxFlow × {routeName}</div></div>
+          <div className="text-[14px] leading-[1.62] text-text-muted">{partner ? tr(locale, "Cheapest route in the latest hourly snapshot, picked by comparing every eligible venue.", "Самый дешёвый маршрут в последнем часовом снимке — выбран сравнением всех eligible-площадок.") : tr(locale, "Approved delta-neutral setup with two accounts.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами.")}</div>
+          <div className="mt-auto flex gap-2"><span className="whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">{tr(locale, "Lowest cost", "Дешевле всего")}</span><span className="whitespace-nowrap rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">{tr(locale, "Two accounts needed", "Нужно 2 аккаунта")}</span></div>
+        </div>
+        <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+          <div className="flex items-center gap-2.5"><ProtocolMark slug="txflow" name="TxFlow" size={30} radius={9} /><div className="text-[16px] font-semibold text-text-primary">TxFlow × <Link href="/variational" className="pf-transition hover:text-accent"><span className="underline decoration-accent/70 underline-offset-4">Variational</span> ↗</Link></div></div>
+          <div className="text-[14px] leading-[1.62] text-text-muted">{tr(locale, "A TradFi-perps counterparty to compare before crossing venues.", "Контрагент по TradFi-perps для сравнения перед кросс-площадочным маршрутом.")}</div>
+          <div className="mt-auto flex gap-2"><span className="whitespace-nowrap rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-[11px] font-semibold text-warning">{tr(locale, "Compare first", "Сначала сравнить")}</span><span className="whitespace-nowrap rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">TradFi perps</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LegacyHedgeRecommendations() {
   const locale = useLocale();
   const card = (title: React.ReactNode, body: string, tags: [string, "ok" | "warn" | "neutral"][]) => <div className="flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]"><div className="flex items-center gap-2.5"><ProtocolMark slug="txflow" name="TxFlow" size={30} radius={9} /><div className="text-[16px] font-semibold text-text-primary">{title}</div></div><div className="text-[14px] leading-[1.62] text-text-muted">{body}</div><div className="mt-auto flex gap-2">{tags.map(([tag, tone]) => <span key={tag} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone === "ok" ? "border-positive/30 bg-positive/10 text-positive" : tone === "warn" ? "border-warning/30 bg-warning/10 text-warning" : "border-border bg-surface-2 text-text-muted"}`}>{tag}</span>)}</div></div>;
   return <div className="mt-11"><h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2><div className="pb-4 pt-1.5 text-[14px] text-text-muted">{tr(locale, "General guidance for TxFlow, independent of the calculation above.", "Общие рекомендации по TxFlow, независимо от расчёта выше.")}</div><div className="grid gap-4 sm:grid-cols-2">{card("TxFlow × TxFlow", tr(locale, "Two accounts on the same CLOB: calculate the live active-side execution cost before placing the hedge.", "Два аккаунта в одном CLOB: посчитайте live-стоимость активной стороны перед постановкой хеджа."), [[tr(locale, "Live L2", "Живая L2"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]])}{card(<><span>TxFlow × </span><Link href="/variational" className="pf-transition hover:text-accent"><span className="underline decoration-accent/70 underline-offset-4">Variational</span> ↗</Link></>, tr(locale, "A TradFi-perps counterparty to compare before crossing venues. The live calculator currently prices the same-venue TxFlow route.", "Контрагент по TradFi-perps для сравнения перед кросс-площадочным маршрутом. Live-калькулятор пока считает маршрут внутри TxFlow."), [[tr(locale, "Compare first", "Сначала сравнить"), "warn"], ["TradFi perps", "neutral"]])}</div></div>;

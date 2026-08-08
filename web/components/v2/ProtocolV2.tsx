@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { formatUsd } from "@/lib/format";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { InfoTip, farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
@@ -309,8 +308,8 @@ function HedgeRecommendations() {
           cheapest
             ? tr(
                 locale,
-                `Cheapest route in the latest hourly snapshot, picked by comparing every eligible venue: about ${formatUsd(cheapest.cycleCostUsd)} per full hedge cycle.`,
-                `Самый дешёвый маршрут в последнем часовом снимке — выбран сравнением всех eligible-площадок: около ${formatUsd(cheapest.cycleCostUsd)} за полный хедж-цикл.`,
+                "Cheapest route in the latest hourly snapshot, picked by comparing every eligible venue.",
+                "Самый дешёвый маршрут в последнем часовом снимке — выбран сравнением всех eligible-площадок.",
               )
             : tr(locale, "Approved delta-neutral setup with two accounts.", "Разрешённый дельта-нейтральный сетап с двумя аккаунтами."),
           [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
