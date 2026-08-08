@@ -11,6 +11,7 @@
 
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
+import { TRADFI_TICKERS } from "@/lib/tradfi";
 
 const HOLD_HOURS = 24;
 const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
@@ -169,6 +170,7 @@ export async function computeCrossRankings(
   slugA: string,
   slugB: string,
   accountVolumeUsd: number,
+  tradfiOnly = false,
 ): Promise<CrossRankings> {
   const rows = await loadVenueMarkets([slugA, slugB]);
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
@@ -182,6 +184,7 @@ export async function computeCrossRankings(
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
   for (const [sym, ra] of A) {
+    if (tradfiOnly && !TRADFI_TICKERS.has(sym)) continue;
     const rb = B.get(sym); // only pairs listed on BOTH venues can be hedged
     if (!rb) continue;
     const volA = asNumber(ra.volume_24h_usd);

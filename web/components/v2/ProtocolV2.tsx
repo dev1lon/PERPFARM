@@ -296,8 +296,8 @@ function HedgeRecommendations() {
         {card(
           "txflow",
           "Variational ×",
-          tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retropoint farming.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальный фарм ретро-поинтов."),
-          [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retropoints", "Фарм ретро-поинтов"), "neutral"]],
+          tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retro points.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальные ретро-поинты."),
+          [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "neutral"]],
           "txflow",
         )}
       </div>

@@ -52,12 +52,14 @@ export function CrossPairRankings({
   homeName,
   hedgeName,
   accountVolumeUsd,
+  tradfiOnly = false,
 }: {
   venueSlug: string;
   hedgeSlug: string;
   homeName: string;
   hedgeName: string;
   accountVolumeUsd: number;
+  tradfiOnly?: boolean;
 }) {
   const locale = useLocale();
   const [data, setData] = useState<CrossResponse | null>(null);
@@ -66,7 +68,7 @@ export function CrossPairRankings({
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/venues/${venueSlug}/cross-rankings?hedge=${encodeURIComponent(hedgeSlug)}&accountVolumeUsd=${accountVolumeUsd}`)
+    fetch(`/api/venues/${venueSlug}/cross-rankings?hedge=${encodeURIComponent(hedgeSlug)}&accountVolumeUsd=${accountVolumeUsd}&tradfiOnly=${tradfiOnly}`)
       .then(async (response) => {
         if (!response.ok) throw new Error((await response.json()).error ?? "request failed");
         return response.json() as Promise<CrossResponse>;
@@ -80,7 +82,7 @@ export function CrossPairRankings({
     return () => {
       active = false;
     };
-  }, [venueSlug, hedgeSlug, accountVolumeUsd]);
+  }, [venueSlug, hedgeSlug, accountVolumeUsd, tradfiOnly]);
 
   const nameOf = (slug: string): string => (slug === venueSlug ? homeName : slug === hedgeSlug ? hedgeName : slug);
 

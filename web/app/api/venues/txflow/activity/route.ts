@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { TXFLOW_ACTIVITY_HISTORY } from "@/lib/txflow-activity-history";
 
 const HISTORY_DAYS = 180;
-const TXFLOW_INFO_URL = "https://api.txflow.com/info";
+const DUNE_RESULTS_URL = "https://api.dune.com/api/v1/query";
+const DUNE_TXFLOW_VOLUME_24H_QUERY_ID = "6678797";
+const DUNE_TXFLOW_OI_QUERY_ID = "6678737";
+const DUNE_TXFLOW_ACTIVE_TRADERS_QUERY_ID = "6679475";
 
-// The route itself is ISR-cached hourly. Historical points are the supplied
-// daily export; the final point is recalculated from TxFlow's public market
-// tickers so the headline stays current between uploads.
+// Dune is TxFlow's official analytics source. The supplied daily CSV keeps
+// history complete; all current headline readings come from Dune, never from
+// an expensive client-side aggregation of every listed market.
 export const revalidate = 3600;
 
 type ActivityPoint = { date: string; value: number };
@@ -20,64 +23,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-async function txFlowInfo(body: Record<string, unknown>): Promise<unknown> {
-  const response = await fetch(TXFLOW_INFO_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+function valueFromDuneRow(row: Record<string, unknown>, names: string[]): unknown {
+  const found = Object.entries(row).find(([key]) => {
+    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return names.some((name) => normalized === name || normalized.includes(name));
+  });
+  return found?.[1];
+}
+
+async function duneRows(queryId: string): Promise<Record<string, unknown>[]> {
+  const apiKey = process.env.DUNE_API_KEY;
+  if (!apiKey) return [];
+  const response = await fetch(`${DUNE_RESULTS_URL}/${queryId}/results?limit=1000`, {
+    headers: { "X-Dune-Api-Key": apiKey },
+    next: { revalidate: 60 * 60 },
     signal: AbortSignal.timeout(8_000),
   });
-  if (!response.ok) throw new Error(`TxFlow returned ${response.status}`);
-  return response.json();
+  if (!response.ok) return [];
+  const payload: unknown = await response.json();
+  return isRecord(payload) && isRecord(payload.result) && Array.isArray(payload.result.rows)
+    ? payload.result.rows.filter(isRecord)
+    : [];
 }
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  work: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  let index = 0;
-  const worker = async () => {
-    while (index < items.length) {
-      const current = items[index++];
-      results.push(await work(current));
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
+function latestDuneValue(rows: Record<string, unknown>[], names: string[]): number | null {
+  for (const row of [...rows].reverse()) {
+    const value = asNumber(valueFromDuneRow(row, names));
+    if (value !== null) return value;
+  }
+  return null;
 }
 
-async function getLiveTotals(): Promise<{ volume24h: number; openInterest: number } | null> {
-  const meta = await txFlowInfo({ type: "perpMeta", dex: "" });
-  if (!isRecord(meta) || !Array.isArray(meta.universe)) return null;
-  const ids = meta.universe
-    .filter(isRecord)
-    .filter((market) => market.delisted !== true && market.haltTrading !== true)
-    .map((market) => asNumber(market.index))
-    .filter((id): id is number => id !== null);
+function duneActiveTraderSeries(rows: Record<string, unknown>[]): ActivityPoint[] {
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    const rawDate = valueFromDuneRow(row, ["date", "day", "blockdate", "period"]);
+    const parsed = new Date(String(rawDate));
+    if (Number.isNaN(parsed.valueOf())) continue;
+    // Query 6679475 is the daily Traders chart. Prefer its daily column and
+    // deliberately exclude the cumulative all-time line.
+    const daily = asNumber(valueFromDuneRow(row, ["dailytraders", "dailyactiveusers", "dailyusers", "traders"]));
+    if (daily !== null) byDate.set(parsed.toISOString().slice(0, 10), daily);
+  }
+  return [...byDate].map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date)).slice(-HISTORY_DAYS);
+}
 
-  const tickers = await mapWithConcurrency(ids, 12, async (instrumentId) => {
-    try {
-      return await txFlowInfo({ type: "marketTicker", instrumentId });
-    } catch {
-      return null;
-    }
-  });
-
-  const totals = tickers.reduce<{ volume24h: number; openInterest: number }>(
-    (result, ticker) => {
-      if (!isRecord(ticker)) return result;
-      const volume = asNumber(ticker.dayNtlVlm);
-      const mark = asNumber(ticker.markPx) ?? asNumber(ticker.lastPrice);
-      const size = asNumber(ticker.openInterest);
-      if (volume !== null) result.volume24h += volume;
-      if (mark !== null && size !== null) result.openInterest += mark * size;
-      return result;
-    },
-    { volume24h: 0, openInterest: 0 },
-  );
-  return totals.volume24h > 0 || totals.openInterest > 0 ? totals : null;
+function latestHistoryValue(history: ActivityPoint[]): number | null {
+  return history.at(-1)?.value ?? null;
 }
 
 function withCurrentPoint(history: ActivityPoint[], value: number | null): ActivityPoint[] {
@@ -90,17 +82,21 @@ function withCurrentPoint(history: ActivityPoint[], value: number | null): Activ
 
 export async function GET() {
   try {
-    const live = await getLiveTotals().catch(() => null);
-    const volumeHistory = withCurrentPoint(
-      TXFLOW_ACTIVITY_HISTORY.map((point) => ({ date: point.date, value: point.volume })),
-      live?.volume24h ?? null,
-    );
+    const [volumeRows, oiRows, traderRows] = await Promise.all([
+      duneRows(DUNE_TXFLOW_VOLUME_24H_QUERY_ID),
+      duneRows(DUNE_TXFLOW_OI_QUERY_ID),
+      duneRows(DUNE_TXFLOW_ACTIVE_TRADERS_QUERY_ID),
+    ]);
+    const volumeFromDune = latestDuneValue(volumeRows, ["totalvolume24h", "volume24h", "totalvolume"]);
+    const oiFromDune = latestDuneValue(oiRows, ["totaloilatest1h", "totaloi", "openinterest", "oi"]);
+    const volumeHistory = withCurrentPoint(TXFLOW_ACTIVITY_HISTORY.map((point) => ({ date: point.date, value: point.volume })), volumeFromDune);
     const oiHistory = withCurrentPoint(
       TXFLOW_ACTIVITY_HISTORY
         .filter((point): point is typeof point & { openInterest: number } => point.openInterest !== null)
         .map((point) => ({ date: point.date, value: point.openInterest })),
-      live?.openInterest ?? null,
+      oiFromDune,
     );
+    const activeTraders = duneActiveTraderSeries(traderRows);
     if (volumeHistory.length === 0 && oiHistory.length === 0) throw new Error("TxFlow activity is unavailable");
 
     return NextResponse.json({
@@ -109,11 +105,17 @@ export async function GET() {
       volume: {
         series: volumeHistory,
         observedDays: TXFLOW_ACTIVITY_HISTORY.length,
-        latest24h: live?.volume24h ?? TXFLOW_ACTIVITY_HISTORY.at(-1)?.volume ?? null,
+        latest24h: volumeFromDune,
       },
       openInterest: {
         series: oiHistory,
-        latest: live?.openInterest ?? TXFLOW_ACTIVITY_HISTORY.at(-1)?.openInterest ?? null,
+        latest: oiFromDune,
+      },
+      uniqueTraders: {
+        series: activeTraders,
+        latest: latestHistoryValue(activeTraders),
+        source: "dune",
+        metric: "activeAddresses",
       },
     });
   } catch {

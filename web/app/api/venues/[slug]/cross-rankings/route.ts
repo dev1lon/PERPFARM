@@ -14,6 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const hedge = request.nextUrl.searchParams.get("hedge");
     if (!hedge) return NextResponse.json({ error: "hedge venue is required" }, { status: 400 });
     if (hedge === slug) return NextResponse.json({ error: "hedge venue must differ from the home venue" }, { status: 400 });
+    const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
     const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
     const accountVolumeUsd = requested === null ? DEFAULT_ACCOUNT_VOLUME_USD : Number(requested);
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const result = await computeCrossRankings(slug, hedge, accountVolumeUsd);
+    const result = await computeCrossRankings(slug, hedge, accountVolumeUsd, tradfiOnly);
     if (result.bands.every((band) => band.pairs.length === 0)) {
       throw new Error(`No liquid pairs listed on both ${slug} and ${hedge}`);
     }

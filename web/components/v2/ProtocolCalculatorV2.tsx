@@ -324,7 +324,7 @@ export function ProtocolCalculatorV2({
               <span className="font-mono-num text-text-primary">{formatUsd((validVolume ? requested : 0) * 2, { decimals: 0 })}</span>{" "}
               {tr(locale, "across two accounts.", "на два аккаунта.")}
             </div>
-            {sameVenue && (
+            {(
               <button
                 type="button"
                 role="switch"
@@ -397,6 +397,7 @@ export function ProtocolCalculatorV2({
             homeName={homeName}
             hedgeName={hedgeName}
             accountVolumeUsd={notionalUsd}
+            tradfiOnly={appliedTradfiOnly}
           />
         </div>
       )}
