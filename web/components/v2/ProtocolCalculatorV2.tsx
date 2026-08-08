@@ -9,7 +9,7 @@ import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
 type CostTier = "low" | "medium" | "high";
-interface PairRanking {
+export interface PairRanking {
   pair: string;
   openInterestUsd: number;
   volume24hUsd: number;
@@ -22,13 +22,17 @@ interface PairRanking {
   spreadCostUsd: number;
   slippageCostUsd: number;
   costTier: CostTier;
+  fundingUsd?: number;
+  feeCostUsd?: number;
+  entryOrders?: string;
+  exitOrders?: string;
 }
 type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
   key: BandKey;
   pairs: PairRanking[];
 }
-interface RankingResponse {
+export interface RankingResponse {
   asOf: string;
   fillNotionalUsd: number;
   accountVolumeUsd: number;
@@ -371,7 +375,7 @@ export function ProtocolCalculatorV2({
       )}
 
       {status === "loaded" && notionalUsd !== null && ranHedge === venueSlug && data && (
-        <SameVenueResult
+        <RouteResults
           data={data}
           top={tablePairs}
           best={best}
@@ -405,13 +409,14 @@ export function ProtocolCalculatorV2({
   );
 }
 
-function SameVenueResult({
+export function RouteResults({
   data,
   top,
   best,
   notionalUsd,
   hedgeName,
   homeSlug,
+  hedgeSlug,
   homeName,
   isTxFlow,
   expanded,
@@ -426,6 +431,7 @@ function SameVenueResult({
   notionalUsd: number;
   hedgeName: string;
   homeSlug: "variational" | "txflow";
+  hedgeSlug?: "variational" | "txflow";
   homeName: string;
   isTxFlow: boolean;
   expanded: string | null;
@@ -435,6 +441,7 @@ function SameVenueResult({
   setOiFilter: (v: BandKey) => void;
 }) {
   const locale = useLocale();
+  const shortSlug = hedgeSlug ?? homeSlug;
   // Switching band changes the list length, which would otherwise slide the
   // page under the finger. Anchor the filter row: remember where it sat, then
   // scroll by the delta after the new list renders.
@@ -458,7 +465,8 @@ function SameVenueResult({
   // Eligibility only means something while a competition is running — once it
   // ends the flag would claim a benefit that no longer exists.
   const showEligible = data.competition.active;
-  const bestOrders = orders(best.firstLimitSide);
+  const bestOrders = best.entryOrders && best.exitOrders ? { entry: best.entryOrders, exit: best.exitOrders } : orders(best.firstLimitSide);
+  const isCross = best.fundingUsd !== undefined;
   return (
     <>
       <StaleDataNotice data={data} />
@@ -487,7 +495,7 @@ function SameVenueResult({
           <div className="px-6 py-6">
             <div className="flex items-baseline gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <div className="text-[14px] text-text-muted">{isTxFlow ? tr(locale, `live L2 depth for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `живая L2-глубина на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`) : tr(locale, `medium OI, deep enough for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `средний OI, хватает глубины на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}</div>
+              <div className="text-[14px] text-text-muted">{isCross ? tr(locale, `two venues · ${formatUsd(notionalUsd, { decimals: 0 })} per account`, `две площадки · ${formatUsd(notionalUsd, { decimals: 0 })} на аккаунт`) : isTxFlow ? tr(locale, `live L2 depth for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `живая L2-глубина на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`) : tr(locale, `medium OI, deep enough for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `средний OI, хватает глубины на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}</div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
@@ -501,7 +509,7 @@ function SameVenueResult({
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug={homeSlug} name={hedgeName} size={26} radius={8} />
+                  <ProtocolMark slug={shortSlug} name={hedgeName} size={26} radius={8} />
                   <div className="text-[16px] font-semibold text-text-primary">{hedgeName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
@@ -513,10 +521,10 @@ function SameVenueResult({
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [
-                  tr(locale, isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
+                  tr(locale, isCross ? "Estimated net cost" : isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isCross ? "Оценка net cost" : isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                  isCross ? tr(locale, "Fees + spread + impact + 7D avg funding", "Комиссии + спред + impact + funding среднее 7д") : isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
@@ -526,11 +534,17 @@ function SameVenueResult({
                 </div>
               ))}
             </div>
+            {isCross && (
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "Fees included", "Комиссии включены")}</div><div className="font-mono-num text-[17px] text-text-primary">{formatUsd(best.feeCostUsd ?? 0)}</div></div>
+                <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "7D avg funding", "Funding · среднее 7д")}</div><div className={"font-mono-num text-[17px] " + ((best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd ?? 0)}</div></div>
+              </div>
+            )}
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                isTxFlow ? "Live estimate: this route uses the current L2 book and VIP-0 maker/taker fees; it is not a points estimate." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-                isTxFlow ? "Live-оценка: маршрут использует текущий L2-стакан и VIP-0 maker/taker комиссии; это не оценка поинтов." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
+                isCross ? "Net cost includes taker fees on both protocols, spread, quote impact and the estimated 24h funding delta from a seven-day average." : isTxFlow ? "Live estimate: this route uses the current L2 book and VIP-0 maker/taker fees; it is not a points estimate." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+                isCross ? "Net cost включает taker-комиссии обеих площадок, спред, impact и оценочную funding-дельту за 24ч по среднему за семь дней." : isTxFlow ? "Live-оценка: маршрут использует текущий L2-стакан и VIP-0 maker/taker комиссии; это не оценка поинтов." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
               )}
             </div>
           </div>
@@ -582,7 +596,7 @@ function SameVenueResult({
               <div />
             </div>
             {top.map((p, i) => {
-              const o = orders(p.firstLimitSide);
+              const o = p.entryOrders && p.exitOrders ? { entry: p.entryOrders, exit: p.exitOrders } : orders(p.firstLimitSide);
               const open = expanded === p.pair;
               return (
                 <div key={p.pair} className="border-b border-border last:border-b-0">
@@ -616,7 +630,7 @@ function SameVenueResult({
                         <span className="text-[13px] text-text-primary">{homeName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug={homeSlug} name={hedgeName} size={22} radius={7} />
+                        <ProtocolMark slug={shortSlug} name={hedgeName} size={22} radius={7} />
                         <span className="text-[13px] text-text-primary">{hedgeName}</span>
                       </div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
@@ -673,7 +687,7 @@ function SameVenueResult({
                         <div className="flex flex-col gap-2 rounded-[12px] border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug={homeSlug} name={hedgeName} size={22} radius={7} />
+                            <ProtocolMark slug={shortSlug} name={hedgeName} size={22} radius={7} />
                             <span className="text-[15px] font-semibold text-text-primary">{hedgeName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
