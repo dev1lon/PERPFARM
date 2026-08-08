@@ -12,6 +12,7 @@
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
 import { TRADFI_TICKERS } from "@/lib/tradfi";
+import { publishedFees } from "@/lib/venue-fees";
 
 const HOLD_HOURS = 24;
 const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
@@ -117,8 +118,11 @@ function venueBps(
     [50_000, asNumber(row.impact_bps_50k)],
     [100_000, asNumber(row.impact_bps_100k)],
   ]);
-  const takerFee = asNumber(row.taker_bps);
-  const makerFee = asNumber(row.maker_bps);
+  // A stored schedule wins; otherwise fall back to the venue's published one.
+  // Only a venue we have neither for is treated as unknown.
+  const published = publishedFees(row.slug);
+  const takerFee = asNumber(row.taker_bps) ?? published?.takerBps ?? null;
+  const makerFee = asNumber(row.maker_bps) ?? published?.makerBps ?? null;
   if (spread === null || impact === null || takerFee === null || makerFee === null) return null;
   return {
     maker: makerFee,

@@ -1,20 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publishedFees } from "@/lib/venue-fees";
 
 export const dynamic = "force-dynamic";
 
 const INFO_URL = "https://api.txflow.com/info";
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
-// TxFlow VIP 0 is 0.0150% maker / 0.0450% taker; signing up through a referral
-// takes 5% off, which is what a new account actually pays. Higher VIP tiers pay
-// less still, so this is the conservative end of the range.
 // Shared with the Variational ranking so both calculators band OI identically.
 const HIGH_OI_USD = 20_000_000;
 const MEDIUM_OI_USD = 3_000_000;
 const MIN_PAIRS_FOR_BANDS = 15;
-const REFERRAL_FEE_DISCOUNT = 0.95;
-const MAKER_FEE_BPS = 1.5 * REFERRAL_FEE_DISCOUNT; // 0.01425%
-const TAKER_FEE_BPS = 4.5 * REFERRAL_FEE_DISCOUNT; // 0.04275%
+// One definition of TxFlow's fees, shared with the cross-protocol model.
+const TXFLOW_FEES = publishedFees("txflow")!;
+const MAKER_FEE_BPS = TXFLOW_FEES.makerBps; // 0.01425%
+const TAKER_FEE_BPS = TXFLOW_FEES.takerBps; // 0.04275%
 
 type CostTier = "low" | "medium" | "high";
 type Market = {
