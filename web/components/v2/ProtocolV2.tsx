@@ -116,8 +116,8 @@ function AwardsPanel() {
       title: tr(locale, "Medium OI, 12–24h hold", "Средний OI, удержание 12–24ч"),
       body: tr(
         locale,
-        "Hold a delta-neutral position in a medium-depth market for at least half a day.",
-        "Удерживайте дельта-нейтральную позицию на рынке со средней глубиной хотя бы полдня.",
+        "Low OI pays more but costs more to execute; high OI is cheapest but pays least. Medium OI is the balance, so hold a delta-neutral position there for at least 12 hours.",
+        "Низкий OI даёт больше поинтов, но дороже в исполнении; высокий OI дешевле, но платит меньше. Средний OI — баланс: держите там дельта-нейтральную позицию хотя бы 12 часов.",
       ),
       primary: true,
     },
