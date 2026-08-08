@@ -93,6 +93,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // `?rawTicker=BTC` returns the venue's untouched ticker fields, so funding
+    // units can be verified against the venue instead of assumed.
+    const rawTicker = request.nextUrl.searchParams.get("rawTicker");
+    if (rawTicker) {
+      const meta = await info<{ universe?: unknown }>({ type: "perpMeta", dex: "" });
+      const universe = Array.isArray(meta.universe) ? (meta.universe as Record<string, unknown>[]) : [];
+      const wanted = rawTicker.split(",").map((s) => s.trim().toUpperCase());
+      const picked = universe.filter((m) => wanted.includes(String(m.baseCurrency ?? "").toUpperCase()));
+      const tickers = await Promise.all(
+        picked.map(async (m) => ({
+          pair: m.baseCurrency,
+          instrumentId: m.index,
+          ticker: await info<Record<string, unknown>>({ type: "marketTicker", instrumentId: m.index }),
+        })),
+      );
+      return NextResponse.json({ tickers });
+    }
+
     const metadata = await info<{ universe?: unknown }>({ type: "perpMeta", dex: "" });
     if (!Array.isArray(metadata.universe)) throw new Error("TxFlow returned no market universe");
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
