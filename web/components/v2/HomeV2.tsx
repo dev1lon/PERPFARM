@@ -382,7 +382,7 @@ function Protocols() {
   const empty = tierS.length + early.length + radar.length === 0;
 
   return (
-    <div id="protocols" className="pb-4">
+    <div id="protocols" className="scroll-mt-24 pb-4">
       <div className="flex flex-col items-start justify-between gap-4 pb-5 sm:flex-row sm:items-end">
         <div>
           <h2 className="mb-2 text-[30px] font-bold tracking-[-0.02em] text-text-primary">
