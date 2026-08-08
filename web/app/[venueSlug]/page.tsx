@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProtocolSoonV2 } from "@/components/v2/ProtocolSoonV2";
 import { ProtocolV2 } from "@/components/v2/ProtocolV2";
+import { TxFlowV2 } from "@/components/v2/TxFlowV2";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
@@ -44,6 +45,9 @@ export default async function VenuePage({
 
   if (venueSlug === "variational") {
     return <ProtocolV2 otherVenues={otherVenues} />;
+  }
+  if (venueSlug === "txflow") {
+    return <TxFlowV2 />;
   }
   return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog!.name} meta={venueRow?.meta ?? null} />;
 }

@@ -35,7 +35,7 @@ export const TIER_S: HomeProtocol[] = [
 /** Early stage — medium cards with a status badge, no metric grid. */
 export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", status: "mainnet" },
-  { slug: "txflow", name: "TxFlow", status: "teased" },
+  { slug: "txflow", name: "TxFlow", status: "mainnet" },
 ];
 
 /** Radar — compact tiles, name only. */
