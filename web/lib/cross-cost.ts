@@ -3,24 +3,28 @@
  * hourly snapshots of TWO venues. Mirrors the same-protocol pair Run (P6) but:
  *  - each leg crosses its OWN venue's book + pays its OWN fees (no self-match,
  *    so all four fills are taker);
- *  - funding does NOT net to zero -- it's the delta between the two venues'
- *    rates, and can be income. We pick the favourable direction (long the
- *    lower-funding venue, short the higher).
+ *  - funding does NOT net to zero -- it is the delta between the two venues'
+ *    rates, and is reported separately from the route's execution cost.
  * Point value is never involved -- that's the user's manual number.
  */
 
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
-import { TRADFI_TICKERS } from "@/lib/tradfi";
+import { isTradfiMarket } from "@/lib/tradfi";
 import { publishedFees } from "@/lib/venue-fees";
 
-const HOLD_HOURS = 24;
+/** Funding is displayed separately for a fixed 12-hour hold. */
+const FUNDING_HOLD_HOURS = 12;
 const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
-/** Same gross-OI floor the single-venue ranking uses, applied to BOTH venues. */
-const MIN_OPEN_INTEREST_USD = 50_000;
-const MIN_PAIRS_FOR_BANDS = 15;
+/** Low-OI routes begin at $10k gross OI. Below it no route is recommended. */
+const MIN_OPEN_INTEREST_USD = 10_000;
 const HOURS_PER_YEAR = 8_760;
-/** A 7-day average beyond 500% a year means the market is dislocated (or the
+const MAIN_OI_BANDS = {
+  high: 300_000,
+  medium: 100_000,
+  low: 10_000,
+} as const;
+/** A 24-hour average beyond 500% a year means the market is dislocated (or the
  *  feed is wrong). Either way it is not a route worth recommending, and a
  *  single bad rate must never win the "cheapest" sort. */
 const MAX_ABS_FUNDING_ANNUALIZED = 5;
@@ -44,6 +48,8 @@ export type CrossPair = {
   pair: string;
   oiAUsd: number;
   oiBUsd: number;
+  /** Gross OI of the protocol the user started the calculator on. */
+  mainOiUsd: number;
   volume24hMinUsd: number;
   longVenue: string;
   shortVenue: string;
@@ -155,9 +161,7 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        ORDER BY s.market_id, s.ts DESC
      ),
      fund AS (
-       -- Averaged over 24h, not a week: the hold this prices is 12-24h, so a
-       -- day of readings is the relevant window, and a week of history keeps
-       -- carrying rates recorded before an adapter's units were corrected.
+       -- The 12-hour estimate uses the latest 24 hours of funding readings.
        SELECT f.market_id, AVG(f.funding_rate_annualized) AS funding
        FROM funding_snapshots f
        JOIN markets m ON m.id = f.market_id
@@ -199,8 +203,9 @@ function round(p: CrossPair): CrossPair {
   };
 }
 
-// oiKey = min OI of the two venues (the bottleneck: how much can actually be run).
-function bandFrom(key: CrossBand["key"], candidates: Array<CrossPair & { oiKey: number }>, limit: number): CrossBand {
+// oiKey is the main venue's OI: a hedge must be liquid, but must never recategorise
+// the market that the user chose to farm.
+function bandFrom(key: Exclude<CrossBand["key"], "all">, candidates: Array<CrossPair & { oiKey: number }>, limit = 10): CrossBand {
   const ois = candidates.map((c) => c.oiKey);
   const pairs = [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, limit).map(round);
   return { key, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs };
@@ -226,7 +231,9 @@ export async function computeCrossRankings(
   // Why pairs get dropped, so a strict filter can never silently empty the list.
   const drops = { considered: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0, noFunding: 0, wildFunding: 0 };
   for (const [sym, ra] of A) {
-    if (tradfiOnly && !TRADFI_TICKERS.has(sym)) continue;
+    // The home protocol is the thing being farmed. A hedge leg must be
+    // tradeable, but it never changes the home market's category or OI band.
+    if (tradfiOnly && !isTradfiMarket(slugA, sym)) continue;
     const rb = B.get(sym); // only pairs listed on BOTH venues can be hedged
     if (!rb) continue;
     const volA = asNumber(ra.volume_24h_usd);
@@ -239,8 +246,8 @@ export async function computeCrossRankings(
     if (volA === null || volB === null || oiA === null || oiB === null) { drops.noMarketData++; continue; }
     if (costA === null || costB === null) { drops.noFeeOrBook++; continue; }
     if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) { drops.thinVolume++; continue; }
-    // Gross OI (both sides) on each venue must clear the same floor the
-    // single-venue ranking uses; a $30k market is not hedgeable at size.
+    // Both books must at least be real markets. The main venue alone decides
+    // the displayed OI band and the recommendation category below.
     if (oiA * 2 < MIN_OPEN_INTEREST_USD || oiB * 2 < MIN_OPEN_INTEREST_USD) { drops.thinOi++; continue; }
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
@@ -263,10 +270,15 @@ export async function computeCrossRankings(
     const fB = asNumber(rb.funding);
     if (fA === null || fB === null) { drops.noFunding++; continue; }
     if (Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED) { drops.wildFunding++; continue; }
-    // Long the lower-funding venue, short the higher -> favourable (<=0) delta.
-    const [longVenue, shortVenue, fLong, fShort] = fA <= fB ? [slugA, slugB, fA, fB] : [slugB, slugA, fB, fA];
-    const fundingUsd = (fillNotionalUsd * (fLong - fShort) * HOLD_HOURS) / HOURS_PER_YEAR;
-    const cycleCostUsd = execCostUsd + fundingUsd;
+    // The requested protocol is always the main leg: long it, short the hedge.
+    // That leaves funding visibly positive or negative instead of choosing a
+    // direction just because it makes funding look favourable.
+    const longVenue = slugA;
+    const shortVenue = slugB;
+    const fundingUsd = (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
+    // Funding is informative, not part of the execution-cost ranking: it can
+    // move either way during the hold and is shown separately in the UI.
+    const cycleCostUsd = execCostUsd;
 
     candidates.push({
       pair: sym,
@@ -276,6 +288,7 @@ export async function computeCrossRankings(
       slippageCostUsd,
       oiAUsd: oiA * 2,
       oiBUsd: oiB * 2,
+      mainOiUsd: oiA * 2,
       volume24hMinUsd: Math.min(volA, volB),
       longVenue,
       shortVenue,
@@ -283,25 +296,17 @@ export async function computeCrossRankings(
       feeCostUsd,
       fundingUsd,
       cycleCostUsd,
-      oiKey: Math.min(oiA, oiB) * 2,
+      oiKey: oiA * 2,
     });
   }
 
-  let grouped: boolean;
-  let bands: CrossBand[];
-  if (candidates.length < MIN_PAIRS_FOR_BANDS) {
-    grouped = false;
-    bands = candidates.length ? [bandFrom("all", candidates, candidates.length)] : [];
-  } else {
-    grouped = true;
-    const byOi = [...candidates].sort((a, b) => b.oiKey - a.oiKey);
-    const size = Math.ceil(byOi.length / 3);
-    bands = [
-      bandFrom("high", byOi.slice(0, size), 10),
-      bandFrom("medium", byOi.slice(size, size * 2), 10),
-      bandFrom("low", byOi.slice(size * 2), 10),
-    ];
-  }
+  // OI bands always use the main (farm) venue, never the hedge venue.
+  // Below $10k gross OI is deliberately not recommended.
+  const bands = [
+    bandFrom("high", candidates.filter((p) => p.oiKey > MAIN_OI_BANDS.high)),
+    bandFrom("medium", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.medium && p.oiKey <= MAIN_OI_BANDS.high)),
+    bandFrom("low", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.low && p.oiKey < MAIN_OI_BANDS.medium)),
+  ].filter((band) => band.pairs.length > 0);
 
   return {
     drops,
@@ -310,9 +315,9 @@ export async function computeCrossRankings(
     accountVolumeUsd,
     fillNotionalUsd,
     totalCycleVolumeUsd: accountVolumeUsd * 2,
-    holdHours: HOLD_HOURS,
+    holdHours: FUNDING_HOLD_HOURS,
     minVolumeUsd: MIN_VOLUME_USD,
-    grouped,
+    grouped: true,
     bands,
   };
 }

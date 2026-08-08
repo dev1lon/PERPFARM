@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { RouteResults, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
+import { isTradfiMarket } from "@/lib/tradfi";
 
 type CrossPair = {
-  pair: string; oiAUsd: number; oiBUsd: number; volume24hMinUsd: number;
+  pair: string; oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number; cycleCostUsd: number;
@@ -50,18 +51,13 @@ export function CrossPairRankings({
 
   // Order labels read LONG / SHORT. The model decides which venue rests the
   // limits, so the label follows that choice instead of claiming all-taker.
-  const pairs = useMemo<PairRanking[]>(() => {
-    const bands = response?.bands ?? [];
-    const source = oiFilter === "all" || !response?.grouped
-      ? bands.flatMap((band) => band.pairs)
-      : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
-    return source.map((pair) => {
+  const mapPairs = (source: CrossPair[]): PairRanking[] => source.map((pair) => {
     const longIsMaker = pair.longVenue === pair.makerVenue;
     return {
       pair: pair.pair,
-      openInterestUsd: Math.min(pair.oiAUsd, pair.oiBUsd),
+      openInterestUsd: pair.mainOiUsd,
       volume24hUsd: pair.volume24hMinUsd,
-      competitionEligible: tradfiOnly,
+      competitionEligible: isTradfiMarket(venueSlug, pair.pair),
       firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
       cycleCostUsd: pair.cycleCostUsd,
       latestCycleCostUsd: pair.cycleCostUsd,
@@ -75,7 +71,14 @@ export function CrossPairRankings({
       entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
       exitOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
     };
-    }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
+  }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
+
+  const pairs = useMemo<PairRanking[]>(() => {
+    const bands = response?.bands ?? [];
+    const source = oiFilter === "all" || !response?.grouped
+      ? bands.flatMap((band) => band.pairs)
+      : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
+    return mapPairs(source);
   }, [response, tradfiOnly, oiFilter]);
 
   if (!response && !error) return <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
@@ -90,7 +93,8 @@ export function CrossPairRankings({
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
     minVolumeUsd: response.minVolumeUsd, minOpenInterestUsd: 0, competition: { active: false, name: "" },
-    grouped: response.grouped, bands: [{ key: "all", pairs }],
+    grouped: response.grouped,
+    bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
   };
   return <RouteResults data={data} top={pairs} best={pairs[0]} notionalUsd={accountVolumeUsd} hedgeName={bestShortName} homeName={bestLongName} homeSlug={bestLongSlug} hedgeSlug={bestShortSlug} isTxFlow={false} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
 }

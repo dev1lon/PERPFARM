@@ -5,6 +5,7 @@ import { formatUsd } from "@/lib/format";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
+import { InfoTip } from "@/components/v2/InfoTip";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
@@ -177,10 +178,14 @@ export function ProtocolCalculatorV2({
 }) {
   const locale = useLocale();
   const homeName = venueSlug === "txflow" ? "TxFlow" : "Variational";
-  const hedgeOptions = [
-    ...(venueSlug === "txflow" ? [{ slug: "txflow", name: "TxFlow" }] : [{ slug: "variational", name: "Variational" }]),
+  const allHedgeOptions = [
+    { slug: "variational", name: "Variational" },
+    { slug: "txflow", name: "TxFlow" },
     ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
-  ];
+  ].filter((option, index, items) => items.findIndex((item) => item.slug === option.slug) === index);
+  // Always expose Variational and TxFlow to each other. The main venue stays
+  // first, then the cross-venue hedge, then any later supported venues.
+  const hedgeOptions = [...allHedgeOptions].sort((a, b) => (a.slug === venueSlug ? -1 : b.slug === venueSlug ? 1 : 0));
 
   const [hedge, setHedge] = useState<string>(venueSlug);
   const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
@@ -520,10 +525,10 @@ export function RouteResults({
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [
-                  tr(locale, isCross ? "Estimated net cost" : isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isCross ? "Оценка net cost" : isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
+                  tr(locale, isCross ? "Estimated execution cost" : isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isCross ? "Оценка стоимости исполнения" : isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  isCross ? tr(locale, "Fees + spread + impact + 7D avg funding", "Комиссии + спред + impact + funding среднее 7д") : isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                  isCross ? tr(locale, "Fees + spread + impact; funding shown separately", "Комиссии + спред + impact; funding отдельно") : isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
@@ -536,14 +541,14 @@ export function RouteResults({
             {isCross && (
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "Fees included", "Комиссии включены")}</div><div className="font-mono-num text-[17px] text-text-primary">{formatUsd(best.feeCostUsd ?? 0)}</div></div>
-                <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "7D avg funding", "Funding · среднее 7д")}</div><div className={"font-mono-num text-[17px] " + ((best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd ?? 0)}</div></div>
+                <div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5 text-[11px] text-text-muted">{tr(locale, "Funding · 12h", "Funding · 12ч")}<InfoTip text={tr(locale, "Estimated funding for a 12-hour hold, using the average funding rate observed over the past 24 hours. Funding can move and may be positive or negative.", "Оценка funding за удержание 12 часов по средней ставке за последние 24 часа. Funding меняется и может быть как положительным, так и отрицательным.")} /></div><div className={"font-mono-num text-[17px] " + ((best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd ?? 0)}</div></div>
               </div>
             )}
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                isCross ? "Net cost includes taker fees on both protocols, spread, quote impact and the estimated 24h funding delta from a seven-day average." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-                isCross ? "Net cost включает taker-комиссии обеих площадок, спред, impact и оценочную funding-дельту за 24ч по среднему за семь дней." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
+                isCross ? "Execution cost includes fees on both protocols, spread and quote impact. Funding is shown separately for a 12-hour hold and does not change the route ranking." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
+                isCross ? "Стоимость исполнения включает комиссии обеих площадок, спред и impact. Funding показан отдельно за 12 часов и не влияет на ранжирование маршрута." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
               )}
             </div>
           </div>
@@ -719,7 +724,7 @@ export function RouteResults({
                             // are a large part of the total.
                             [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
                             [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
-                            [tr(locale, "Funding 12–24h", "Фандинг 12–24ч"), p.fundingUsd ?? 0],
+                            [tr(locale, "Funding · 12h", "Фандинг · 12ч"), p.fundingUsd ?? 0],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0],
                           ] as [string, number][]
                         ).map(([k, v]) => (

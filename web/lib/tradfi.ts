@@ -35,3 +35,11 @@ export const TRADFI_TICKERS = new Set([
 
 /** Array form for SQL parameters (`pair = ANY($1)`). */
 export const TRADFI_TICKER_LIST = [...TRADFI_TICKERS];
+
+/**
+ * Asset labels are venue-specific. Variational treats tokenised gold (XAUT)
+ * as crypto, while TxFlow lists it with its TradFi market set.
+ */
+export function isTradfiMarket(venueSlug: string, symbol: string): boolean {
+  return TRADFI_TICKERS.has(symbol) || (venueSlug === "txflow" && symbol === "XAUT");
+}

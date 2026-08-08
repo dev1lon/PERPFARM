@@ -24,8 +24,8 @@ function Hero() {
 function MechanicsPanel() {
   const locale = useLocale();
   const priorities = [
-    ["Priority 1", tr(locale, "execution first", "сначала исполнение"), tr(locale, "Choose a deep TradFi market", "Выбирайте ликвидный TradFi-рынок"), tr(locale, "Compare live L2 depth at your own size. A tight spread alone does not guarantee a cheap fill.", "Сравнивайте живую L2-глубину на вашем объёме: узкий спред сам по себе не гарантирует дешёвого исполнения."), true],
-    ["Priority 2", tr(locale, "then fees", "затем комиссии"), tr(locale, "Let volume lower the fee tier", "Снижайте tier объёмом"), tr(locale, "TxFlow fees depend on rolling 14-day volume. The calculator uses VIP-0 fees until your lower tier is known.", "Комиссии TxFlow зависят от rolling 14-day объёма. Калькулятор использует VIP-0, пока ваш более низкий tier не известен."), false],
+    ["Priority 1", tr(locale, "eligible volume", "eligible объём"), tr(locale, "Build organic volume on liquid TradFi pairs", "Набирайте органичный объём в ликвидных TradFi-парах"), tr(locale, "TxFlow has not announced points. PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.", "TxFlow не анонсировал поинты. По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках."), true],
+    ["Priority 2", tr(locale, "perps + spot", "перпы + спот"), tr(locale, "Keep activity organic", "Торгуйте органично"), tr(locale, "With no public points criteria, spot activity may also be worth considering. The pair calculator prices Perps only; it does not estimate spot execution.", "Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте. Калькулятор пар считает только Perps и не оценивает исполнение на споте."), false],
   ] as const;
   const tips = [
     ["01", tr(locale, "Use resting LIMIT orders", "Используйте пассивные LIMIT-ордера"), tr(locale, "Resting orders provide liquidity and pay maker fees.", "Пассивные ордера дают ликвидность и исполняются по maker fee.")],
