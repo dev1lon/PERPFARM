@@ -70,6 +70,8 @@ export type CrossRankings = {
   minVolumeUsd: number;
   grouped: boolean;
   bands: CrossBand[];
+  /** Why pairs were excluded, so an empty result explains itself. */
+  drops: Record<string, number>;
 };
 
 function asNumber(value: unknown): number | null {
@@ -214,6 +216,8 @@ export async function computeCrossRankings(
 
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
+  // Why pairs get dropped, so a strict filter can never silently empty the list.
+  const drops = { considered: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0, noFunding: 0, wildFunding: 0 };
   for (const [sym, ra] of A) {
     if (tradfiOnly && !TRADFI_TICKERS.has(sym)) continue;
     const rb = B.get(sym); // only pairs listed on BOTH venues can be hedged
@@ -224,11 +228,13 @@ export async function computeCrossRankings(
     const oiB = asNumber(rb.open_interest_usd);
     const costA = venueBps(ra, fillNotionalUsd);
     const costB = venueBps(rb, fillNotionalUsd);
-    if (volA === null || volB === null || oiA === null || oiB === null || costA === null || costB === null) continue;
-    if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) continue;
+    drops.considered++;
+    if (volA === null || volB === null || oiA === null || oiB === null) { drops.noMarketData++; continue; }
+    if (costA === null || costB === null) { drops.noFeeOrBook++; continue; }
+    if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) { drops.thinVolume++; continue; }
     // Gross OI (both sides) on each venue must clear the same floor the
     // single-venue ranking uses; a $30k market is not hedgeable at size.
-    if (oiA * 2 < MIN_OPEN_INTEREST_USD || oiB * 2 < MIN_OPEN_INTEREST_USD) continue;
+    if (oiA * 2 < MIN_OPEN_INTEREST_USD || oiB * 2 < MIN_OPEN_INTEREST_USD) { drops.thinOi++; continue; }
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
     // the cheaper: passive on the venue whose maker fee beats what its taker
@@ -248,8 +254,8 @@ export async function computeCrossRankings(
     // rate disqualifies the pair instead of silently scoring as zero income.
     const fA = asNumber(ra.funding);
     const fB = asNumber(rb.funding);
-    if (fA === null || fB === null) continue;
-    if (Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED) continue;
+    if (fA === null || fB === null) { drops.noFunding++; continue; }
+    if (Math.abs(fA) > MAX_ABS_FUNDING_ANNUALIZED || Math.abs(fB) > MAX_ABS_FUNDING_ANNUALIZED) { drops.wildFunding++; continue; }
     // Long the lower-funding venue, short the higher -> favourable (<=0) delta.
     const [longVenue, shortVenue, fLong, fShort] = fA <= fB ? [slugA, slugB, fA, fB] : [slugB, slugA, fB, fA];
     const fundingUsd = (fillNotionalUsd * (fLong - fShort) * HOLD_HOURS) / HOURS_PER_YEAR;
@@ -291,6 +297,7 @@ export async function computeCrossRankings(
   }
 
   return {
+    drops,
     venueA: slugA,
     venueB: slugB,
     accountVolumeUsd,

@@ -27,7 +27,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const result = await computeCrossRankings(slug, hedge, accountVolumeUsd, tradfiOnly);
     if (result.bands.every((band) => band.pairs.length === 0)) {
-      throw new Error(`No liquid pairs listed on both ${slug} and ${hedge}`);
+      // Name the filter that emptied the list instead of a blank "no pairs".
+      const why = Object.entries(result.drops)
+        .filter(([key, count]) => key !== "considered" && count > 0)
+        .map(([key, count]) => `${key}: ${count}`)
+        .join(", ");
+      throw new Error(
+        `No liquid pairs listed on both ${slug} and ${hedge}` +
+          (why ? ` (of ${result.drops.considered} shared markets — ${why})` : ""),
+      );
     }
     return NextResponse.json(
       { asOf: new Date().toISOString(), ...result },
