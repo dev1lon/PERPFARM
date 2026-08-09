@@ -129,12 +129,12 @@ function Hero() {
             {tr(locale, "Choose a protocol", "Выбрать протокол")}
             <span className="font-mono-num text-[13px]">→</span>
           </a>
-          <a
-            href="#how"
+          <Link
+            href="/how-it-works"
             className="pf-transition inline-flex items-center rounded-xl border border-border px-5 py-3.5 text-[15px] font-semibold text-text-primary hover:bg-surface-2"
           >
             {tr(locale, "How it works", "Как это работает")}
-          </a>
+          </Link>
         </div>
         <div className="text-[13px] text-text-dim">
           {tr(

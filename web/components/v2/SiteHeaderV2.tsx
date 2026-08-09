@@ -25,7 +25,7 @@ export function SiteHeaderV2() {
 
   const items: [string, string][] = [
     ["/#protocols", tr(locale, "Protocols", "Протоколы")],
-    ["/#how", tr(locale, "How it works", "Как это работает")],
+    ["/how-it-works", tr(locale, "How it works", "Как это работает")],
     ["/methodology", tr(locale, "Methodology", "Методология")],
   ];
 
