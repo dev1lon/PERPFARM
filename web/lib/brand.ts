@@ -28,7 +28,7 @@ export interface BrandAssets {
   invertNameOnLight?: boolean;
   /** The perp's NAME as a brand image (its unique font), split out of its
    *  wordmark and trimmed. Rendered at a fixed HEIGHT so every perp's name is
-   *  the same size. Falls back to PerpName text when absent. */
+   *  the same size. Falls back to the protocol's name as text when absent. */
   nameImage?: string;
   /** Optional per-perp size multiplier for the name image, to even out
    *  PERCEIVED size across wordmarks: two names at the same pixel height can

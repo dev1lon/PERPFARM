@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { duneSeries, latestDuneReading, valueFromDuneRow, withCurrentPoint } from "./dune";
+import { duneSeries, latestDuneReading, valueFromDuneRow } from "./dune";
 
 /**
  * Real shape of query 6679693 ("volume history"). It carries BOTH a daily
@@ -88,31 +88,5 @@ describe("duneSeries", () => {
 
   it("trims to the requested window", () => {
     expect(duneSeries(TXFLOW_OI_ROWS, OI_NAMES, 2)).toHaveLength(2);
-  });
-});
-
-describe("withCurrentPoint", () => {
-  const history = [
-    { date: "2026-08-06", value: 17290586 },
-    { date: "2026-08-07", value: 17657097 },
-  ];
-
-  it("appends the reading on the day it was measured", () => {
-    const series = withCurrentPoint(history, { value: 15979969, date: "2026-08-09" }, 180);
-    expect(series.at(-1)).toEqual({ date: "2026-08-09", value: 15979969 });
-  });
-
-  it("replaces a day already present instead of duplicating it", () => {
-    const series = withCurrentPoint(history, { value: 999, date: "2026-08-07" }, 180);
-    expect(series.filter((point) => point.date === "2026-08-07")).toEqual([{ date: "2026-08-07", value: 999 }]);
-    expect(series).toHaveLength(2);
-  });
-
-  it("keeps the history untouched when there is no reading", () => {
-    expect(withCurrentPoint(history, null, 180)).toEqual(history);
-  });
-
-  it("trims to the requested window", () => {
-    expect(withCurrentPoint(history, { value: 1, date: "2026-08-09" }, 2)).toHaveLength(2);
   });
 });

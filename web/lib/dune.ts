@@ -115,16 +115,3 @@ export function duneSeries(rows: Record<string, unknown>[], names: string[], max
     .map(([date, value]) => ({ date, value }))
     .slice(-maxDays);
 }
-
-/**
- * Append a live reading to a history series, on the day it was MEASURED --
- * not on whatever day the page happens to be rendered. Stamping yesterday's
- * close as "today" silently shifts the tail of every chart by a day.
- */
-export function withCurrentPoint(history: ActivityPoint[], reading: DuneReading | null, maxDays: number): ActivityPoint[] {
-  if (reading === null) return history;
-  const date = reading.date ?? new Date().toISOString().slice(0, 10);
-  return [...history.filter((point) => point.date !== date), { date, value: reading.value }]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-maxDays);
-}
