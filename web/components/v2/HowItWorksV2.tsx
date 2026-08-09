@@ -27,14 +27,11 @@ function Step({ number, title, body, children }: StepProps) {
   );
 }
 
-function ProtocolChoice({ slug, name, selected, detail }: { slug: string; name: string; selected?: boolean; detail: string }) {
+function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; selected?: boolean }) {
   return (
     <div className={`flex items-center gap-3 rounded-[14px] border px-4 py-3.5 ${selected ? "border-accent/45 bg-accent/[0.09]" : "border-border bg-surface-2"}`}>
       <ProtocolMark slug={slug} name={name} size={32} radius={10} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[15px] font-semibold text-text-primary">{name}</div>
-        <div className="mt-0.5 font-mono-num text-[10px] text-text-muted">{detail}</div>
-      </div>
+      <div className="min-w-0 flex-1 text-[15px] font-semibold text-text-primary">{name}</div>
       {selected ? <span className="font-mono-num text-[10px] tracking-[0.1em] text-accent">SELECTED</span> : null}
     </div>
   );
@@ -132,7 +129,7 @@ export function HowItWorksV2() {
           <RoutePreview />
         </section>
         <div className="flex flex-col gap-4">
-          <Step number={tr(locale, "STEP 01", "ШАГ 01")} title={tr(locale, "Choose the points you want", "Выберите нужные поинты")} body={tr(locale, "Start with the perp protocol whose points you want to farm. Each protocol values activity differently: volume, open interest, holding time, liquidity, tiers or competitions.", "Начните с perp-протокола, чьи поинты хотите фармить. Каждый протокол по-своему оценивает активность: объём, открытый интерес, время удержания, ликвидность, тиры или соревнования.")}><div className="flex flex-col gap-2.5"><ProtocolChoice slug="variational" name="Variational" selected detail={tr(locale, "Season 1 · medium OI + holding time", "Сезон 1 · средний OI + время удержания")} /><ProtocolChoice slug="txflow" name="TxFlow" detail={tr(locale, "Season 0 · retro points", "Сезон 0 · ретро-поинты")} /></div></Step>
+          <Step number={tr(locale, "STEP 01", "ШАГ 01")} title={tr(locale, "Choose the points you want", "Выберите нужные поинты")} body={tr(locale, "Start with the perp protocol whose points you want to farm. Each protocol values activity differently: volume, open interest, holding time, liquidity, tiers or competitions.", "Начните с perp-протокола, чьи поинты хотите фармить. Каждый протокол по-своему оценивает активность: объём, открытый интерес, время удержания, ликвидность, тиры или соревнования.")}><div className="flex flex-col gap-2.5"><ProtocolChoice slug="variational" name="Variational" selected /><ProtocolChoice slug="txflow" name="TxFlow" /></div></Step>
           <Step number={tr(locale, "STEP 02", "ШАГ 02")} title={tr(locale, "Choose where to hedge", "Выберите площадку для хеджа")} body={tr(locale, "Choose the venue for the opposite position. It can be the same protocol with a second account, or another compatible perp venue.", "Выберите площадку для противоположной позиции. Это может быть тот же протокол на втором аккаунте или другая совместимая perp-площадка.")}><HedgeDiagram /></Step>
           <Step number={tr(locale, "STEP 03", "ШАГ 03")} title={tr(locale, "Set volume per account", "Укажите объём на аккаунт")} body={tr(locale, "Enter the turnover you plan to create on one account. PerpFarm shows the combined full hedge-cycle volume across both accounts.", "Введите оборот, который планируете создать на одном аккаунте. PerpFarm покажет общий объём полного хедж-цикла на двух аккаунтах.")}><VolumePreview /></Step>
           <Step number={tr(locale, "STEP 04", "ШАГ 04")} title={tr(locale, "Run the route", "Запустите расчёт")} body={tr(locale, "PerpFarm compares eligible markets and shows lower-cost routes with LONG, SHORT, entry, exit, funding and estimated execution cost.", "PerpFarm сравнивает подходящие рынки и показывает маршруты с меньшей стоимостью: LONG, SHORT, вход, выход, фандинг и оценку исполнения.")}><CalculationPreview /></Step>
