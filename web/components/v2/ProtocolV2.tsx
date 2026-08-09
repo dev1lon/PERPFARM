@@ -386,9 +386,14 @@ function ActivityAndDistribution() {
           </div>
         ) : (
           <div className="flex flex-col justify-center gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
-            <div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol activity", "Активность протокола")}</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol activity", "Активность протокола")}</div>
+              <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">
+                <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
+                {tr(locale, "Inactive", "Неактивно")}
+              </span>
+            </div>
             <div className="flex items-center gap-2.5">
-              <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
               <div className="text-[17px] font-semibold text-text-primary">
                 {tr(locale, "No activity running", "Нет активных активностей")}
               </div>
