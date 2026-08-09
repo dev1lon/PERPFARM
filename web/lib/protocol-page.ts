@@ -229,7 +229,7 @@ function txflow(locale: Locale): ProtocolPageConfig {
   return {
     slug: "txflow",
     name: "TxFlow",
-    twitterUrl: "https://x.com/txflow_chain",
+    twitterUrl: "https://x.com/TxFlow_L1",
     docsUrl: "https://docs.txflow.com",
     heroMetrics: [
       { label: tr(locale, "Season", "Сезон"), value: "0" },
