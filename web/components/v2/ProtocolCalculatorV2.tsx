@@ -582,18 +582,22 @@ export function RouteResults({
 
       {/* recommended route */}
       <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
-        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-4">
-          <div className="min-w-0 shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
-          <div className="flex min-w-0 items-center justify-end gap-2.5">
+        <div className="border-b border-border px-6 py-4">
+          <div className="flex items-center justify-between gap-3 sm:hidden">
+            <div className="min-w-0 shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
+            <CostTierBadge costTier={best.costTier} />
+          </div>
+          <div className="hidden flex-wrap items-center gap-2.5 sm:flex">
+            <div className="w-full font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
             {best.competitionEligible && (
-              <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:inline-flex">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                 TradFi
               </span>
             )}
             {showEligible && best.competitionEligible && (
-              <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:inline-flex">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                 {tr(locale, "Competition eligible", "Eligible для конкурса")}
               </span>
