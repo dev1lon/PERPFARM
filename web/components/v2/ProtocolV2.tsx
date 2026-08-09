@@ -334,7 +334,7 @@ function HedgeRecommendations() {
           "txflow",
           "Variational ×",
           tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retro points.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальные ретро-поинты."),
-          [[tr(locale, "Higher cost", "Дороже исполнение"), "warn"], [tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "ok"]],
+          [[tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "ok"], [tr(locale, "Higher cost", "Дороже исполнение"), "warn"]],
           "txflow",
         )}
       </div>

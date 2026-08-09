@@ -156,7 +156,7 @@ function Hero() {
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
-            {tr(locale, "Route map", "Карта маршрута")}
+            {tr(locale, "Delta-neutral route map", "Карта дельта-нейтрального маршрута")}
           </div>
         </div>
         <RouteMap mode="network" pair="XAU" height={432} />
