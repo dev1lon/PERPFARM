@@ -28,15 +28,25 @@ function compactUsd(value: number | null): string {
   }).format(value);
 }
 
-export function FdvMarketsV2() {
+/**
+ * Prediction-market FDV expectations.
+ *
+ * Part of the reference protocol page, so it renders on every protocol: where
+ * no public market exists yet the section states that, rather than being
+ * dropped and leaving a differently-shaped page.
+ */
+export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
   const locale = useLocale();
   const [data, setData] = useState<FdvMarketResponse | null>(null);
   const [error, setError] = useState(false);
+  // Only Variational has a listed Polymarket event today.
+  const hasMarket = venueSlug === "variational";
 
   useEffect(() => {
+    if (!hasMarket) return;
     let active = true;
     const load = () => {
-      fetch("/api/venues/variational/fdv-market")
+      fetch(`/api/venues/${venueSlug}/fdv-market`)
         .then((response) => (response.ok ? response.json() as Promise<FdvMarketResponse> : Promise.reject(new Error("failed"))))
         .then((response) => {
           if (!active) return;
@@ -51,7 +61,7 @@ export function FdvMarketsV2() {
       active = false;
       window.clearInterval(refresh);
     };
-  }, []);
+  }, [venueSlug, hasMarket]);
 
   return (
     <section className="mt-11">
@@ -61,21 +71,30 @@ export function FdvMarketsV2() {
             {tr(locale, "Market-implied FDV", "Рыночные ожидания FDV")}
           </h2>
           <p className="pt-1.5 text-[14px] text-text-muted">
-            {tr(locale, "Chance that Variational exceeds each FDV threshold one day after launch.", "Вероятность того, что FDV Variational превысит каждый порог через день после запуска.")}
+            {hasMarket
+              ? tr(locale, "Chance that Variational exceeds each FDV threshold one day after launch.", "Вероятность того, что FDV Variational превысит каждый порог через день после запуска.")
+              : tr(locale, "Probability markets for this protocol's post-launch FDV.", "Вероятностные рынки для FDV этого протокола после запуска.")}
           </p>
         </div>
-        <a
-          href={POLYMARKET_EVENT_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="pf-transition text-[13px] font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
-        >
-          {tr(locale, "View on Polymarket ↗", "Открыть Polymarket ↗")}
-        </a>
+        {hasMarket && (
+          <a
+            href={POLYMARKET_EVENT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="pf-transition text-[13px] font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
+          >
+            {tr(locale, "View on Polymarket ↗", "Открыть Polymarket ↗")}
+          </a>
+        )}
       </div>
 
       <div className="rounded-[18px] border border-border bg-surface-1 p-4 sm:p-5">
-        {!data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
+        {!hasMarket && (
+          <p className="flex min-h-[148px] items-center justify-center px-6 text-center text-[14px] text-text-muted">
+            {tr(locale, "No public FDV prediction market is available for this protocol yet.", "Публичного prediction market по FDV этого протокола пока нет.")}
+          </p>
+        )}
+        {hasMarket && !data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
         {error && (
           <p className="py-10 text-center text-[14px] text-text-muted">
             {tr(locale, "Polymarket FDV data is unavailable right now.", "Данные Polymarket по FDV сейчас недоступны.")}
