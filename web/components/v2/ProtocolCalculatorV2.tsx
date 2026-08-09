@@ -112,6 +112,45 @@ function CostTierBadge({ costTier }: { costTier: CostTier }) {
   );
 }
 
+/** One text per concept, shared by the recommended route and the table row. */
+function fundingTip(locale: Locale): string {
+  return tr(
+    locale,
+    "What a 12-hour hold pays or earns, from the difference between the two protocols' funding rates, averaged over the last 24h. It can be a charge or a credit, it drifts while the position is open, and it is not part of the cycle cost.",
+    "Сколько принесёт или будет стоить удержание 12 часов — из разницы ставок фандинга двух площадок, усреднённой за последние 24ч. Может быть как расходом, так и доходом, меняется в течение удержания и не входит в стоимость цикла.",
+  );
+}
+function feeTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Priced at the fee a new account pays after the 5% referral discount. Above VIP 0 the fees are lower.",
+    "Считается по комиссии нового аккаунта со скидкой 5% за регистрацию по рефералу. Выше VIP 0 комиссии ниже.",
+  );
+}
+
+/**
+ * One line of the cost breakdown. The same tile is used in the recommended
+ * route and in an expanded table row, so the headline route is itemised
+ * exactly like the row a user opens to check it.
+ *
+ * `signed` marks a value that can legitimately go either way (funding): it
+ * gets an explicit "+" so a credit is not misread as a cost.
+ */
+function CostTile({ label, value, tip, signed = false }: { label: string; value: number | null; tip?: string; signed?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5">
+      <span className="flex items-center gap-1.5 text-[12px] text-text-muted">
+        {label}
+        {tip ? <InfoTip text={tip} /> : null}
+      </span>
+      <span className={`font-mono-num text-[13px] ${value !== null && value < 0 ? "text-positive" : "text-text-primary"}`}>
+        {signed && value !== null && value > 0 ? "+" : ""}
+        {formatUsd(value)}
+      </span>
+    </div>
+  );
+}
+
 function HedgeDropdown({
   options,
   value,
@@ -263,9 +302,24 @@ export function ProtocolCalculatorV2({
   const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
     .slice(0, 10);
-  // `Hedge with` defines the route. Inside that selected route, recommend only
-  // the pair with the minimum execution cost — no Medium-OI or TradFi bias.
-  const best = [...flatPairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
+  // `Hedge with` defines the route; this picks the pair inside it.
+  //
+  // NOT simply the global cheapest. The site's own guidance is Medium OI (fewer
+  // farmers splitting the same emission) on a TradFi market, so the headline
+  // recommendation has to follow that advice rather than contradict it one
+  // panel below. Cost decides only WITHIN that preference, and each fallback
+  // is announced in `bestRule` so the card never silently drops a criterion.
+  const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
+  const mediumPairs = grouped ? bandPairs("medium") : [];
+  const bestPick: [PairRanking | undefined, "medium-tradfi" | "medium" | "tradfi" | "cheapest"] =
+    cheapestOf(mediumPairs.filter((p) => p.competitionEligible)) !== undefined
+      ? [cheapestOf(mediumPairs.filter((p) => p.competitionEligible)), "medium-tradfi"]
+      : cheapestOf(mediumPairs) !== undefined
+        ? [cheapestOf(mediumPairs), "medium"]
+        : cheapestOf(flatPairs.filter((p) => p.competitionEligible)) !== undefined
+          ? [cheapestOf(flatPairs.filter((p) => p.competitionEligible)), "tradfi"]
+          : [cheapestOf(flatPairs), "cheapest"];
+  const [best, bestRule] = bestPick;
 
   return (
     <div className="mt-10">
@@ -370,6 +424,7 @@ export function ProtocolCalculatorV2({
           data={data}
           top={tablePairs}
           best={best}
+          bestRule={bestRule}
           notionalUsd={notionalUsd}
           hedgeName={homeName}
           homeSlug={venueSlug}
@@ -400,10 +455,14 @@ export function ProtocolCalculatorV2({
   );
 }
 
+/** Which criteria actually selected the recommended pair. */
+export type BestRule = "medium-tradfi" | "medium" | "tradfi" | "cheapest";
+
 export function RouteResults({
   data,
   top,
   best,
+  bestRule = "cheapest",
   notionalUsd,
   hedgeName,
   homeSlug,
@@ -419,6 +478,7 @@ export function RouteResults({
   data: RankingResponse | null;
   top: PairRanking[];
   best: PairRanking | undefined;
+  bestRule?: BestRule;
   notionalUsd: number;
   hedgeName: string;
   homeSlug: "variational" | "txflow";
@@ -490,7 +550,17 @@ export function RouteResults({
           <div className="px-6 py-6">
             <div className="flex items-baseline gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <div className="text-[14px] text-text-muted">{isCross ? tr(locale, `two venues · ${formatUsd(notionalUsd, { decimals: 0 })} per account`, `две площадки · ${formatUsd(notionalUsd, { decimals: 0 })} на аккаунт`) : isTxFlow ? tr(locale, `live L2 depth for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `живая L2-глубина на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`) : tr(locale, `medium OI, deep enough for ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `средний OI, хватает глубины на ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}</div>
+              {/* State the rule that picked this pair. It used to claim
+                  "medium OI" regardless of which band the pair came from. */}
+              <div className="text-[14px] text-text-muted">
+                {bestRule === "medium-tradfi"
+                  ? tr(locale, `cheapest Medium-OI TradFi pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара со средним OI · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
+                  : bestRule === "medium"
+                    ? tr(locale, `cheapest Medium-OI pair — no TradFi market in that band · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая пара со средним OI — TradFi в этом бэнде нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
+                    : bestRule === "tradfi"
+                      ? tr(locale, `cheapest TradFi pair — no Medium-OI market available · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара — среднего OI сейчас нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
+                      : tr(locale, `cheapest available pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая доступная пара · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
@@ -529,12 +599,23 @@ export function RouteResults({
                 </div>
               ))}
             </div>
-            {isCross && (
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                <div className="flex flex-col gap-1.5"><div className="text-[11px] text-text-muted">{tr(locale, "Fees included", "Комиссии включены")}</div><div className="font-mono-num text-[17px] text-text-primary">{formatUsd(best.feeCostUsd ?? 0)}</div></div>
-                <div className="flex flex-col gap-1.5"><div className="flex items-center gap-1.5 text-[11px] text-text-muted">{tr(locale, "Funding · 12h", "Funding · 12ч")}<InfoTip text={tr(locale, "Estimated funding for a 12-hour hold, using the average funding rate observed over the past 24 hours. Funding can move and may be positive or negative.", "Оценка funding за удержание 12 часов по средней ставке за последние 24 часа. Funding меняется и может быть как положительным, так и отрицательным.")} /></div><div className={"font-mono-num text-[17px] " + (best.fundingUsd === null ? "text-text-muted" : (best.fundingUsd ?? 0) <= 0 ? "text-positive" : "text-negative")}>{formatUsd(best.fundingUsd)}</div></div>
-              </div>
-            )}
+            {/* Itemised exactly like an expanded table row, so checking the
+                headline recommendation never requires opening another panel. */}
+            <div className="grid grid-cols-2 gap-2.5 pt-4 sm:grid-cols-4">
+              <CostTile label={tr(locale, "Spread", "Спред")} value={best.spreadCostUsd} />
+              <CostTile label={tr(locale, "Slippage", "Проскальзывание")} value={best.slippageCostUsd} />
+              <CostTile
+                label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
+                value={isCross ? best.fundingUsd ?? null : 0}
+                signed
+                tip={fundingTip(locale)}
+              />
+              <CostTile
+                label={tr(locale, "Fees", "Комиссии")}
+                value={best.feeCostUsd ?? 0}
+                tip={(best.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined}
+              />
+            </div>
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
@@ -706,9 +787,12 @@ export function RouteResults({
                             hasCostHistory
                               ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
                               : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "not measured", "не измерялся"), "text-text-dim"],
-                            hasCostHistory
-                              ? [tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"]
-                              : [tr(locale, "Quoted at", "Котировка на"), new Date(data.asOf).toLocaleTimeString(), "text-text-primary"],
+                            // No "Quoted at" tile: the snapshot time already sits
+                            // above the table, and repeating it here read as a
+                            // second, different timestamp.
+                            ...(hasCostHistory
+                              ? [[tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"]]
+                              : []),
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
@@ -733,40 +817,13 @@ export function RouteResults({
                               // short on one book, so funding cancels exactly.
                               // That is a measured zero, not missing data.
                               isCross ? p.fundingUsd : 0,
-                              tr(
-                                locale,
-                                "What a 12-hour hold pays or earns, from the difference between the two protocols' funding rates, averaged over the last 24h. It can be a charge or a credit, it drifts while the position is open, and it is NOT included in the cycle cost below.",
-                                "Сколько принесёт или будет стоить удержание 12 часов — из разницы ставок фандинга двух площадок, усреднённой за последние 24ч. Может быть как расходом, так и доходом, меняется в течение удержания и НЕ входит в стоимость цикла ниже.",
-                              ),
+                              fundingTip(locale),
                             ],
-                            [
-                              tr(locale, "Fees", "Комиссии"),
-                              p.feeCostUsd ?? 0,
-                              (p.feeCostUsd ?? 0) > 0
-                                ? tr(
-                                    locale,
-                                    "Priced at the fee a new account pays after the 5% referral discount. Above VIP 0 the fees are lower.",
-                                    "Считается по комиссии нового аккаунта со скидкой 5% за регистрацию по рефералу. Выше VIP 0 комиссии ниже.",
-                                  )
-                                : undefined,
-                            ],
+                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined],
                           ] as [string, number | null, string | undefined][]
                         ).map(([k, v, tip]) => (
-                          <div
-                            key={k}
-                            title={tip}
-                            className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5"
-                          >
-                            <span className="text-[12px] text-text-muted">{k}{tip ? <span className="ml-1 text-text-dim">?</span> : null}</span>
-                            <span className={`font-mono-num text-[13px] ${v !== null && v < 0 ? "text-positive" : "text-text-primary"}`}>
-                              {v !== null && v > 0 && k.startsWith(tr(locale, "Funding", "Фандинг")) ? "+" : ""}{formatUsd(v)}
-                            </span>
-                          </div>
+                          <CostTile key={k} label={k} value={v} tip={tip} signed={k.startsWith(tr(locale, "Funding", "Фандинг"))} />
                         ))}
-                      </div>
-                      <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3.5 text-[13px] text-text-muted">
-                        <span>{tr(locale, "Combined hedge-cycle cost", "Полная стоимость хедж-цикла")} <span className="font-mono-num text-positive">{formatUsd(p.cycleCostUsd)}</span></span>
-                        <span className="text-text-dim">{tr(locale, "spread + slippage + fees, both accounts. Funding is separate.", "спред + проскальзывание + комиссии, оба аккаунта. Фандинг считается отдельно.")}</span>
                       </div>
                     </div>
                   )}

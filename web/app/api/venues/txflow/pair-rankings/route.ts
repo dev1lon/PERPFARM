@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 const INFO_URL = "https://api.txflow.com/info";
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
+// Two requests per market, so concurrency is what triggers TxFlow's per-IP
+// rate limit. Four in flight is slower than eight but finishes; eight did not.
+const REQUEST_CONCURRENCY = 4;
+const MAX_RETRIES = 3;
 // Fixed product thresholds, shared with every other calculator so a market
 // cannot sit in a different band depending on which page asked.
 const HIGH_OI_USD = OI_BANDS.high;
@@ -41,7 +45,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-async function info<T>(payload: Record<string, unknown>): Promise<T> {
+/** Thrown when TxFlow rate-limits us, so the caller can say so plainly. */
+class RateLimited extends Error {}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * One /info call, retried on 429.
+ *
+ * Pricing a route needs two requests per market (ticker + L2 book), so a full
+ * scan is a burst of ~80 requests against a venue that rate-limits per IP --
+ * and on Vercel every visitor's scan shares that IP. A single 429 used to
+ * abort the whole scan and surface as a raw "TxFlow returned 429".
+ */
+async function info<T>(payload: Record<string, unknown>, attempt = 0): Promise<T> {
   const response = await fetch(INFO_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -49,6 +66,13 @@ async function info<T>(payload: Record<string, unknown>): Promise<T> {
     cache: "no-store",
     signal: AbortSignal.timeout(8_000),
   });
+  if (response.status === 429) {
+    if (attempt >= MAX_RETRIES) throw new RateLimited("rate limited");
+    // Honour Retry-After when TxFlow sends one; otherwise back off 400/800ms.
+    const retryAfter = Number(response.headers.get("retry-after"));
+    await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1_000, 4_000) : 400 * 2 ** attempt);
+    return info<T>(payload, attempt + 1);
+  }
   if (!response.ok) throw new Error(`TxFlow returned ${response.status}`);
   const data: unknown = await response.json();
   if (!isRecord(data) || typeof data.message === "string") throw new Error("TxFlow returned an invalid response");
@@ -133,7 +157,10 @@ export async function GET(request: NextRequest) {
       .filter((market) => market.tagIds?.includes(5) === true || market.baseCurrency === "BTC" || market.baseCurrency === "ETH");
     const fillNotionalUsd = accountVolumeUsd / 2;
 
-    const rows = await mapLimit(markets, 8, async (market) => {
+    // Counted, not swallowed: a scan that lost half its markets to rate
+    // limiting must not look identical to a scan of a thin venue.
+    let rateLimitedMarkets = 0;
+    const rows = await mapLimit(markets, REQUEST_CONCURRENCY, async (market) => {
       try {
         const [ticker, book] = await Promise.all([
           info<Ticker>({ type: "marketTicker", instrumentId: market.index }),
@@ -191,12 +218,21 @@ export async function GET(request: NextRequest) {
           fundingUsd: 0,
           costTier: costTier(marketBps),
         };
-      } catch {
+      } catch (error) {
+        if (error instanceof RateLimited) rateLimitedMarkets++;
         return null;
       }
     });
     const pairs = rows.filter((row): row is NonNullable<typeof row> => row !== null).filter((row) => row.openInterestUsd >= LOW_OI_USD).sort((left, right) => left.cycleCostUsd - right.cycleCostUsd);
-    if (pairs.length === 0) throw new Error("No TxFlow markets are currently quotable for this size");
+    if (pairs.length === 0) {
+      // Name the real cause. "No markets are quotable for this size" blamed the
+      // user's volume for what was actually TxFlow throttling us.
+      throw new Error(
+        rateLimitedMarkets > 0
+          ? `TxFlow is rate-limiting requests right now (${rateLimitedMarkets} of ${markets.length} markets). Try again in a minute.`
+          : "No TxFlow markets are currently quotable for this size",
+      );
+    }
     // Fixed OI bands: High >$300k, Medium $100k–$300k, Low $10k–$100k.
     const band = (key: "high" | "medium" | "low", of: typeof pairs) => {
       const bandOis = of.map((pair) => pair.openInterestUsd);
@@ -229,6 +265,14 @@ export async function GET(request: NextRequest) {
       bands,
     });
   } catch (error) {
+    // A throttled venue is a 503 with a retry hint, not a 502 "bad gateway":
+    // nothing is broken and the answer will be there shortly.
+    if (error instanceof RateLimited) {
+      return NextResponse.json(
+        { error: "TxFlow is rate-limiting requests right now. Try again in a minute." },
+        { status: 503, headers: { "Retry-After": "60" } },
+      );
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load TxFlow market data" }, { status: 502 });
   }
 }
