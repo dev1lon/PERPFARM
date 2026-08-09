@@ -53,6 +53,25 @@ function HedgeDiagram() {
   );
 }
 
+/** Desktop-only neutral route visual for the intro: blue route geometry only,
+ * without position-side labels that belong to the calculator itself. */
+function BlueRouteModel() {
+  return (
+    <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block">
+      <svg viewBox="0 0 520 330" className="block h-auto w-full" aria-hidden>
+        <defs>
+          <filter id="blue-route-glow" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="7" /></filter>
+        </defs>
+        <g fill="#52617c" opacity="0.55"><circle cx="94" cy="88" r="3" /><circle cx="168" cy="246" r="3" /><circle cx="262" cy="76" r="3" /><circle cx="360" cy="238" r="3" /><circle cx="432" cy="104" r="3" /></g>
+        <path d="M84 218 C 162 218, 178 108, 260 108 S 356 218, 436 218" fill="none" stroke="#4d8dff" strokeWidth="13" opacity="0.18" filter="url(#blue-route-glow)" />
+        <path d="M84 218 C 162 218, 178 108, 260 108 S 356 218, 436 218" fill="none" stroke="#4d8dff" strokeWidth="2.5" />
+        <circle cx="84" cy="218" r="20" fill="none" stroke="#4d8dff" strokeOpacity="0.38" /><circle cx="84" cy="218" r="10" fill="#4d8dff" />
+        <circle cx="260" cy="108" r="6" fill="#bcd6ff" /><circle cx="436" cy="218" r="20" fill="none" stroke="#4d8dff" strokeOpacity="0.38" /><circle cx="436" cy="218" r="10" fill="#4d8dff" />
+      </svg>
+    </div>
+  );
+}
+
 function VolumePreview() {
   const locale = useLocale();
   return (
@@ -109,8 +128,9 @@ export function HowItWorksV2() {
     <div style={{ backgroundImage: "radial-gradient(1100px 520px at 78% -6%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%)" }}>
       <SiteHeaderV2 />
       <main className="mx-auto max-w-[1240px] px-5 pb-2 sm:px-10">
-        <section className="py-14 sm:py-[72px] lg:pb-[60px]">
+        <section className="py-14 sm:py-[72px] lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:pb-[60px]">
           <div className="flex flex-col items-start gap-5.5"><div className="font-mono-num text-[11px] tracking-[0.16em] text-accent">{tr(locale, "START HERE", "НАЧНИТЕ ЗДЕСЬ")}</div><h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.032em] text-text-primary sm:text-[56px]">{tr(locale, "How PerpFarm works", "Как работает PerpFarm")}</h1><p className="max-w-[470px] text-[17px] leading-[1.62] text-text-muted">{tr(locale, "PerpFarm helps you plan a lower-cost route for farming perp points before you trade.", "PerpFarm помогает спланировать менее затратный путь к perp-поинтам до сделки.")}</p><div className="flex max-w-[500px] gap-3.5 rounded-2xl border border-border bg-surface-1 px-5 py-[18px]"><span className="w-[3px] shrink-0 rounded-full bg-accent" /><p className="text-[14px] leading-[1.62] text-text-muted">{tr(locale, "A hedge uses equal notional exposure on both sides of one market. This reduces directional price exposure while we measure execution costs.", "Хедж использует равный номинальный объём с обеих сторон одного рынка. Так снижается направленный ценовой риск, а PerpFarm измеряет затраты исполнения.")}</p></div></div>
+          <BlueRouteModel />
         </section>
         <div className="flex flex-col gap-4">
           <Step number={tr(locale, "STEP 01", "ШАГ 01")} title={tr(locale, "Choose the points you want", "Выберите нужные поинты")} body={tr(locale, "Start with the perp protocol whose points you want to farm. Each protocol values activity differently: volume, open interest, holding time, liquidity, tiers or competitions.", "Начните с perp-протокола, чьи поинты хотите фармить. Каждый протокол по-своему оценивает активность: объём, открытый интерес, время удержания, ликвидность, тиры или соревнования.")}><div className="flex flex-col gap-2.5"><ProtocolChoice slug="variational" name="Variational" selected /><ProtocolChoice slug="txflow" name="TxFlow" /></div></Step>
