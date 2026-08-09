@@ -88,9 +88,29 @@ function MarketImpliedFdvCard() {
 }
 
 /** Shared baseline slots; TxFlow has no announced activity or points programme. */
-function ActivityAndDistribution() {
+function LegacyActivityAndDistribution() {
   const locale = useLocale();
   return <section className="mt-11"><h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Protocol activity", "Активность протокола")}</h2><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="flex min-h-[220px] items-center justify-center rounded-[18px] border border-border bg-surface-1 p-[22px] text-center"><div className="font-mono-num text-[18px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No activity running", "Нет активных активностей")}</div></div><div className="flex min-h-[220px] flex-col rounded-[18px] border border-border bg-surface-1 p-[22px]"><div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Points distribution", "Раздача поинтов")}</div><div className="flex flex-1 items-center justify-center text-center"><div className="font-mono-num text-[22px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div></div></div></div></section>;
+}
+
+function ActivityAndDistribution() {
+  const locale = useLocale();
+  return (
+    <section className="mt-11">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="flex min-h-[220px] flex-col justify-center gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+          <div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol activity", "Активность протокола")}</div>
+          <div className="font-mono-num text-[18px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No activity running", "Нет активных активностей")}</div>
+        </div>
+        <div className="flex min-h-[220px] flex-col rounded-[18px] border border-border bg-surface-1 p-[22px]">
+          <div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Points distribution", "Раздача поинтов")}</div>
+          <div className="flex flex-1 items-center justify-center text-center">
+            <div className="font-mono-num text-[22px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function MarketImpliedFdv() {
