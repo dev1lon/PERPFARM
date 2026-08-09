@@ -26,8 +26,6 @@ const WEEK_ANCHOR_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const WEEKS_AT_ANCHOR = 32;
 /** Pool left on the anchor date: 10 weekly drops, so 8 remain by 2026-08-04. */
 const REMAINING_AT_ANCHOR = 1_500_000;
-const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
-const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 
 function pointsProgress(now: number) {
@@ -352,14 +350,13 @@ function ActivityAndDistribution() {
     return () => window.clearInterval(t);
   }, []);
   const p = pointsProgress(now);
-  const competitionActive = now >= TRADFI_COMPETITION_START_UTC && now < TRADFI_COMPETITION_END_UTC;
   return (
     <div className="mt-11">
       <H2>{tr(locale, "Protocol activity", "Активность протокола")}</H2>
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Running activity, or an explicit "nothing running" state — an empty
             slot would read as us forgetting to update it. */}
-        {competitionActive ? (
+        {false ? (
           <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-1.5">
@@ -385,21 +382,21 @@ function ActivityAndDistribution() {
             </a>
           </div>
         ) : (
-          <div className="flex flex-col justify-center gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+          <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px] text-center">
             <div className="flex items-center gap-2.5">
-              <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
-              <div className="text-[17px] font-semibold text-text-primary">
+              <span className="hidden h-[5px] w-[5px] rounded-full bg-text-dim" />
+              <div className="font-mono-num text-[18px] font-semibold uppercase tracking-[0.12em] text-text-dim">
                 {tr(locale, "No activity running", "Нет активных активностей")}
               </div>
             </div>
-            <div className="text-[14px] leading-[1.62] text-text-muted">
+            <div className="hidden text-[14px] leading-[1.62] text-text-muted">
               {tr(
                 locale,
                 "Right now there is no competition or bonus that would increase the number of points you earn or lower their cost. We track this and it will appear here as soon as one starts.",
                 "Сейчас нет соревнований или бонусов, которые увеличили бы количество поинтов или снизили их стоимость. Мы это отслеживаем — как только что-то начнётся, оно появится здесь.",
               )}
             </div>
-            <div className="text-[13px] text-text-dim">
+            <div className="hidden text-[13px] text-text-dim">
               {tr(
                 locale,
                 "The last competition ended on 2026-07-31; its 20,000-point distribution is already counted in the total.",

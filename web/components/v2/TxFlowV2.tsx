@@ -82,9 +82,19 @@ function LegacyHedgeRecommendations() {
   return <div className="mt-11"><h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2><div className="pb-4 pt-1.5 text-[14px] text-text-muted">{tr(locale, "General guidance for TxFlow, independent of the calculation above.", "Общие рекомендации по TxFlow, независимо от расчёта выше.")}</div><div className="grid gap-4 sm:grid-cols-2">{card("TxFlow × TxFlow", tr(locale, "Two accounts on the same CLOB: calculate the live active-side execution cost before placing the hedge.", "Два аккаунта в одном CLOB: посчитайте live-стоимость активной стороны перед постановкой хеджа."), [[tr(locale, "Live L2", "Живая L2"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]])}{card(<><span>TxFlow × </span><Link href="/variational" className="pf-transition hover:text-accent"><span className="underline decoration-accent/70 underline-offset-4">Variational</span> ↗</Link></>, tr(locale, "A TradFi-perps counterparty to compare before crossing venues. The live calculator currently prices the same-venue TxFlow route.", "Контрагент по TradFi-perps для сравнения перед кросс-площадочным маршрутом. Live-калькулятор пока считает маршрут внутри TxFlow."), [[tr(locale, "Compare first", "Сначала сравнить"), "warn"], ["TradFi perps", "neutral"]])}</div></div>;
 }
 
-function MarketImpliedFdv() {
+function MarketImpliedFdvCard() {
   const locale = useLocale();
   return <section className="mt-11"><div className="flex flex-wrap items-end justify-between gap-3 pb-4"><div><h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Market-implied FDV", "Рыночные ожидания FDV")}</h2><p className="pt-1.5 text-[14px] text-text-muted">{tr(locale, "Probability markets for TxFlow's post-launch FDV.", "Вероятностные рынки для FDV TxFlow после запуска.")}</p></div></div><div className="rounded-[18px] border border-border bg-surface-1 p-4 sm:p-5"><p className="flex min-h-[148px] items-center justify-center px-6 text-center text-[14px] text-text-muted">{tr(locale, "No public TxFlow FDV prediction market is available yet.", "Публичного prediction market по FDV TxFlow пока нет.")}</p></div></section>;
+}
+
+/** Shared baseline slots; TxFlow has no announced activity or points programme. */
+function ActivityAndDistribution() {
+  const locale = useLocale();
+  return <section className="mt-11"><h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Protocol activity", "Активность протокола")}</h2><div className="mt-4 grid gap-4 lg:grid-cols-2"><div className="flex min-h-[220px] items-center justify-center rounded-[18px] border border-border bg-surface-1 p-[22px] text-center"><div className="font-mono-num text-[18px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No activity running", "Нет активных активностей")}</div></div><div className="flex min-h-[220px] flex-col rounded-[18px] border border-border bg-surface-1 p-[22px]"><div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Points distribution", "Раздача поинтов")}</div><div className="flex flex-1 items-center justify-center text-center"><div className="font-mono-num text-[22px] font-semibold uppercase tracking-[0.12em] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div></div></div></div></section>;
+}
+
+function MarketImpliedFdv() {
+  return <><ActivityAndDistribution /><MarketImpliedFdvCard /></>;
 }
 
 export function TxFlowV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
