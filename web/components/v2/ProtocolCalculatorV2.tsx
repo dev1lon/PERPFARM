@@ -766,6 +766,9 @@ export function RouteResults({
                         <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.competitionEligible && (
+                          <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">TradFi</span>
+                        )}
                         {showEligible && p.competitionEligible && (
                           <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
                         )}
