@@ -159,7 +159,8 @@ function Hero() {
             {tr(locale, "Delta-neutral route map", "Карта дельта-нейтрального маршрута")}
           </div>
         </div>
-        <RouteMap mode="network" pair="XAU" height={432} />
+        <div className="sm:hidden"><RouteMap mode="network" pair="XAU" height={470} /></div>
+        <div className="hidden sm:block"><RouteMap mode="network" pair="XAU" height={432} /></div>
         <div
           className="flex items-center gap-5 px-[18px] py-3.5 text-[12px]"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)", color: "#8b96ad" }}

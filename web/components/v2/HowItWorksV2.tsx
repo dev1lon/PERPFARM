@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
-import { RouteMap } from "@/components/v2/RouteMap";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 
 type StepProps = {
@@ -33,20 +32,6 @@ function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; 
       <ProtocolMark slug={slug} name={name} size={32} radius={10} />
       <div className="min-w-0 flex-1 text-[15px] font-semibold text-text-primary">{name}</div>
       {selected ? <span className="font-mono-num text-[10px] tracking-[0.1em] text-accent">SELECTED</span> : null}
-    </div>
-  );
-}
-
-function RoutePreview() {
-  const locale = useLocale();
-  return (
-    <div className="overflow-hidden rounded-[20px] border" style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-      <RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} />
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-[18px] py-3.5 text-[12px]" style={{ borderColor: "rgba(255,255,255,0.06)", color: "#8b96ad" }}>
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: "#35d399" }} />{tr(locale, "LONG", "ЛОНГ")}</span>
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: "#e5645f" }} />{tr(locale, "SHORT", "ШОРТ")}</span>
-        <span className="ml-auto font-mono-num text-text-dim">XAU</span>
-      </div>
     </div>
   );
 }
@@ -124,9 +109,8 @@ export function HowItWorksV2() {
     <div style={{ backgroundImage: "radial-gradient(1100px 520px at 78% -6%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%)" }}>
       <SiteHeaderV2 />
       <main className="mx-auto max-w-[1240px] px-5 pb-2 sm:px-10">
-        <section className="grid items-center gap-10 py-14 sm:py-[72px] lg:grid-cols-2 lg:gap-12 lg:pb-[60px]">
+        <section className="py-14 sm:py-[72px] lg:pb-[60px]">
           <div className="flex flex-col items-start gap-5.5"><div className="font-mono-num text-[11px] tracking-[0.16em] text-accent">{tr(locale, "START HERE", "НАЧНИТЕ ЗДЕСЬ")}</div><h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.032em] text-text-primary sm:text-[56px]">{tr(locale, "How PerpFarm works", "Как работает PerpFarm")}</h1><p className="max-w-[470px] text-[17px] leading-[1.62] text-text-muted">{tr(locale, "PerpFarm helps you plan a lower-cost route for farming perp points before you trade.", "PerpFarm помогает спланировать менее затратный путь к perp-поинтам до сделки.")}</p><div className="flex max-w-[500px] gap-3.5 rounded-2xl border border-border bg-surface-1 px-5 py-[18px]"><span className="w-[3px] shrink-0 rounded-full bg-accent" /><p className="text-[14px] leading-[1.62] text-text-muted">{tr(locale, "A hedge uses equal notional exposure on both sides of one market. This reduces directional price exposure while we measure execution costs.", "Хедж использует равный номинальный объём с обеих сторон одного рынка. Так снижается направленный ценовой риск, а PerpFarm измеряет затраты исполнения.")}</p></div></div>
-          <RoutePreview />
         </section>
         <div className="flex flex-col gap-4">
           <Step number={tr(locale, "STEP 01", "ШАГ 01")} title={tr(locale, "Choose the points you want", "Выберите нужные поинты")} body={tr(locale, "Start with the perp protocol whose points you want to farm. Each protocol values activity differently: volume, open interest, holding time, liquidity, tiers or competitions.", "Начните с perp-протокола, чьи поинты хотите фармить. Каждый протокол по-своему оценивает активность: объём, открытый интерес, время удержания, ликвидность, тиры или соревнования.")}><div className="flex flex-col gap-2.5"><ProtocolChoice slug="variational" name="Variational" selected /><ProtocolChoice slug="txflow" name="TxFlow" /></div></Step>
