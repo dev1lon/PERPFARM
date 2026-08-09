@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { formatUtcDateTime } from "@/lib/format";
 
 const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y";
 
@@ -98,14 +99,7 @@ export function FdvMarketsV2() {
               {tr(locale, "Polymarket · refreshes hourly", "Polymarket · обновляется каждый час")}
               {" · "}
               <span className="font-mono-num text-text-muted">
-                {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZone: "UTC",
-                  timeZoneName: "short",
-                })}
+                {formatUtcDateTime(data.asOf)}
               </span>
               {" · "}
               {tr(locale, "Total event volume", "Общий объём события")} <span className="font-mono-num text-text-muted">{compactUsd(data.eventVolume)}</span>

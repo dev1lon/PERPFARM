@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { formatUsd } from "@/lib/format";
+import { formatUsd, formatUtcDateTime } from "@/lib/format";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
@@ -65,8 +65,8 @@ function StaleDataNotice({ data }: { data: RankingResponse }) {
         <span className="text-text-muted">
           {tr(
             locale,
-            `The protocol's public API did not respond, so these numbers come from the last saved snapshots (${new Date(data.asOf).toLocaleString("en-US")}) — not live prices.`,
-            `Публичный API протокола не ответил, поэтому цифры взяты из последних сохранённых снимков (${new Date(data.asOf).toLocaleString("ru-RU")}) — это не живые котировки.`,
+            `The protocol's public API did not respond, so these numbers come from the last saved snapshots (${formatUtcDateTime(data.asOf)}) — not live prices.`,
+            `Публичный API протокола не ответил, поэтому цифры взяты из последних сохранённых снимков (${formatUtcDateTime(data.asOf)}) — это не живые котировки.`,
           )}
         </span>
       </div>
@@ -684,7 +684,7 @@ export function RouteResults({
         <div className="flex flex-col items-start gap-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col items-start gap-2">
             <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
+            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
           {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">

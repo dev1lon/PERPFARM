@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
+import { formatUtcDateTime } from "@/lib/format";
 
 export type ActivityMetric = "volume" | "openInterest" | "uniqueTraders";
 export type ActivityRange = 30 | 90 | 180;
@@ -181,7 +182,7 @@ export function VariationalMarketActivity({ includeUniqueTraders = false }: { in
           <h2 className="mt-2 text-base font-semibold text-text-primary">{`${includeUniqueTraders ? tr(locale, "Protocol activity", "Активность протокола") : tr(locale, "Volume and open interest", "Объём и открытый интерес")} — ${headingRange}`}</h2>
           <p className="mt-1 text-sm text-text-muted">{isUniqueTraders ? tr(locale, "Protocol-wide trader count.", "Число трейдеров по всему протоколу.") : tr(locale, "Platform-wide figures in USD.", "Данные по всей платформе в USD.")}</p>
         </div>
-        {data && <p className="font-mono-num text-sm text-text-muted">{tr(locale, "Updated", "Обновлено")} {new Date(data.asOf).toLocaleTimeString(locale === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" })} UTC</p>}
+        {data && <p className="font-mono-num text-sm text-text-muted">{tr(locale, "Updated", "Обновлено")} {formatUtcDateTime(data.asOf)}</p>}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

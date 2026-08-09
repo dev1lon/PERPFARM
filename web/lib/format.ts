@@ -26,7 +26,19 @@ export function formatPct(value: number | null, decimals = 1): string {
 
 export function formatDate(iso: string | null): string {
   if (!iso) return "n/a";
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const date = new Date(iso);
+  if (Number.isNaN(date.valueOf())) return "n/a";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "numeric", day: "numeric" }).format(date);
+}
+
+/** Stable, timezone-safe timestamp for every market-data status line. */
+export function formatUtcDateTime(iso: string | null | undefined): string {
+  if (!iso) return "n/a";
+  const date = new Date(iso);
+  if (Number.isNaN(date.valueOf())) return "n/a";
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "numeric", day: "numeric" }).format(date);
+  const time = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: true }).format(date);
+  return `${day}, ${time} UTC`;
 }
 
 export function daysUntil(iso: string | null): number | null {

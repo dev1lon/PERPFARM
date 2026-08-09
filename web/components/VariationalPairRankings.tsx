@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { formatUsd } from "@/lib/format";
+import { formatUsd, formatUtcDateTime } from "@/lib/format";
 
 interface PairRanking {
   pair: string;
@@ -190,7 +190,7 @@ export function VariationalPairRankings({
         </div>
       ))}
 
-      {data && <p className="text-sm text-text-muted">{tr(locale, "Snapshot", "Снимок")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</p>}
+      {data && <p className="text-sm text-text-muted">{tr(locale, "Snapshot", "Снимок")} {formatUtcDateTime(data.asOf)}</p>}
     </section>
   );
 }
