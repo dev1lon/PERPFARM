@@ -709,11 +709,11 @@ export function RouteResults({
               <div>#</div>
               <div>{tr(locale, "Pair", "Пара")}</div>
               <div>{tr(locale, "Open interest", "Открытый интерес")}</div>
-              <div>{tr(locale, "long", "лонг")}</div>
-              <div>{tr(locale, "short", "шорт")}</div>
+              <div>{tr(locale, "Long", "Лонг")}</div>
+              <div>{tr(locale, "Short", "Шорт")}</div>
               <div>{tr(locale, "Entry orders", "Вход")}</div>
               <div>{tr(locale, "Exit orders", "Выход")}</div>
-              <div className="text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
+              <div className="translate-x-2 text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
               <div />
             </div>
             {top.map((p, i) => {
