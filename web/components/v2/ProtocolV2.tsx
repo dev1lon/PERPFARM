@@ -70,12 +70,12 @@ function H2({ children }: { children: React.ReactNode }) {
 function Hero() {
   const locale = useLocale();
   const metric = (label: string, value: string, valueClass = "text-text-primary", tip?: string) => (
-    <div className="flex flex-col gap-1.5 rounded-[14px] border border-border bg-surface-1 px-4 py-3.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-[12px] border border-border bg-surface-1 px-3 py-2.5 sm:rounded-[14px] sm:px-4 sm:py-3.5">
+      <div className="flex min-h-[26px] items-start gap-1.5 text-[10px] font-medium leading-[1.3] text-text-muted sm:min-h-0 sm:items-center sm:text-[11px]">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
       </div>
-      <div className={`font-mono-num text-[18px] ${valueClass}`}>{value}</div>
+      <div className={`whitespace-nowrap font-mono-num text-[16px] leading-none sm:text-[18px] ${valueClass}`}>{value}</div>
     </div>
   );
   return (
@@ -98,8 +98,8 @@ function Hero() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2.5">
-          {metric(tr(locale, "Season", "Сезон"), "Season 1")}
+        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:gap-2.5">
+          {metric(tr(locale, "Season", "Сезон"), "1")}
           {metric(tr(locale, "Farm estimate", "Оценка фарма"), "$5–11/pt", "text-positive", farmEstimateTip(locale))}
           {metric(tr(locale, "OTC point price", "OTC цена поинта"), "$24", "text-text-primary", otcPointTip(locale))}
         </div>
@@ -336,7 +336,7 @@ function HedgeRecommendations() {
           "txflow",
           "Variational ×",
           tr(locale, "Early perp-dex focused on TradFi markets, like Variational. Potential retro points.", "Ранний perp-dex с фокусом на TradFi-рынки, как и Variational. Потенциальные ретро-поинты."),
-          [[tr(locale, "Higher spread", "Шире спред"), "warn"], [tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "neutral"]],
+          [[tr(locale, "Higher cost", "Дороже исполнение"), "warn"], [tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "ok"]],
           "txflow",
         )}
       </div>
