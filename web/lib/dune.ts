@@ -46,13 +46,26 @@ export async function fetchDuneRows(queryId: string): Promise<Record<string, unk
     : [];
 }
 
-/** First column whose normalized name matches (or contains) one of `names`. */
+/**
+ * Column whose normalized name matches one of `names`.
+ *
+ * An EXACT match always wins over a substring one, and column order is never
+ * the tie-breaker. The daily-volume query returns both `volume` and
+ * `total_volume`; asking for "volume" by substring alone would let either win
+ * depending on key order, and `total_volume` is a cumulative running total --
+ * plotting it as a daily bar would show a line that only ever goes up.
+ */
 export function valueFromDuneRow(row: Record<string, unknown>, names: string[]): unknown {
-  const found = Object.entries(row).find(([key]) => {
-    const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
-    return names.some((name) => normalized === name || normalized.includes(name));
-  });
-  return found?.[1];
+  const columns = Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value] as const);
+  for (const name of names) {
+    const exact = columns.find(([normalized]) => normalized === name);
+    if (exact) return exact[1];
+  }
+  for (const name of names) {
+    const partial = columns.find(([normalized]) => normalized.includes(name));
+    if (partial) return partial[1];
+  }
+  return undefined;
 }
 
 export function duneRowDate(row: Record<string, unknown>): string | null {
@@ -82,6 +95,25 @@ export function latestDuneReading(rows: Record<string, unknown>[], names: string
 
 export function latestDuneValue(rows: Record<string, unknown>[], names: string[]): number | null {
   return latestDuneReading(rows, names)?.value ?? null;
+}
+
+/**
+ * A full daily series from a dated Dune result, oldest first.
+ *
+ * Sorted by date rather than trusted in the order it arrived, and de-duplicated
+ * by day so a query that returns several rows per day cannot draw a sawtooth.
+ */
+export function duneSeries(rows: Record<string, unknown>[], names: string[], maxDays: number): ActivityPoint[] {
+  const daily = new Map<string, number>();
+  for (const row of rows) {
+    const date = duneRowDate(row);
+    const value = asNumber(valueFromDuneRow(row, names));
+    if (date !== null && value !== null) daily.set(date, value);
+  }
+  return [...daily]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, value]) => ({ date, value }))
+    .slice(-maxDays);
 }
 
 /**

@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { latestDuneReading, withCurrentPoint } from "./dune";
+import { duneSeries, latestDuneReading, valueFromDuneRow, withCurrentPoint } from "./dune";
+
+/**
+ * Real shape of query 6679693 ("volume history"). It carries BOTH a daily
+ * `volume` and a cumulative `total_volume`; picking the wrong one draws a line
+ * that only ever rises.
+ */
+const TXFLOW_VOLUME_ROWS = [
+  { day: "2026-03-26", day_label: "Mar 26th", total_volume: 5469.6589, volume: 5469.6589 },
+  { day: "2026-03-27", day_label: "Mar 27th", total_volume: 11430.65982, volume: 5961.00092 },
+  { day: "2026-03-28", day_label: "Mar 28th", total_volume: 3328925.11585, volume: 3317494.45603 },
+];
 
 /**
  * Real shape of Dune query 6678737 ("Total OI"), which returns NEWEST FIRST.
@@ -36,6 +47,47 @@ describe("latestDuneReading", () => {
 
   it("returns null when no column matches", () => {
     expect(latestDuneReading([{ something_else: 1 }], OI_NAMES)).toBeNull();
+  });
+});
+
+describe("valueFromDuneRow", () => {
+  it("prefers an exact column match over a substring one", () => {
+    // "total_volume" also contains "volume"; only the exact rule keeps the
+    // daily figure from being replaced by a cumulative running total.
+    expect(valueFromDuneRow(TXFLOW_VOLUME_ROWS[2], ["volume"])).toBe(3317494.45603);
+  });
+
+  it("still falls back to a substring match when nothing matches exactly", () => {
+    expect(valueFromDuneRow({ "Total OI": 42, day: "2026-08-09" }, ["oi"])).toBe(42);
+  });
+});
+
+describe("duneSeries", () => {
+  it("builds an oldest-first daily series from the daily column", () => {
+    expect(duneSeries(TXFLOW_VOLUME_ROWS, ["volume"], 180)).toEqual([
+      { date: "2026-03-26", value: 5469.6589 },
+      { date: "2026-03-27", value: 5961.00092 },
+      { date: "2026-03-28", value: 3317494.45603 },
+    ]);
+  });
+
+  it("sorts by date rather than trusting the order rows arrived in", () => {
+    const series = duneSeries([...TXFLOW_OI_ROWS], OI_NAMES, 180);
+    expect(series.map((point) => point.date)).toEqual([...series.map((point) => point.date)].sort());
+    expect(series.at(-1)).toEqual({ date: "2026-08-09", value: 15979969.986481467 });
+  });
+
+  it("keeps one point per day", () => {
+    const series = duneSeries(
+      [{ day: "2026-08-09", "Total OI": 1 }, { day: "2026-08-09", "Total OI": 2 }],
+      OI_NAMES,
+      180,
+    );
+    expect(series).toHaveLength(1);
+  });
+
+  it("trims to the requested window", () => {
+    expect(duneSeries(TXFLOW_OI_ROWS, OI_NAMES, 2)).toHaveLength(2);
   });
 });
 
