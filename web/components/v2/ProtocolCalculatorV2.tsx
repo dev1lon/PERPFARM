@@ -526,9 +526,11 @@ export function RouteResults({
   // scroll by the delta after the new list renders.
   const filterRowRef = useRef<HTMLDivElement>(null);
   const anchorTop = useRef<number | null>(null);
+  const [showAllMobile, setShowAllMobile] = useState(false);
   const changeFilter = (k: BandKey) => {
     anchorTop.current = filterRowRef.current?.getBoundingClientRect().top ?? null;
     setExpanded(null); // a row expanded in another band must not stay open here
+    setShowAllMobile(false);
     setOiFilter(k);
   };
   useLayoutEffect(() => {
@@ -551,6 +553,13 @@ export function RouteResults({
   // share the exact same presentation and differ only in available data.
   const hasCostHistory = best.costRangeLowUsd !== best.costRangeHighUsd;
   const hold = recommendedHold(homeSlug, locale);
+  const bestRuleLabel = bestRule === "medium-tradfi"
+    ? tr(locale, "Cheapest medium-OI TradFi pair", "Самая дешёвая TradFi-пара со средним OI")
+    : bestRule === "medium"
+      ? tr(locale, "Cheapest medium-OI pair", "Самая дешёвая пара со средним OI")
+      : bestRule === "tradfi"
+        ? tr(locale, "Cheapest TradFi pair", "Самая дешёвая TradFi-пара")
+        : tr(locale, "Cheapest eligible pair", "Самая дешёвая подходящая пара");
   return (
     <>
       <StaleDataNotice data={data} />
@@ -577,21 +586,13 @@ export function RouteResults({
         </div>
         <div className="grid lg:grid-cols-[1fr_400px]">
           <div className="px-6 py-6">
-            <div className="flex items-baseline gap-3.5">
+            <div className="flex flex-wrap items-center gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              {/* State the rule that picked this pair. It used to claim
-                  "medium OI" regardless of which band the pair came from. */}
-              <div className="text-[14px] text-text-muted">
-                {bestRule === "medium-tradfi"
-                  ? tr(locale, `cheapest Medium-OI TradFi pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара со средним OI · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
-                  : bestRule === "medium"
-                    ? tr(locale, `cheapest Medium-OI pair — no TradFi market in that band · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая пара со средним OI — TradFi в этом бэнде нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
-                    : bestRule === "tradfi"
-                      ? homeSlug === "txflow"
-                        ? tr(locale, `cheapest eligible TradFi pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая eligible TradFi-пара · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
-                        : tr(locale, `cheapest TradFi pair — no Medium-OI market available · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара — среднего OI сейчас нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
-                      : tr(locale, `cheapest available pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая доступная пара · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}
-              </div>
+              <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1 font-mono-num text-[10px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
+              <span className="font-mono-num text-[12px] text-text-muted">{formatUsd(notionalUsd, { decimals: 0 })} {tr(locale, "per side", "на сторону")}</span>
+            </div>
+            <div className="my-4 overflow-hidden rounded-[14px] border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+              <RouteMap mode="result" pair={best.pair} longLabel={homeName} shortLabel={hedgeName} height={170} />
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
@@ -664,11 +665,9 @@ export function RouteResults({
       {/* 10 cheapest pairs */}
       <div className="pt-11">
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
-          <div>
-            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-            <div className="text-[14px] text-text-muted">{hasCostHistory ? tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`) : tr(locale, `Sorted by current full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по текущей стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
-          </div>
+          <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
           <div className="flex flex-col items-end gap-2">
+            <div className="font-mono-num text-[11px] tracking-[0.08em] text-text-muted">{tr(locale, "by cycle cost", "по стоимости цикла")}</div>
             {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
                 {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
@@ -705,7 +704,7 @@ export function RouteResults({
               const o = p.entryOrders && p.exitOrders ? { entry: p.entryOrders, exit: p.exitOrders } : orders(p.firstLimitSide);
               const open = expanded === p.pair;
               return (
-                <div key={p.pair} className="border-b border-border last:border-b-0">
+                <div key={p.pair} className={`border-b border-border last:border-b-0 ${i >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : p.pair)}
@@ -757,15 +756,11 @@ export function RouteResults({
                         <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
                         <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
                       </div>
-                      {/* One line, never wrapping: a long OI ($403.5M) used to
-                          break the order labels mid-word and give rows uneven
-                          heights. Slashes lose their padding to fit. */}
-                      <div className="overflow-hidden text-ellipsis whitespace-nowrap pl-[26px] font-mono-num text-[10px] text-text-muted">
-                        OI {compactUsd(p.openInterestUsd)}
-                        <span className="text-text-dim"> · </span>
-                        {o.entry.replace(/ \/ /g, "/")}
-                        <span className="text-text-dim"> → </span>
-                        {o.exit.replace(/ \/ /g, "/")}
+                      <div className="flex min-w-0 items-center gap-1.5 pl-[26px] font-mono-num text-[10px] text-text-muted">
+                        <span className="truncate">L {homeName}</span>
+                        <span className="text-text-dim">·</span>
+                        <span className="truncate">S {hedgeName}</span>
+                        <span className="ml-auto shrink-0">OI {compactUsd(p.openInterestUsd)}</span>
                       </div>
                     </div>
                   </button>
@@ -849,6 +844,18 @@ export function RouteResults({
                 </div>
               );
             })}
+            {top.length > 5 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (showAllMobile) setExpanded(null);
+                  setShowAllMobile((value) => !value);
+                }}
+                className="pf-transition mx-4 my-3 flex h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 lg:hidden"
+              >
+                {showAllMobile ? tr(locale, "Show fewer", "Показать меньше") : tr(locale, `Show all ${top.length}`, `Показать все ${top.length}`)}
+              </button>
+            )}
           </div>
         </div>
       </div>
