@@ -681,9 +681,9 @@ export function RouteResults({
 
       {/* 10 cheapest pairs */}
       <div className="pt-11">
-        <div className="flex flex-col items-start gap-2.5 pb-4">
+        <div className="flex flex-col items-start gap-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-start gap-2 lg:items-end">
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
             {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
