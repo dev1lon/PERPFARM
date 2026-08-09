@@ -15,6 +15,7 @@ import {
   HOURS_PER_YEAR,
   MIN_VOLUME_USD,
   OI_BANDS,
+  displayedOpenInterestUsd,
   minOpenInterestUsd,
   oiBandsFor,
 } from "@/lib/route-model";
@@ -262,7 +263,9 @@ export async function computeCrossRankings(
     // market being farmed. The hedge only has to be a real market, so it is
     // held to the absolute floor -- a deep hedge venue's higher cutoff must
     // not delete a perfectly good market on the venue the user chose.
-    if (oiA * 2 < minOpenInterestUsd(slugA) || oiB * 2 < OI_BANDS.low) { drops.thinOi++; continue; }
+    const displayedOiA = displayedOpenInterestUsd(oiA, slugA);
+    const displayedOiB = displayedOpenInterestUsd(oiB, slugB);
+    if (displayedOiA < minOpenInterestUsd(slugA) || displayedOiB < OI_BANDS.low) { drops.thinOi++; continue; }
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
     // the cheaper: passive on the venue whose maker fee beats what its taker
@@ -300,9 +303,9 @@ export async function computeCrossRankings(
       takerVenue,
       spreadCostUsd,
       slippageCostUsd,
-      oiAUsd: oiA * 2,
-      oiBUsd: oiB * 2,
-      mainOiUsd: oiA * 2,
+      oiAUsd: displayedOiA,
+      oiBUsd: displayedOiB,
+      mainOiUsd: displayedOiA,
       volume24hMinUsd: Math.min(volA, volB),
       longVenue,
       shortVenue,
@@ -310,7 +313,7 @@ export async function computeCrossRankings(
       feeCostUsd,
       fundingUsd,
       cycleCostUsd,
-      oiKey: oiA * 2,
+      oiKey: displayedOiA,
     });
   }
 

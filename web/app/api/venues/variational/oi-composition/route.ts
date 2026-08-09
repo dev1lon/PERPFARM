@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { displayedOpenInterestUsd } from "@/lib/route-model";
 import { TRADFI_TICKER_LIST } from "@/lib/tradfi";
 
 export const dynamic = "force-dynamic";
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
       const markets = rows
         .map((row) => ({
           pair: row.pair,
-          openInterestUsd: num(row.oi) * 2,
+          openInterestUsd: displayedOpenInterestUsd(num(row.oi), "variational"),
           category: row.pair === "BTC" ? "btc" : TRADFI_TICKER_LIST.includes(row.pair) ? "tradfi" : "other",
         }))
         .sort((a, b) => b.openInterestUsd - a.openInterestUsd);
@@ -115,9 +116,9 @@ export async function GET(request: Request) {
     const series = rows
       .map((row) => {
         // Stored OI is one side; Omni reports gross (user + OLP counterparty).
-        const btc = num(row.btc) * 2;
-        const tradfi = num(row.tradfi) * 2;
-        const other = num(row.other) * 2;
+        const btc = displayedOpenInterestUsd(num(row.btc), "variational");
+        const tradfi = displayedOpenInterestUsd(num(row.tradfi), "variational");
+        const other = displayedOpenInterestUsd(num(row.other), "variational");
         const total = btc + tradfi + other;
         return {
           date: typeof row.day === "string" ? row.day.slice(0, 10) : new Date(row.day).toISOString().slice(0, 10),

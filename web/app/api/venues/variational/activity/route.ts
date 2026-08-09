@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { oiDisplayFactor } from "@/lib/route-model";
 import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 
 const VARIATIONAL_STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
@@ -114,7 +115,7 @@ async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"):
   // stats all report gross OI (user side + OLP counterparty), so double it to
   // sit on the same scale as the rest of the series and avoid a seam where our
   // snapshots meet the DefiLlama/live points. Same convention as pair rankings.
-  const scale = column === "open_interest_usd" ? 2 : 1;
+  const scale = column === "open_interest_usd" ? oiDisplayFactor("variational") : 1;
   return rows
     .map((row) => ({ date: row.date, value: asNumber(row.value) }))
     .filter((point): point is ActivityPoint => point.value !== null)

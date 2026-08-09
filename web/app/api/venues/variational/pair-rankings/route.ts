@@ -4,6 +4,7 @@ import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
   MIN_VOLUME_USD as SHARED_MIN_VOLUME_USD,
+  displayedOpenInterestUsd,
   minOpenInterestUsd,
   oiBandFor,
 } from "@/lib/route-model";
@@ -390,7 +391,7 @@ export async function GET(request: NextRequest) {
         if (
           latestSample === null || p25Sample === null || p50Sample === null || p75Sample === null ||
           volume24hUsd === null || oiRaw === null ||
-          oiRaw * 2 < MIN_OPEN_INTEREST_USD || volume24hUsd < MIN_VOLUME_USD
+          displayedOpenInterestUsd(oiRaw, "variational") < MIN_OPEN_INTEREST_USD || volume24hUsd < MIN_VOLUME_USD
         ) {
           return null;
         }
@@ -406,8 +407,8 @@ export async function GET(request: NextRequest) {
         return {
           pair: row.pair,
           // Omni displays gross OI (user side plus OLP counterparty); the
-          // stored value is one side, so double it to match that convention.
-          openInterestUsd: oiRaw * 2,
+          // stored value is one side, so normalize it to that convention.
+          openInterestUsd: displayedOpenInterestUsd(oiRaw, "variational"),
           volume24hUsd,
           competitionEligible: TRADFI_TICKERS.has(row.pair),
           firstLimitSide: liveSide?.firstLimitSide ?? "long",

@@ -27,11 +27,41 @@ export const HOURS_PER_YEAR = 8_760;
 /** Below this 24h volume a market is dead, not cheap. */
 export const MIN_VOLUME_USD = 1_000;
 
+/**
+ * How a protocol's stored open interest becomes the number we display.
+ *
+ * Protocols do not agree on what "open interest" counts, so a single global
+ * multiplier is guaranteed to be wrong for someone. The rule is to show what
+ * the protocol's OWN interface shows, verified per protocol:
+ *
+ *  - Variational stores long + short and its UI shows twice that (checked
+ *    against the venue UI on 2026-08-09).
+ *  - TxFlow has no confirmed display adjustment, so we retain its raw API
+ *    value. Doubling it made the same market read $51k on its own page and
+ *    $102k in the cross table.
+ *
+ * Anything unverified stays at 1: showing a venue's raw number is a smaller
+ * error than confidently doubling it for no reason.
+ */
+const OI_DISPLAY_FACTOR: Record<string, number> = {
+  variational: 2,
+  txflow: 1,
+};
+
+export function oiDisplayFactor(venueSlug: string): number {
+  return OI_DISPLAY_FACTOR[venueSlug] ?? 1;
+}
+
+/** Normalize a stored OI observation to this protocol's displayed convention. */
+export function displayedOpenInterestUsd(rawOiUsd: number, venueSlug: string): number {
+  return rawOiUsd * oiDisplayFactor(venueSlug);
+}
+
 export type OiBands = { high: number; medium: number; low: number };
 
 /**
- * OI thresholds, in the gross convention (long + short, i.e. the doubled
- * figure the venue UIs display). Lower open interest means fewer farmers
+ * OI thresholds, in each protocol's displayed convention. Variational's is
+ * gross (long + short); TxFlow's is its unadjusted raw API value. Lower open interest means fewer farmers
  * splitting the same emission, at a wider spread -- so the bands are a
  * points-per-cost trade-off control, not a quality ranking.
  *
@@ -64,11 +94,11 @@ export function minOpenInterestUsd(venueSlug: string): number {
 
 export type OiBandKey = "high" | "medium" | "low";
 
-/** Band for a gross OI figure on a given protocol, or null when under floor. */
-export function oiBandFor(grossOiUsd: number, venueSlug: string): OiBandKey | null {
+/** Band for a displayed OI figure on a given protocol, or null when under floor. */
+export function oiBandFor(displayedOiUsd: number, venueSlug: string): OiBandKey | null {
   const bands = oiBandsFor(venueSlug);
-  if (grossOiUsd > bands.high) return "high";
-  if (grossOiUsd >= bands.medium) return "medium";
-  if (grossOiUsd >= bands.low) return "low";
+  if (displayedOiUsd > bands.high) return "high";
+  if (displayedOiUsd >= bands.medium) return "medium";
+  if (displayedOiUsd >= bands.low) return "low";
   return null;
 }

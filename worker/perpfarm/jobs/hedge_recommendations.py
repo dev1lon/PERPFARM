@@ -25,6 +25,15 @@ REFERENCE_VOLUME_USD = 100_000.0
 MIN_VOLUME_USD = 1_000.0
 MIN_OPEN_INTEREST_USD = 10_000.0
 
+# Per-protocol display convention. Variational's user-side snapshots are
+# confirmed to need the OLP counterparty added; TxFlow has no confirmed
+# adjustment, so its raw OI stays raw.
+OI_DISPLAY_FACTOR: dict[str, float] = {"variational": 2.0, "txflow": 1.0}
+MIN_OPEN_INTEREST_BY_SLUG: dict[str, float] = {
+    "variational": 50_000.0,
+    "txflow": MIN_OPEN_INTEREST_USD,
+}
+
 # Keep these fallbacks in lockstep with web/lib/venue-fees.ts.  A fee-watch
 # row wins; the documented fallback prevents an unknown row from looking free.
 PUBLISHED_FEES: dict[str, tuple[float, float]] = {
@@ -138,12 +147,19 @@ def _venue_bps(market: Market, fill_notional_usd: float, *, cheapest: bool) -> t
     return maker, taker + spread / 2 + impact
 
 
-def _is_eligible(market: Market) -> bool:
+def _displayed_oi(market: Market) -> float | None:
+    if market.open_interest_usd is None:
+        return None
+    return market.open_interest_usd * OI_DISPLAY_FACTOR.get(market.slug, 1.0)
+
+
+def _is_eligible(market: Market, *, oi_floor_usd: float) -> bool:
+    displayed_oi = _displayed_oi(market)
     return (
         market.volume_24h_usd is not None
-        and market.open_interest_usd is not None
+        and displayed_oi is not None
         and market.volume_24h_usd >= MIN_VOLUME_USD
-        and market.open_interest_usd * 2 >= MIN_OPEN_INTEREST_USD
+        and displayed_oi >= oi_floor_usd
     )
 
 
@@ -151,7 +167,7 @@ def _self_match_cost(markets: list[Market]) -> float | None:
     fill = REFERENCE_VOLUME_USD / 2
     costs = []
     for market in markets:
-        if not _is_eligible(market):
+        if not _is_eligible(market, oi_floor_usd=MIN_OPEN_INTEREST_BY_SLUG.get(market.slug, MIN_OPEN_INTEREST_USD)):
             continue
         bps = _venue_bps(market, fill, cheapest=True)
         if bps is not None:
@@ -166,7 +182,13 @@ def _cross_cost(home: list[Market], partner: list[Market]) -> float | None:
     costs = []
     for main in home:
         hedge = partner_by_symbol.get(main.symbol)
-        if hedge is None or not _is_eligible(main) or not _is_eligible(hedge):
+        if hedge is None:
+            continue
+        if not _is_eligible(main, oi_floor_usd=MIN_OPEN_INTEREST_BY_SLUG.get(main.slug, MIN_OPEN_INTEREST_USD)):
+            continue
+        # The hedge needs a real book, but its own high/medium/low bands must
+        # not remove the market selected on the home protocol.
+        if not _is_eligible(hedge, oi_floor_usd=MIN_OPEN_INTEREST_USD):
             continue
         main_bps = _venue_bps(main, fill, cheapest=False)
         hedge_bps = _venue_bps(hedge, fill, cheapest=False)

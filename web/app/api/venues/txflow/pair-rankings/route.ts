@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { FUNDING_HOLD_HOURS, OI_BANDS } from "@/lib/route-model";
+import { displayedOpenInterestUsd, FUNDING_HOLD_HOURS, OI_BANDS } from "@/lib/route-model";
 import { publishedFees } from "@/lib/venue-fees";
 
 export const dynamic = "force-dynamic";
@@ -197,12 +197,9 @@ export async function GET(request: NextRequest) {
         const feeCostUsd = 2 * fillNotionalUsd * (TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
         return {
           pair: market.baseCurrency,
-          // Gross OI (long + short), the convention every other surface uses
-          // and the one the band thresholds are calibrated against. TxFlow's
-          // `openInterest` counts one side, so it is doubled here. Without
-          // this the same market read $51k on this page and $108k on the
-          // cross-protocol table, and fell in a different band on each.
-          openInterestUsd: Math.round(mark * oiBase * 2),
+          // TxFlow has no confirmed OI display multiplier. Preserve its raw
+          // notional value so the direct and cross-protocol tables agree.
+          openInterestUsd: Math.round(displayedOpenInterestUsd(mark * oiBase, "txflow")),
           volume24hUsd: Math.round(volume24hUsd),
           competitionEligible: market.tagIds?.includes(5) === true,
           firstLimitSide,

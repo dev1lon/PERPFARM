@@ -2,7 +2,7 @@ import re
 
 from perpfarm.adapters.registry import FIXTURE_SLUGS
 from perpfarm.jobs import hedge_recommendations as job
-from perpfarm.jobs.hedge_recommendations import Market, _compute
+from perpfarm.jobs.hedge_recommendations import Market, _compute, _displayed_oi
 
 
 def market(*, venue_id: int, slug: str, symbol: str, maker: float, taker: float) -> Market:
@@ -35,6 +35,14 @@ def test_hourly_recommendation_compares_self_and_each_cross_venue():
     assert recommendations[1][0] == 1
     assert recommendations[2][0] == 1
     assert recommendations[1][1] < recommendations[2][1]
+
+
+def test_oi_display_factor_is_per_protocol_not_global():
+    variational = market(venue_id=1, slug="variational", symbol="BTC", maker=0, taker=0)
+    txflow = market(venue_id=2, slug="txflow", symbol="BTC", maker=1.425, taker=4.275)
+
+    assert _displayed_oi(variational) == 2_000_000
+    assert _displayed_oi(txflow) == 1_000_000
 
 
 def test_a_maker_rebate_beats_every_real_route_and_goes_negative():
