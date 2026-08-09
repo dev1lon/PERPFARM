@@ -233,9 +233,10 @@ function txflow(locale: Locale): ProtocolPageConfig {
     docsUrl: "https://docs.txflow.com",
     heroMetrics: [
       { label: tr(locale, "Season", "Сезон"), value: "0" },
-      // Same three reference tiles. TxFlow has no announced programme, so the
-      // farm estimate is "TBA" with the caveat on it rather than a made-up range.
-      { label: tr(locale, "Farm estimate", "Оценка фарма"), value: "TBA", valueClass: "text-warning", tip: retroTip },
+      // Same three reference tiles. There is no announced programme, so instead
+      // of an invented $/pt range the tile names what is actually being farmed
+      // here; the tip keeps the caveat that retro points are our expectation.
+      { label: tr(locale, "Farm estimate", "Оценка фарма"), value: tr(locale, "Retro points", "Ретро-поинты"), valueClass: "text-positive", tip: retroTip },
       { label: tr(locale, "OTC point price", "OTC цена поинта"), value: "TBA", tip: otcPointTip(locale) },
     ],
     guidance: {

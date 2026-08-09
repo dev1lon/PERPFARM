@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { EmptyNote } from "@/components/v2/EmptyNote";
 import { formatUtcDateTime } from "@/lib/format";
 
 const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y";
@@ -90,15 +91,15 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
 
       <div className="rounded-[18px] border border-border bg-surface-1 p-4 sm:p-5">
         {!hasMarket && (
-          <p className="flex min-h-[148px] items-center justify-center px-6 text-center text-[14px] text-text-muted">
+          <EmptyNote>
             {tr(locale, "No public FDV prediction market is available for this protocol yet.", "Публичного prediction market по FDV этого протокола пока нет.")}
-          </p>
+          </EmptyNote>
         )}
         {hasMarket && !data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
         {error && (
-          <p className="py-10 text-center text-[14px] text-text-muted">
+          <EmptyNote>
             {tr(locale, "Polymarket FDV data is unavailable right now.", "Данные Polymarket по FDV сейчас недоступны.")}
-          </p>
+          </EmptyNote>
         )}
         {data && (
           <>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { EmptyNote } from "@/components/v2/EmptyNote";
 import { FdvMarketsV2 } from "@/components/v2/FdvMarketsV2";
 import { InfoTip } from "@/components/v2/InfoTip";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
@@ -89,7 +90,13 @@ function Hero({ config }: { config: ProtocolPageConfig }) {
                 {metric.label}
                 {metric.tip ? <InfoTip text={metric.tip} /> : null}
               </div>
-              <div className={`whitespace-nowrap font-mono-num text-[16px] leading-none sm:text-[18px] ${metric.valueClass ?? "text-text-primary"}`}>{metric.value}</div>
+              {/* Numbers must never wrap mid-value; a multi-word value has to,
+                  or it overflows the third of a phone screen it gets. */}
+              <div
+                className={`font-mono-num text-[16px] sm:text-[18px] ${metric.value.includes(" ") ? "leading-tight" : "whitespace-nowrap leading-none"} ${metric.valueClass ?? "text-text-primary"}`}
+              >
+                {metric.value}
+              </div>
             </div>
           ))}
         </div>
@@ -309,8 +316,10 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
 
   // Nothing running. An empty slot would read as us forgetting to update it,
   // so the absence is stated explicitly -- the same on every protocol.
+  // The heading sits at the top like every other card's: centring the whole
+  // column pushed it down and left it out of line with the panel beside it.
   return (
-    <div className="flex flex-col justify-center gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center justify-between gap-3">
         <div className="text-[17px] font-semibold text-text-primary">{title}</div>
         <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">
@@ -318,13 +327,13 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
           {tr(locale, "Inactive", "Неактивно")}
         </span>
       </div>
-      <div className="text-[14px] leading-[1.62] text-text-muted">
+      <EmptyNote className="flex-1">
         {tr(
           locale,
           "Right now there is no competition or bonus that would increase the number of points you earn or lower their cost. We track this and it will appear here as soon as one starts.",
           "Сейчас нет соревнований или бонусов, которые увеличили бы количество поинтов или снизили их стоимость. Мы это отслеживаем — как только что-то начнётся, оно появится здесь.",
         )}
-      </div>
+      </EmptyNote>
       {activity.kind === "campaign" && <div className="text-[13px] text-text-dim">{activity.endedNote}</div>}
     </div>
   );
@@ -336,13 +345,9 @@ function PointsCard({ points, now }: { points: PointsConfig; now: number }) {
 
   if (points.kind === "none") {
     return (
-      <div className="flex min-h-[220px] flex-col rounded-[18px] border border-border bg-surface-1 p-[22px]">
+      <div className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
         <div className="text-[17px] font-semibold text-text-primary">{title}</div>
-        <div className="flex flex-1 items-center justify-center text-center">
-          <div className="font-mono-num text-[22px] font-semibold uppercase tracking-[0.12em] text-text-dim">
-            {tr(locale, "No points yet", "Поинтов пока нет")}
-          </div>
-        </div>
+        <EmptyNote className="flex-1">{tr(locale, "No points yet", "Поинтов пока нет")}</EmptyNote>
       </div>
     );
   }

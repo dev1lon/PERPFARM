@@ -50,6 +50,16 @@ describe("protocol page reference", () => {
     expect(ru.heroMetrics[0].label).not.toBe(en.heroMetrics[0].label);
   });
 
+  it("says 'nothing here yet' the same way in every section", () => {
+    // One voice for every empty state. The points panel used to shout
+    // `NO POINTS YET` in 22px uppercase mono next to a quiet 14px sentence.
+    for (const file of ["ProtocolPageV2.tsx", "FdvMarketsV2.tsx"]) {
+      const source = read(file);
+      expect(source).toContain("EmptyNote");
+      expect(source).not.toMatch(/uppercase tracking-\[0\.12em\] text-text-dim/);
+    }
+  });
+
   it("keeps the open-interest composition chart out of the reference", () => {
     // Variational-only by explicit product decision: it is built on that
     // venue's TradFi/crypto split and has no counterpart elsewhere.
