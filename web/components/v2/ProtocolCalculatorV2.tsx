@@ -585,8 +585,12 @@ export function RouteResults({
         <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-6 py-4">
             <div className="shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:hidden">
+              <span className="h-[5px] w-[5px] rounded-full bg-positive" />
+              TradFi
+            </span>
             {best.competitionEligible && (
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+              <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:inline-flex">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                 TradFi
               </span>
