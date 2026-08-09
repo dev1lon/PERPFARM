@@ -428,7 +428,6 @@ export function ProtocolCalculatorV2({
           top={tablePairs}
           best={best}
           bestRule={bestRule}
-          notionalUsd={notionalUsd}
           hedgeName={homeName}
           homeSlug={venueSlug}
           homeName={homeName}
@@ -512,7 +511,6 @@ export function RouteResults({
   top,
   best,
   bestRule = "cheapest",
-  notionalUsd,
   hedgeName,
   homeSlug,
   hedgeSlug,
@@ -527,7 +525,6 @@ export function RouteResults({
   top: PairRanking[];
   best: PairRanking | undefined;
   bestRule?: BestRule;
-  notionalUsd: number;
   hedgeName: string;
   homeSlug: "variational" | "txflow";
   hedgeSlug?: "variational" | "txflow";
@@ -589,6 +586,12 @@ export function RouteResults({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="w-full font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent sm:w-auto">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
+            {best.competitionEligible && (
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                <span className="h-[5px] w-[5px] rounded-full bg-positive" />
+                TradFi
+              </span>
+            )}
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -602,8 +605,6 @@ export function RouteResults({
             <div className="flex flex-wrap items-center gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
               <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
-              {best.competitionEligible && <span className="rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1.5 font-mono-num text-[10px] tracking-[0.04em] text-positive">TradFi</span>}
-              <span className="font-mono-num text-[12px] text-text-muted">{formatUsd(notionalUsd, { decimals: 0 })} {tr(locale, "per side", "на сторону")}</span>
             </div>
             <div className="my-4 overflow-hidden rounded-[14px] border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
               <RecommendedRouteDiagram longName={homeName} shortName={hedgeName} />
