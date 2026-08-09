@@ -102,5 +102,5 @@ export function CrossPairRankings({
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
   };
   const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug as "variational" | "txflow");
-  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} notionalUsd={accountVolumeUsd} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug as "variational" | "txflow"} hedgeSlug={hedgeSlug as "variational" | "txflow"} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
+  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug as "variational" | "txflow"} hedgeSlug={hedgeSlug as "variational" | "txflow"} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
 }
