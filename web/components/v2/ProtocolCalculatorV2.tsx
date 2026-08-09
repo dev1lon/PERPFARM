@@ -112,14 +112,6 @@ function CostTierBadge({ costTier }: { costTier: CostTier }) {
   );
 }
 
-/** One text per concept, shared by the recommended route and the table row. */
-function fundingTip(locale: Locale): string {
-  return tr(
-    locale,
-    "What a 12-hour hold pays or earns, from the difference between the two protocols' funding rates, averaged over the last 24h. It can be a charge or a credit, it drifts while the position is open, and it is not part of the cycle cost.",
-    "Сколько принесёт или будет стоить удержание 12 часов — из разницы ставок фандинга двух площадок, усреднённой за последние 24ч. Может быть как расходом, так и доходом, меняется в течение удержания и не входит в стоимость цикла.",
-  );
-}
 function feeTip(locale: Locale): string {
   return tr(
     locale,
@@ -133,17 +125,17 @@ function feeTip(locale: Locale): string {
  * route and in an expanded table row, so the headline route is itemised
  * exactly like the row a user opens to check it.
  *
- * `signed` marks a value that can legitimately go either way (funding): it
- * gets an explicit "+" so a credit is not misread as a cost.
+ * `signed` marks funding. Its stored convention is cost-positive: a positive
+ * value is a payment, while a negative value is a credit. The UI reverses
+ * that into the familiar −cost / +credit presentation.
  */
 function CostTile({ label, value, tip, signed = false }: { label: string; value: number | null; tip?: string; signed?: boolean }) {
-  const locale = useLocale();
   const fundingState = signed && value !== null
     ? value < 0
-      ? { label: tr(locale, "Receive", "Получите"), amount: formatUsd(Math.abs(value)), tone: "text-positive" }
+      ? { amount: `+${formatUsd(Math.abs(value))}`, tone: "text-positive" }
       : value > 0
-        ? { label: tr(locale, "Pay", "Заплатите"), amount: formatUsd(value), tone: "text-negative" }
-        : { label: null, amount: formatUsd(0), tone: "text-text-primary" }
+        ? { amount: `−${formatUsd(value)}`, tone: "text-negative" }
+        : { amount: formatUsd(0), tone: "text-text-primary" }
     : null;
   return (
     <div className="flex min-w-0 flex-col gap-1.5 rounded-[10px] border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between">
@@ -152,7 +144,6 @@ function CostTile({ label, value, tip, signed = false }: { label: string; value:
         {tip ? <InfoTip text={tip} /> : null}
       </span>
       <span className={`shrink-0 whitespace-nowrap font-mono-num text-[13px] ${fundingState?.tone ?? (value !== null && value < 0 ? "text-positive" : "text-text-primary")}`}>
-        {fundingState?.label ? <span className="mr-1.5 font-sans text-[11px]">{fundingState.label}</span> : null}
         {fundingState?.amount ?? formatUsd(value)}
       </span>
     </div>
@@ -464,6 +455,13 @@ const RECOMMENDATION_POLICY: Record<"variational" | "txflow", RecommendationPoli
   txflow: { preferMediumOi: false, preferTradfi: true },
 };
 
+/** Recommended strategy duration. It is independent from Funding · 12h. */
+function recommendedHold(homeSlug: "variational" | "txflow", locale: Locale): string {
+  return homeSlug === "variational"
+    ? tr(locale, "12–24h", "12–24 ч")
+    : tr(locale, "2–4h", "2–4 ч");
+}
+
 /**
  * The protocol being farmed owns the recommendation policy. `Hedge with`
  * changes available books and costs, never the points strategy of the home
@@ -552,6 +550,7 @@ export function RouteResults({
   // This is deliberately data-driven: same-venue and cross-venue calculators
   // share the exact same presentation and differ only in available data.
   const hasCostHistory = best.costRangeLowUsd !== best.costRangeHighUsd;
+  const hold = recommendedHold(homeSlug, locale);
   const historyDetail = hasCostHistory
     ? tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`)
     : tr(locale, "Latest hourly snapshot · history collecting", "Последний часовой снапшот · история собирается");
@@ -615,11 +614,12 @@ export function RouteResults({
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-5">
               {([
                 [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
+                [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
                 [
                   tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"),
                   formatUsd(best.cycleCostUsd),
@@ -643,7 +643,6 @@ export function RouteResults({
                 label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
                 value={best.fundingUsd ?? 0}
                 signed
-                tip={fundingTip(locale)}
               />
               <CostTile
                 label={tr(locale, "Fees", "Комиссии")}
@@ -810,13 +809,13 @@ export function RouteResults({
                             [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
+                            [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
                             hasCostHistory
                               ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"]
                               : [tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"), formatUsd(p.cycleCostUsd), "text-positive"],
                             hasCostHistory
                               ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
                               : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "history collecting", "история собирается"), "text-text-dim"],
-                            [tr(locale, "Latest hourly cost", "Последняя стоимость за час"), formatUsd(p.latestCycleCostUsd), "text-text-primary"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
@@ -841,7 +840,7 @@ export function RouteResults({
                               // short on one book, so funding is a measured
                               // zero; cross routes retain their signed value.
                               p.fundingUsd ?? 0,
-                              fundingTip(locale),
+                              undefined,
                             ],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined],
                           ] as [string, number | null, string | undefined][]

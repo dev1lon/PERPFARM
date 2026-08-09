@@ -142,7 +142,7 @@ function InputCards() {
         </div>
         <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6">
           <div className="flex items-center gap-3">{num("04")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Funding", "Фандинг")}</div><span className="ml-auto rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] text-warning">{tr(locale, "ESTIMATE", "ОЦЕНКА")}</span></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is counted as a net hedge-cycle cost: it nets to zero on an equal-size same-protocol hedge, while a cross-protocol route counts the funding delta. Future funding stays an estimate.", "Фандинг учитывается как чистая стоимость цикла: при равном размере на одном протоколе он нетится в ноль, а в кросс-маршруте считается дельта фандинга. Будущий фандинг остаётся оценкой.")}</div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is shown separately from execution cost. For cross-protocol routes, we average the two funding rates over the latest 24h and estimate the difference for a fixed 12-hour hold. A + value is an expected credit; a − value is an expected payment. Equal-size legs on one protocol net to $0. Funding can change while the hedge is open, so it never changes the route ranking.", "Фандинг показан отдельно от стоимости исполнения. Для кросс-маршрута мы усредняем ставки двух площадок за последние 24ч и оцениваем разницу для фиксированного удержания 12 часов. Значение со знаком + — ожидаемый доход, со знаком − — ожидаемый расход. Ноги равного размера на одной площадке нетятся в $0. Фандинг может меняться во время удержания, поэтому не влияет на ранжирование маршрута.")}</div>
         </div>
         <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
           <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
@@ -197,15 +197,15 @@ function CostModel() {
           {step(tr(locale, "SHORT exit", "Выход SHORT"), "short")}
           <span className="font-mono-num text-[16px] text-text-dim">+</span>
           <span className="rounded-[11px] border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 font-mono-num text-[13px] text-warning">
-            {tr(locale, "net funding", "чистый фандинг")}
+            {tr(locale, "funding · 12h", "фандинг · 12ч")}
           </span>
         </div>
 
         <div className="mt-6 max-w-[900px] border-t border-border pt-5 text-[15px] leading-[1.68] text-text-muted">
           {tr(
             locale,
-            "In plain words: route cost = your position size × (half the spread you cross + quote impact) for each MARKET order + applicable fees on all fills + net funding while the hedge is held.",
-            "Простыми словами: стоимость маршрута = размер позиции × (половина пересекаемого спреда + quote impact) для каждого MARKET-ордера + применимые комиссии всех исполнений + чистый фандинг за время удержания хеджа.",
+            "In plain words: execution cost = your position size × (half the spread you cross + quote impact) for each MARKET order + applicable fees on all fills. Funding is estimated separately for a 12-hour hold and does not change the ranking.",
+            "Простыми словами: стоимость исполнения = размер позиции × (половина пересекаемого спреда + quote impact) для каждого MARKET-ордера + применимые комиссии всех исполнений. Фандинг оценивается отдельно для удержания 12 часов и не влияет на ранжирование.",
           )}
         </div>
 
