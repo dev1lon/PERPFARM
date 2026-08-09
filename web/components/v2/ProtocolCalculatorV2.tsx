@@ -681,9 +681,9 @@ export function RouteResults({
 
       {/* 10 cheapest pairs */}
       <div className="pt-11">
-        <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
+        <div className="flex flex-col items-start gap-2.5 pb-4">
           <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-start gap-2">
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
             {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
@@ -705,15 +705,15 @@ export function RouteResults({
         <div className="lg:overflow-x-auto">
           <div className="space-y-2.5 lg:min-w-[900px]">
             {/* Column headers belong to the wide table only. */}
-            <div className={`hidden lg:grid ${GRID} items-center gap-3 border-b border-border bg-surface-1 px-[18px] py-3 text-[11px] text-text-dim`}>
+            <div className={`hidden lg:grid ${GRID} items-center gap-3 rounded-xl border border-border bg-surface-1 px-[18px] py-3.5 text-[12px] font-medium text-text-muted`}>
               <div>#</div>
               <div>{tr(locale, "Pair", "Пара")}</div>
               <div>{tr(locale, "Open interest", "Открытый интерес")}</div>
-              <div>{tr(locale, "LONG protocol", "LONG протокол")}</div>
-              <div>{tr(locale, "SHORT protocol", "SHORT протокол")}</div>
+              <div>{tr(locale, "long", "лонг")}</div>
+              <div>{tr(locale, "short", "шорт")}</div>
               <div>{tr(locale, "Entry orders", "Вход")}</div>
               <div>{tr(locale, "Exit orders", "Выход")}</div>
-              <div className="text-right">{tr(locale, "by cycle cost", "по стоимости цикла")}</div>
+              <div className="text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
               <div />
             </div>
             {top.map((p, i) => {
