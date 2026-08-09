@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
+import { RouteMap } from "@/components/v2/RouteMap";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 
 type StepProps = {
@@ -39,7 +40,7 @@ function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; 
 function HedgeDiagram() {
   return (
     <div className="rounded-[16px] border border-border bg-surface-2 p-4 sm:p-5">
-      <svg viewBox="0 0 440 132" className="h-[132px] w-full" aria-hidden>
+      <svg viewBox="24 0 392 132" className="h-[142px] w-full" aria-hidden>
         <path d="M64 84 C 150 84, 150 34, 220 34 S 290 84, 376 84" fill="none" stroke="#4d8dff" strokeWidth="2" />
         <circle cx="220" cy="34" r="4.5" fill="#bcd6ff" /><rect x="196" y="8" width="48" height="19" rx="6" fill="rgba(10,16,30,0.9)" stroke="rgba(255,255,255,0.12)" />
         <text x="220" y="21" textAnchor="middle" fill="#e8ecf5" fontFamily="JetBrains Mono" fontSize="11">XAU</text>
@@ -56,20 +57,7 @@ function HedgeDiagram() {
 /** Desktop-only neutral route visual for the intro: blue route geometry only,
  * without position-side labels that belong to the calculator itself. */
 function BlueRouteModel() {
-  return (
-    <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block">
-      <svg viewBox="0 0 520 330" className="block h-auto w-full" aria-hidden>
-        <defs>
-          <filter id="blue-route-glow" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="7" /></filter>
-        </defs>
-        <g fill="#52617c" opacity="0.55"><circle cx="94" cy="88" r="3" /><circle cx="168" cy="246" r="3" /><circle cx="262" cy="76" r="3" /><circle cx="360" cy="238" r="3" /><circle cx="432" cy="104" r="3" /></g>
-        <path d="M114 210 C 177 210, 194 134, 260 134 S 343 210, 406 210" fill="none" stroke="#4d8dff" strokeWidth="11" opacity="0.18" filter="url(#blue-route-glow)" />
-        <path d="M114 210 C 177 210, 194 134, 260 134 S 343 210, 406 210" fill="none" stroke="#4d8dff" strokeWidth="2.5" />
-        <circle cx="114" cy="210" r="17" fill="none" stroke="#4d8dff" strokeOpacity="0.38" /><circle cx="114" cy="210" r="9" fill="#4d8dff" />
-        <circle cx="260" cy="134" r="5.5" fill="#bcd6ff" /><circle cx="406" cy="210" r="17" fill="none" stroke="#4d8dff" strokeOpacity="0.38" /><circle cx="406" cy="210" r="9" fill="#4d8dff" />
-      </svg>
-    </div>
-  );
+  return <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block"><RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} blue showSideLabels={false} /></div>;
 }
 
 function VolumePreview() {

@@ -71,12 +71,18 @@ export function RouteMap({
   longLabel = "Variational",
   shortLabel = "TxFlow",
   height = 432,
+  blue = false,
+  showSideLabels = true,
 }: {
   mode?: "network" | "result" | "checkpoints";
   pair?: string;
   longLabel?: string;
   shortLabel?: string;
   height?: number;
+  /** Use one neutral-blue route rather than the usual green/red position tint. */
+  blue?: boolean;
+  /** Hide the LONG / SHORT overlays when the route is decorative. */
+  showSideLabels?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -328,8 +334,8 @@ export function RouteMap({
     const ringCount = TUBULAR + 1;
     const gradArray = new Float32Array(ringCount * vertsPerRing * 3);
     {
-      const ca = new THREE.Color(LONG_COLOR);
-      const cb = new THREE.Color(SHORT_COLOR);
+      const ca = new THREE.Color(blue ? ACCENT : LONG_COLOR);
+      const cb = new THREE.Color(blue ? ACCENT : SHORT_COLOR);
       const tmp = new THREE.Color();
       for (let ring = 0; ring < ringCount; ring++) {
         tmp.copy(ca).lerp(cb, ring / TUBULAR);
@@ -373,10 +379,10 @@ export function RouteMap({
     const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshBasicMaterial({ color: 0xbcd6ff }));
     group.add(pulse);
 
-    const longBadge = label("LONG", "side");
-    const shortBadge = label("SHORT", "side");
-    Object.assign(longBadge.style, { color: "#7ff0c6", borderColor: "rgba(53,211,153,0.5)" });
-    Object.assign(shortBadge.style, { color: "#f5a3a0", borderColor: "rgba(229,100,95,0.5)" });
+    const longBadge = showSideLabels ? label("LONG", "side") : null;
+    const shortBadge = showSideLabels ? label("SHORT", "side") : null;
+    if (longBadge) Object.assign(longBadge.style, { color: blue ? "#9dc0ff" : "#7ff0c6", borderColor: blue ? "rgba(77,141,255,0.5)" : "rgba(53,211,153,0.5)" });
+    if (shortBadge) Object.assign(shortBadge.style, { color: blue ? "#9dc0ff" : "#f5a3a0", borderColor: blue ? "rgba(77,141,255,0.5)" : "rgba(229,100,95,0.5)" });
     const midLabel = result ? label(pair, "pair") : null;
 
     // ---- interaction (network only) ----
@@ -536,7 +542,7 @@ export function RouteMap({
 
       nodes.forEach((n) => {
         const active = n === longRec || n === shortRec;
-        const col = n === longRec ? LONG_COLOR : n === shortRec ? SHORT_COLOR : IDLE;
+        const col = n === longRec || n === shortRec ? (blue ? ACCENT : n === longRec ? LONG_COLOR : SHORT_COLOR) : IDLE;
         const isHover = n.core === hovered;
         n.hover += ((isHover ? 1 : 0) - n.hover) * 0.14;
         const pv = REDUCED ? 0 : Math.sin(t * 1.4 + n.core.position.x * 2) * 0.5 + 0.5;
@@ -578,8 +584,8 @@ export function RouteMap({
       // LONG / SHORT badges follow their endpoint (or the dragged position)
       const lp = drag && drag.which === "long" && dragPos ? dragPos : longRec.core.position;
       const sp = drag && drag.which === "short" && dragPos ? dragPos : shortRec.core.position;
-      place(longBadge, lp, -30, w, h);
-      place(shortBadge, sp, -30, w, h);
+      if (longBadge) place(longBadge, lp, -30, w, h);
+      if (shortBadge) place(shortBadge, sp, -30, w, h);
 
       // travelling pulse + optional pair label at the apex
       let mx = 0;
@@ -652,7 +658,7 @@ export function RouteMap({
       canvas.remove();
       overlay.remove();
     };
-  }, [mode, pair, longLabel, shortLabel]);
+  }, [mode, pair, longLabel, shortLabel, blue, showSideLabels]);
 
   return <div ref={hostRef} style={{ position: "relative", width: "100%", height }} />;
 }
