@@ -73,6 +73,7 @@ export function RouteMap({
   height = 432,
   blue = false,
   showSideLabels = true,
+  showVenueLabels = true,
 }: {
   mode?: "network" | "result" | "checkpoints";
   pair?: string;
@@ -83,6 +84,8 @@ export function RouteMap({
   blue?: boolean;
   /** Hide the LONG / SHORT overlays when the route is decorative. */
   showSideLabels?: boolean;
+  /** Hide venue names when the visual is used as a purely abstract route. */
+  showVenueLabels?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -559,6 +562,11 @@ export function RouteMap({
         n.coreMat.opacity = (active ? 1 : 0.62) + n.hover * 0.35;
         n.haloMat.opacity = (active ? 0.75 : 0.26) + n.hover * 0.5;
 
+        if (!showVenueLabels) {
+          n.label.style.opacity = "0";
+          return;
+        }
+
         v.copy(n.core.position).project(camera);
         const x = (v.x * 0.5 + 0.5) * w;
         const y = (-v.y * 0.5 + 0.5) * h;
@@ -614,6 +622,7 @@ export function RouteMap({
       if (mw) claimed.push({ x: mx, y: my, w: mw, h: mh });
 
       nodes.forEach((n) => {
+        if (!showVenueLabels) return;
         if (n === longRec || n === shortRec) {
           n.label.style.opacity = "1";
           return;
@@ -658,7 +667,7 @@ export function RouteMap({
       canvas.remove();
       overlay.remove();
     };
-  }, [mode, pair, longLabel, shortLabel, blue, showSideLabels]);
+  }, [mode, pair, longLabel, shortLabel, blue, showSideLabels, showVenueLabels]);
 
   return <div ref={hostRef} style={{ position: "relative", width: "100%", height }} />;
 }

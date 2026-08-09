@@ -57,7 +57,7 @@ function HedgeDiagram() {
 /** Desktop-only neutral route visual for the intro: blue route geometry only,
  * without position-side labels that belong to the calculator itself. */
 function BlueRouteModel() {
-  return <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block"><RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} blue showSideLabels={false} /></div>;
+  return <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block"><RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} blue showSideLabels={false} showVenueLabels={false} /></div>;
 }
 
 function VolumePreview() {
