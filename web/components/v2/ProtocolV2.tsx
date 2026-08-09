@@ -393,11 +393,6 @@ function ActivityAndDistribution() {
                 {tr(locale, "Inactive", "Неактивно")}
               </span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <div className="text-[17px] font-semibold text-text-primary">
-                {tr(locale, "No activity running", "Нет активных активностей")}
-              </div>
-            </div>
             <div className="text-[14px] leading-[1.62] text-text-muted">
               {tr(
                 locale,
