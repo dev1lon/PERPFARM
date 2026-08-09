@@ -39,7 +39,7 @@ function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; 
 function HedgeDiagram() {
   return (
     <div className="rounded-[16px] border border-border bg-surface-2 p-4 sm:p-5">
-      <svg viewBox="0 0 440 132" className="h-[132px] w-full" aria-hidden>
+      <svg viewBox="24 0 392 132" className="h-[142px] w-full" aria-hidden>
         <path d="M64 84 C 150 84, 150 34, 220 34 S 290 84, 376 84" fill="none" stroke="#4d8dff" strokeWidth="2" />
         <circle cx="220" cy="34" r="4.5" fill="#bcd6ff" /><rect x="196" y="8" width="48" height="19" rx="6" fill="rgba(10,16,30,0.9)" stroke="rgba(255,255,255,0.12)" />
         <text x="220" y="21" textAnchor="middle" fill="#e8ecf5" fontFamily="JetBrains Mono" fontSize="11">XAU</text>
