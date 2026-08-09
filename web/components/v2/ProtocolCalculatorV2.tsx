@@ -150,6 +150,25 @@ function CostTile({ label, value, tip, signed = false }: { label: string; value:
   );
 }
 
+/** Compact mobile route diagram. The ticker is already printed immediately
+ * above it, so this intentionally contains just the two legs and route. */
+function RecommendedRouteDiagram({ longName, shortName }: { longName: string; shortName: string }) {
+  return (
+    <svg viewBox="0 0 336 120" className="block h-auto w-full" aria-hidden>
+      <path d="M56 62 C 112 62, 118 18, 168 18 S 224 62, 280 62" fill="none" stroke="#4d8dff" strokeWidth="2" />
+      <circle cx="168" cy="18" r="4" fill="#bcd6ff" />
+      <text x="42" y="42" fill="#7ff0c6" fontFamily="JetBrains Mono" fontSize="10" letterSpacing="1.4">LONG</text>
+      <text x="258" y="42" fill="#f5a3a0" fontFamily="JetBrains Mono" fontSize="10" letterSpacing="1.4">SHORT</text>
+      <circle cx="56" cy="62" r="11" fill="none" stroke="rgba(53,211,153,0.46)" strokeWidth="1.5" />
+      <circle cx="56" cy="62" r="6.5" fill="#35d399" />
+      <circle cx="280" cy="62" r="11" fill="none" stroke="rgba(229,100,95,0.46)" strokeWidth="1.5" />
+      <circle cx="280" cy="62" r="6.5" fill="#e5645f" />
+      <text x="56" y="91" textAnchor="middle" fill="#e8ecf5" fontFamily="Plus Jakarta Sans" fontSize="12" fontWeight="600">{longName}</text>
+      <text x="280" y="91" textAnchor="middle" fill="#e8ecf5" fontFamily="Plus Jakarta Sans" fontSize="12" fontWeight="600">{shortName}</text>
+    </svg>
+  );
+}
+
 function HedgeDropdown({
   options,
   value,
@@ -570,12 +589,6 @@ export function RouteResults({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="w-full font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent sm:w-auto">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             <CostTierBadge costTier={best.costTier} />
-            {best.competitionEligible && (
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
-                <span className="h-[5px] w-[5px] rounded-full bg-positive" />
-                TradFi
-              </span>
-            )}
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -588,11 +601,12 @@ export function RouteResults({
           <div className="px-6 py-6">
             <div className="flex flex-wrap items-center gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1 font-mono-num text-[10px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
+              <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
+              {best.competitionEligible && <span className="rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1.5 font-mono-num text-[10px] tracking-[0.04em] text-positive">TradFi</span>}
               <span className="font-mono-num text-[12px] text-text-muted">{formatUsd(notionalUsd, { decimals: 0 })} {tr(locale, "per side", "на сторону")}</span>
             </div>
             <div className="my-4 overflow-hidden rounded-[14px] border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-              <RouteMap mode="result" pair={best.pair} longLabel={homeName} shortLabel={hedgeName} height={170} />
+              <RecommendedRouteDiagram longName={homeName} shortName={hedgeName} />
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
@@ -667,7 +681,7 @@ export function RouteResults({
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
           <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
           <div className="flex flex-col items-end gap-2">
-            <div className="font-mono-num text-[11px] tracking-[0.08em] text-text-muted">{tr(locale, "by cycle cost", "по стоимости цикла")}</div>
+            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
             {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
                 {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
@@ -682,12 +696,11 @@ export function RouteResults({
                 ))}
               </div>
             )}
-            <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {new Date(data.asOf).toLocaleString(locale === "ru" ? "ru-RU" : "en-US")}</div>
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-border bg-bg lg:overflow-x-auto">
-          <div className="lg:min-w-[900px]">
+        <div className="lg:overflow-x-auto">
+          <div className="space-y-2.5 lg:min-w-[900px]">
             {/* Column headers belong to the wide table only. */}
             <div className={`hidden lg:grid ${GRID} items-center gap-3 border-b border-border bg-surface-1 px-[18px] py-3 text-[11px] text-text-dim`}>
               <div>#</div>
@@ -697,14 +710,14 @@ export function RouteResults({
               <div>{tr(locale, "SHORT protocol", "SHORT протокол")}</div>
               <div>{tr(locale, "Entry orders", "Вход")}</div>
               <div>{tr(locale, "Exit orders", "Выход")}</div>
-              <div className="text-right">{tr(locale, "Cycle cost", "Стоимость")}</div>
+              <div className="text-right">{tr(locale, "by cycle cost", "по стоимости цикла")}</div>
               <div />
             </div>
             {top.map((p, i) => {
               const o = p.entryOrders && p.exitOrders ? { entry: p.entryOrders, exit: p.exitOrders } : orders(p.firstLimitSide);
               const open = expanded === p.pair;
               return (
-                <div key={p.pair} className={`border-b border-border last:border-b-0 ${i >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
+                <div key={p.pair} className={`overflow-hidden rounded-[14px] border border-border bg-bg ${i >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : p.pair)}
@@ -851,7 +864,7 @@ export function RouteResults({
                   if (showAllMobile) setExpanded(null);
                   setShowAllMobile((value) => !value);
                 }}
-                className="pf-transition mx-4 my-3 flex h-12 w-[calc(100%-2rem)] items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 lg:hidden"
+                className="pf-transition flex h-12 w-full items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 lg:hidden"
               >
                 {showAllMobile ? tr(locale, "Show fewer", "Показать меньше") : tr(locale, `Show all ${top.length}`, `Показать все ${top.length}`)}
               </button>
