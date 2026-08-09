@@ -203,7 +203,7 @@ function HedgeDropdown({
         <span className="ml-auto text-[11px] text-text-muted">▾</span>
       </button>
       {open && (
-        <div className="absolute z-30 mt-1.5 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-surface-1 p-1 shadow-lg">
+        <div className="absolute z-30 mt-1.5 flex max-h-64 w-full flex-col gap-1 overflow-y-auto rounded-xl border border-border bg-surface-1 p-1.5 shadow-lg">
           {options.map((o) => (
             <button
               key={o.slug}
@@ -214,7 +214,7 @@ function HedgeDropdown({
                 onChange(o.slug);
                 setOpen(false);
               }}
-              className={`pf-transition flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-surface-2 ${o.slug === value ? "bg-surface-2" : ""}`}
+              className={`pf-transition flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left hover:border-text-muted/35 hover:bg-surface-2 ${o.slug === value ? "border-accent/40 bg-accent/[0.09]" : "border-transparent"}`}
             >
               <ProtocolMark slug={o.slug} name={o.name} size={22} radius={7} />
               <span className={`text-[14px] ${o.slug === value ? "text-accent" : "text-text-primary"}`}>{o.name}</span>
