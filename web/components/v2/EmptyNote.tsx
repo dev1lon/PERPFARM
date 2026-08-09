@@ -10,11 +10,12 @@
  * no FDV market" state renders through here.
  */
 export function EmptyNote({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  // Voice only -- size stays with the caller. A minimum height baked in here
-  // was measured against the full-width FDV panel and, reused inside a
-  // half-width card that already carries a heading, left a dead gap under it.
+  // Voice only -- no height, no padding of its own. Both a baked-in minimum
+  // height and generous vertical padding were tried here and both did the same
+  // damage: measured against the full-width FDV panel, they inflated the small
+  // cards that already carry a heading and their own p-[22px].
   return (
-    <p className={`flex items-center justify-center px-6 py-6 text-center text-[14px] text-text-muted ${className}`}>
+    <p className={`flex items-center justify-center px-6 text-center text-[14px] text-text-muted ${className}`}>
       {children}
     </p>
   );

@@ -93,13 +93,13 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
         {/* The empty states match the loading skeleton's height, so this panel
             does not jump or collapse depending on which state it lands in. */}
         {!hasMarket && (
-          <EmptyNote className="min-h-[148px]">
+          <EmptyNote className="min-h-[148px] py-6">
             {tr(locale, "No public FDV prediction market is available for this protocol yet.", "Публичного prediction market по FDV этого протокола пока нет.")}
           </EmptyNote>
         )}
         {hasMarket && !data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
         {error && (
-          <EmptyNote className="min-h-[148px]">
+          <EmptyNote className="min-h-[148px] py-6">
             {tr(locale, "Polymarket FDV data is unavailable right now.", "Данные Polymarket по FDV сейчас недоступны.")}
           </EmptyNote>
         )}
