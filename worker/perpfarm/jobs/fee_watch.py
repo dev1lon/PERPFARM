@@ -95,6 +95,15 @@ def run_fee_watch(
         venue_ids = {slug: venue_id for slug, venue_id in conn.execute(select(venues.c.slug, venues.c.id))}
 
         for reg in REGISTRY:
+            # Fixtures quote made-up schedules -- venue_alpha's is a NEGATIVE
+            # maker fee (a rebate).  Written into fee_schedules it does not just
+            # add noise: it makes a synthetic venue the cheapest maker side on
+            # the whole platform, so every "lowest cost route" comparison picks
+            # it.  Every other writer already skips fixtures; this one did not.
+            if reg.is_fixture:
+                summary.skipped += 1
+                continue
+
             venue_id = venue_ids.get(reg.slug)
             if venue_id is None:
                 # not bootstrapped yet -- `perpfarm bootstrap-venues` hasn't

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { isReadyVenue } from "@/lib/venue-status";
 
 // The worker writes this answer immediately after hourly market snapshots.
 // A page load performs one indexed read only; it never scans venues or prices
@@ -25,12 +26,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       [slug],
     );
     const best = rows[0];
+    // The worker already excludes fixture venues, but a recommendation is
+    // published straight to the page, so it is re-checked here: an unverified
+    // or synthetic partner is reported as "no recommendation" rather than
+    // being named on the card. Returning a stale older row instead would be
+    // worse -- it would look current.
+    const partnerSlug = best && isReadyVenue(best.partner_slug) ? best.partner_slug : null;
     return NextResponse.json(
       {
         slug,
-        partnerSlug: best?.partner_slug ?? null,
-        cycleCostUsd: best ? Number(best.cycle_cost_usd) : null,
-        snapshotAt: best?.ts ?? null,
+        partnerSlug,
+        cycleCostUsd: partnerSlug && best ? Number(best.cycle_cost_usd) : null,
+        snapshotAt: partnerSlug && best ? best.ts : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

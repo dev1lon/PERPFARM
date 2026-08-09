@@ -5,6 +5,7 @@ import { PerpIdentity } from "@/components/PerpIdentity";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { VariationalMarketActivity } from "@/components/VariationalMarketActivity";
 import { VenueWizard } from "@/components/VenueWizard";
+import { protocolName } from "@/lib/venue-status";
 import type { VenueSummary } from "@/lib/types";
 
 const INITIAL_POINTS_DISTRIBUTED = 7_560_000;
@@ -212,7 +213,9 @@ function HedgeRecommendationsPreview({ otherVenues, className = "" }: { otherVen
     fetch("/api/venues/variational/cheapest-route")
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (active && data?.partnerSlug) setCheapestSlug(data.partnerSlug);
+        // Unknown slugs (fixture venues, retired listings) are ignored so the
+        // card can never print a raw database identifier at a user.
+        if (active && protocolName(data?.partnerSlug)) setCheapestSlug(data.partnerSlug);
       })
       .catch(() => {});
     return () => {
@@ -220,7 +223,7 @@ function HedgeRecommendationsPreview({ otherVenues, className = "" }: { otherVen
     };
   }, []);
   const nameOf = (slug: string): string =>
-    slug === "variational" ? "Variational" : otherVenues.find((v) => v.slug === slug)?.name ?? slug;
+    protocolName(slug) ?? otherVenues.find((v) => v.slug === slug)?.name ?? "Variational";
   return (
     <section className={`rounded-[1.75rem] border border-border bg-surface-1 p-6 ${className}`}>
       <h2 className="text-xl font-semibold tracking-tight text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2>

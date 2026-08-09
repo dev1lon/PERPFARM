@@ -1,0 +1,74 @@
+/**
+ * The one definition of how a farming route is priced and bucketed.
+ *
+ * Three calculators quote the same product -- Variational same-protocol, TxFlow
+ * same-protocol, and the cross-protocol route -- and each used to carry its own
+ * copy of these numbers. They drifted: the funding horizon was 24h in one, 12h
+ * in another and absent in the third, and the OI bands differed by two orders
+ * of magnitude, so the same market landed in "high" on one page and "low" on
+ * the next. Importing from here is what keeps the three answers comparable.
+ */
+
+/**
+ * Funding is quoted for a fixed 12-hour hold on every protocol.
+ *
+ * A hold length has to be assumed to put a number on funding at all, and a
+ * constant one keeps pairs comparable. It is NOT part of the route's cost: it
+ * has its own sign, it can be a credit as easily as a charge, and it drifts
+ * during the hold. Ranking uses execution cost; funding is reported beside it.
+ */
+export const FUNDING_HOLD_HOURS = 12;
+
+/** Funding is averaged over this window before the 12-hour hold is applied. */
+export const FUNDING_AVERAGE_WINDOW_HOURS = 24;
+
+export const HOURS_PER_YEAR = 8_760;
+
+/** Below this 24h volume a market is dead, not cheap. */
+export const MIN_VOLUME_USD = 1_000;
+
+export type OiBands = { high: number; medium: number; low: number };
+
+/**
+ * OI thresholds, in the gross convention (long + short, i.e. the doubled
+ * figure the venue UIs display). Lower open interest means fewer farmers
+ * splitting the same emission, at a wider spread -- so the bands are a
+ * points-per-cost trade-off control, not a quality ranking.
+ *
+ * The CONVENTION and the formula are shared; the numbers cannot be. Protocol
+ * OI universes differ by three orders of magnitude -- Variational's markets run
+ * $51k to $410M, TxFlow's $7k to $20M -- so a single set of cutoffs puts every
+ * Variational market in one band and makes the filter a no-op there.
+ */
+const DEFAULT_OI_BANDS: OiBands = { high: 300_000, medium: 100_000, low: 10_000 };
+
+const OI_BANDS_BY_VENUE: Record<string, OiBands> = {
+  // Set against TxFlow's live book, where $358k is a large TradFi market.
+  txflow: DEFAULT_OI_BANDS,
+  // Variational is a far deeper venue; these are its previously calibrated
+  // cutoffs and are what its "Medium OI" guidance refers to.
+  variational: { high: 20_000_000, medium: 3_000_000, low: 50_000 },
+};
+
+export function oiBandsFor(venueSlug: string): OiBands {
+  return OI_BANDS_BY_VENUE[venueSlug] ?? DEFAULT_OI_BANDS;
+}
+
+/** Kept for callers that band a market without knowing its protocol. */
+export const OI_BANDS = DEFAULT_OI_BANDS;
+
+/** No route is recommended below the bottom of a protocol's lowest band. */
+export function minOpenInterestUsd(venueSlug: string): number {
+  return oiBandsFor(venueSlug).low;
+}
+
+export type OiBandKey = "high" | "medium" | "low";
+
+/** Band for a gross OI figure on a given protocol, or null when under floor. */
+export function oiBandFor(grossOiUsd: number, venueSlug: string): OiBandKey | null {
+  const bands = oiBandsFor(venueSlug);
+  if (grossOiUsd > bands.high) return "high";
+  if (grossOiUsd >= bands.medium) return "medium";
+  if (grossOiUsd >= bands.low) return "low";
+  return null;
+}

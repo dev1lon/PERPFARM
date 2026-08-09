@@ -18,9 +18,12 @@ export async function generateMetadata({
   params: Promise<{ venueSlug: string }>;
 }): Promise<Metadata> {
   const { venueSlug } = await params;
+  // The curated catalog names the page, not the database: a slug is an
+  // internal id and must never reach a title bar or a search result.
+  const catalog = findProtocol(venueSlug);
+  if (!catalog) return { title: "perpfarm" };
   const venue = await getVenueDetail(venueSlug).catch(() => null);
-  const name = venue?.name ?? findProtocol(venueSlug)?.name ?? venueSlug;
-  return { title: `${name} — perpfarm` };
+  return { title: `${venue?.name ?? catalog.name} — perpfarm` };
 }
 
 export default async function VenuePage({
@@ -37,9 +40,13 @@ export default async function VenuePage({
   ]);
   const venueRow = venueResult.status === "fulfilled" ? venueResult.value : null;
   const allVenues = venuesResult.status === "fulfilled" ? venuesResult.value : [];
-  // Listed protocols without a DB row still receive their canonical SOON page.
+  // The curated catalog decides what is a page, in BOTH directions: a listed
+  // protocol without a DB row still gets its SOON page, and a database row
+  // that is not listed gets nothing. A synthetic fixture venue seeded into the
+  // database used to satisfy the old `!venueRow &&` condition and served a
+  // full protocol page under its raw slug.
   const catalog = findProtocol(venueSlug);
-  if (!venueRow && !catalog) notFound();
+  if (!catalog) notFound();
 
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
@@ -49,5 +56,5 @@ export default async function VenuePage({
   if (venueSlug === "txflow") {
     return <TxFlowV2 otherVenues={otherVenues} />;
   }
-  return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog!.name} meta={venueRow?.meta ?? null} />;
+  return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog.name} meta={venueRow?.meta ?? null} />;
 }

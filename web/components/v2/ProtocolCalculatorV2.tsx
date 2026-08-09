@@ -315,7 +315,7 @@ export function ProtocolCalculatorV2({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
           <div className="flex items-center gap-4">
             <div className="text-[13px] text-text-muted">
-              <span className="mr-1.5">{tr(locale, `2 fills of ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} per account В· Full hedge cycle:`, `2 филла по ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} на аккаунт В· Полный хедж-цикл:`)}</span>
+              <span className="mr-1.5">{tr(locale, `2 fills of ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} per account · Full hedge cycle:`, `2 филла по ${formatUsd((validVolume ? requested : 0) / 2, { decimals: 0 })} на аккаунт · Полный хедж-цикл:`)}</span>
               <span className="font-mono-num text-text-primary">{formatUsd((validVolume ? requested : 0) * 2, { decimals: 0 })}</span>{" "}
               {tr(locale, "across two accounts.", "на два аккаунта.")}
             </div>
@@ -458,6 +458,10 @@ export function RouteResults({
   const showEligible = data.competition.active;
   const bestOrders = best.entryOrders && best.exitOrders ? { entry: best.entryOrders, exit: best.exitOrders } : orders(best.firstLimitSide);
   const isCross = best.fundingUsd !== undefined;
+  // Only the Variational same-protocol path stores 24h of snapshots and can
+  // quote a median and a percentile range. The other two price one live book,
+  // so any label promising history has to change with them.
+  const hasCostHistory = !isTxFlow && !isCross;
   return (
     <>
       <StaleDataNotice data={data} />
@@ -551,7 +555,7 @@ export function RouteResults({
         <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
           <div>
             <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
-            <div className="text-[14px] text-text-muted">{isTxFlow ? tr(locale, `Sorted by current full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по текущей стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`) : tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
+            <div className="text-[14px] text-text-muted">{hasCostHistory ? tr(locale, `Sorted by 24h median full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по медианной за 24ч стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`) : tr(locale, `Sorted by current full-cycle cost for ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} per account. Click a row for the breakdown.`, `Отсортировано по текущей стоимости полного цикла для ${formatUsd(data.accountVolumeUsd, { decimals: 0 })} на аккаунт. Нажмите строку для деталей.`)}</div>
           </div>
           <div className="flex flex-col items-end gap-2">
             {grouped && (
@@ -690,9 +694,21 @@ export function RouteResults({
                             [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                            [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"],
-                            [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"],
-                            [tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"],
+                            // Only the Variational path has 24h history behind
+                            // it. TxFlow and cross routes are priced from one
+                            // live book, and assign the same number to all
+                            // three fields -- labelling that a "24h median"
+                            // with a "$11.43–$11.43 range" invents a history
+                            // that was never measured.
+                            hasCostHistory
+                              ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"]
+                              : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(p.cycleCostUsd), "text-positive"],
+                            hasCostHistory
+                              ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
+                              : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "not measured", "не измерялся"), "text-text-dim"],
+                            hasCostHistory
+                              ? [tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"]
+                              : [tr(locale, "Quoted at", "Котировка на"), new Date(data.asOf).toLocaleTimeString(), "text-text-primary"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
@@ -709,33 +725,48 @@ export function RouteResults({
                             // Variational route funding nets to zero and fees
                             // are 0%, but on TxFlow and on cross routes both
                             // are a large part of the total.
-                            [tr(locale, "Spread", "Спред"), p.spreadCostUsd],
-                            [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd],
-                            [tr(locale, "Funding · 12h", "Фандинг · 12ч"), p.fundingUsd],
-                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0],
-                          ] as [string, number | null][]
-                        ).map(([k, v]) => (
-                          <div
-                            key={k}
-                            title={
-                              k === tr(locale, "Fees", "Комиссии") && (p.feeCostUsd ?? 0) > 0
+                            [tr(locale, "Spread", "Спред"), p.spreadCostUsd, undefined],
+                            [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd, undefined],
+                            [
+                              tr(locale, "Funding · 12h", "Фандинг · 12ч"),
+                              // Same-protocol routes hold an equal long and
+                              // short on one book, so funding cancels exactly.
+                              // That is a measured zero, not missing data.
+                              isCross ? p.fundingUsd : 0,
+                              tr(
+                                locale,
+                                "What a 12-hour hold pays or earns, from the difference between the two protocols' funding rates, averaged over the last 24h. It can be a charge or a credit, it drifts while the position is open, and it is NOT included in the cycle cost below.",
+                                "Сколько принесёт или будет стоить удержание 12 часов — из разницы ставок фандинга двух площадок, усреднённой за последние 24ч. Может быть как расходом, так и доходом, меняется в течение удержания и НЕ входит в стоимость цикла ниже.",
+                              ),
+                            ],
+                            [
+                              tr(locale, "Fees", "Комиссии"),
+                              p.feeCostUsd ?? 0,
+                              (p.feeCostUsd ?? 0) > 0
                                 ? tr(
                                     locale,
                                     "Priced at the fee a new account pays after the 5% referral discount. Above VIP 0 the fees are lower.",
                                     "Считается по комиссии нового аккаунта со скидкой 5% за регистрацию по рефералу. Выше VIP 0 комиссии ниже.",
                                   )
-                                : undefined
-                            }
+                                : undefined,
+                            ],
+                          ] as [string, number | null, string | undefined][]
+                        ).map(([k, v, tip]) => (
+                          <div
+                            key={k}
+                            title={tip}
                             className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5"
                           >
-                            <span className="text-[12px] text-text-muted">{k}</span>
-                            <span className="font-mono-num text-[13px] text-text-primary">{formatUsd(v)}</span>
+                            <span className="text-[12px] text-text-muted">{k}{tip ? <span className="ml-1 text-text-dim">?</span> : null}</span>
+                            <span className={`font-mono-num text-[13px] ${v !== null && v < 0 ? "text-positive" : "text-text-primary"}`}>
+                              {v !== null && v > 0 && k.startsWith(tr(locale, "Funding", "Фандинг")) ? "+" : ""}{formatUsd(v)}
+                            </span>
                           </div>
                         ))}
                       </div>
                       <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3.5 text-[13px] text-text-muted">
-                        <span>{tr(locale, "Full cost per account", "Полная стоимость на аккаунт")} <span className="font-mono-num text-text-primary">{formatUsd(p.cycleCostUsd / 2)}</span></span>
                         <span>{tr(locale, "Combined hedge-cycle cost", "Полная стоимость хедж-цикла")} <span className="font-mono-num text-positive">{formatUsd(p.cycleCostUsd)}</span></span>
+                        <span className="text-text-dim">{tr(locale, "spread + slippage + fees, both accounts. Funding is separate.", "спред + проскальзывание + комиссии, оба аккаунта. Фандинг считается отдельно.")}</span>
                       </div>
                     </div>
                   )}

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { computeCrossRankings } from "@/lib/cross-cost";
+import { isReadyVenue } from "@/lib/venue-status";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const hedge = request.nextUrl.searchParams.get("hedge");
     if (!hedge) return NextResponse.json({ error: "hedge venue is required" }, { status: 400 });
     if (hedge === slug) return NextResponse.json({ error: "hedge venue must differ from the home venue" }, { status: 400 });
+    // Both slugs arrive from the URL, so both are user input. Without this an
+    // arbitrary venue row -- including a synthetic fixture with invented depth
+    // and a negative maker fee -- could be priced and returned as a real route.
+    if (!isReadyVenue(slug) || !isReadyVenue(hedge)) {
+      return NextResponse.json({ error: "Routes are only published for protocols with a verified data path" }, { status: 400 });
+    }
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
     const requested = request.nextUrl.searchParams.get("accountVolumeUsd");

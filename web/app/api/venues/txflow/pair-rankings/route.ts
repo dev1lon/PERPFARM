@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { FUNDING_HOLD_HOURS, OI_BANDS } from "@/lib/route-model";
 import { publishedFees } from "@/lib/venue-fees";
 
 export const dynamic = "force-dynamic";
@@ -6,11 +7,11 @@ export const dynamic = "force-dynamic";
 const INFO_URL = "https://api.txflow.com/info";
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
-// TxFlow OI bands: fixed product thresholds, not quantiles or Variational's
-// much larger OI universe.
-const HIGH_OI_USD = 300_000;
-const MEDIUM_OI_USD = 100_000;
-const LOW_OI_USD = 10_000;
+// Fixed product thresholds, shared with every other calculator so a market
+// cannot sit in a different band depending on which page asked.
+const HIGH_OI_USD = OI_BANDS.high;
+const MEDIUM_OI_USD = OI_BANDS.medium;
+const LOW_OI_USD = OI_BANDS.low;
 // One definition of TxFlow's fees, shared with the cross-protocol model.
 const TXFLOW_FEES = publishedFees("txflow")!;
 const MAKER_FEE_BPS = TXFLOW_FEES.makerBps; // 0.01425%
@@ -169,7 +170,12 @@ export async function GET(request: NextRequest) {
         const feeCostUsd = 2 * fillNotionalUsd * (TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
         return {
           pair: market.baseCurrency,
-          openInterestUsd: Math.round(mark * oiBase),
+          // Gross OI (long + short), the convention every other surface uses
+          // and the one the band thresholds are calibrated against. TxFlow's
+          // `openInterest` counts one side, so it is doubled here. Without
+          // this the same market read $51k on this page and $108k on the
+          // cross-protocol table, and fell in a different band on each.
+          openInterestUsd: Math.round(mark * oiBase * 2),
           volume24hUsd: Math.round(volume24hUsd),
           competitionEligible: market.tagIds?.includes(5) === true,
           firstLimitSide,
@@ -211,7 +217,10 @@ export async function GET(request: NextRequest) {
       fillNotionalUsd,
       accountVolumeUsd,
       totalCycleVolumeUsd: accountVolumeUsd * 2,
-      holdHours: 0,
+      // Same 12h horizon every calculator quotes. Funding is $0 here because
+      // an equal long and short on the SAME book pay and receive the same
+      // rate -- not because the horizon is zero.
+      holdHours: FUNDING_HOLD_HOURS,
       minVolumeUsd: 0,
       minOpenInterestUsd: LOW_OI_USD,
       competition: { active: false, name: "" },

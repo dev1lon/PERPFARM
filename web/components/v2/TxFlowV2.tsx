@@ -8,6 +8,7 @@ import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { InfoTip } from "@/components/v2/InfoTip";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
+import { protocolName } from "@/lib/venue-status";
 import type { VenueSummary } from "@/lib/types";
 
 const TRADE_URL = "https://app.txflow.com/trade/BTC-USDC";
@@ -40,19 +41,20 @@ function MechanicsPanel() {
 function HedgeRecommendations() {
   const locale = useLocale();
   const [partner, setPartner] = useState<string | null>(null);
-  const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
 
   useEffect(() => {
     let active = true;
     fetch("/api/venues/txflow/cheapest-route")
       .then((response) => (response.ok ? response.json() : null))
-      .then((data) => { if (active && typeof data?.partnerSlug === "string") setPartner(data.partnerSlug); })
+      // Only a slug that resolves to a listed protocol is accepted; an unknown
+      // one leaves the card on self-match rather than naming a database row.
+      .then((data) => { if (active && protocolName(data?.partnerSlug)) setPartner(data.partnerSlug); })
       .catch(() => {});
     return () => { active = false; };
   }, []);
 
   const routePartner = partner ?? "txflow";
-  const routeName = nameOf(routePartner);
+  const routeName = protocolName(routePartner) ?? "TxFlow";
   return (
     <div className="mt-11">
       <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</h2>

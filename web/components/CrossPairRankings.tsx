@@ -61,7 +61,7 @@ export function CrossPairRankings({
       pair: pair.pair,
       openInterestUsd: pair.mainOiUsd,
       volume24hUsd: pair.volume24hMinUsd,
-      competitionEligible: isTradfiMarket(venueSlug, pair.pair),
+      competitionEligible: isTradfiMarket(pair.pair),
       firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
       cycleCostUsd: pair.cycleCostUsd,
       latestCycleCostUsd: pair.cycleCostUsd,

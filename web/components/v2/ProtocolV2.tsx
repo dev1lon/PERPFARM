@@ -10,6 +10,7 @@ import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import { OiCompositionChart } from "@/components/v2/OiCompositionChart";
 import { FdvMarketsV2 } from "@/components/v2/FdvMarketsV2";
+import { protocolName } from "@/lib/venue-status";
 import type { VenueSummary } from "@/lib/types";
 
 /* ---- points distribution (manual figures) ----
@@ -238,18 +239,32 @@ function AwardsPanel() {
 
 function HedgeRecommendations() {
   const locale = useLocale();
-  const nameOf = (slug: string) => slug === "variational" ? "Variational" : slug === "txflow" ? "TxFlow" : slug;
   // The hourly worker has already compared self-match and every venue. The
   // browser only asks for that stored result.
   const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number } | null>(null);
+  // "Lowest cost" is a claim about a computed comparison. Until one has been
+  // loaded the card must not make it: the previous version defaulted to
+  // self-match and badged it as the winner even when the request failed.
+  const [routeStatus, setRouteStatus] = useState<"loading" | "ready" | "unavailable">("loading");
   useEffect(() => {
     let active = true;
     fetch("/api/venues/variational/cheapest-route")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (active && d?.partnerSlug && typeof d.cycleCostUsd === "number" && Number.isFinite(d.cycleCostUsd)) setCheapest(d);
+        if (!active) return;
+        // A partner is accepted only if it resolves to a listed protocol.
+        // Anything else -- a fixture venue, a retired slug -- is treated as no
+        // answer rather than printing a raw database slug.
+        if (!d?.partnerSlug || !protocolName(d.partnerSlug) || typeof d.cycleCostUsd !== "number" || !Number.isFinite(d.cycleCostUsd)) {
+          setRouteStatus("unavailable");
+          return;
+        }
+        setCheapest(d);
+        setRouteStatus("ready");
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setRouteStatus("unavailable");
+      });
     return () => {
       active = false;
     };
@@ -268,33 +283,31 @@ function HedgeRecommendations() {
           <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary">
             <ProtocolMark slug="variational" name="Variational" size={22} radius={7} />
             <span>Variational ×</span>
-            <ProtocolMark slug={projectSlug} name={nameOf(projectSlug)} size={22} radius={7} />
+            <ProtocolMark slug={projectSlug} name={protocolName(projectSlug) ?? ""} size={22} radius={7} />
             <Link href={`/${projectSlug}`} className="pf-transition hover:text-accent">
-              <span className="underline decoration-accent/70 underline-offset-4">{nameOf(projectSlug)}</span>
+              <span className="underline decoration-accent/70 underline-offset-4">{protocolName(projectSlug)}</span>
               <span aria-hidden>↗</span>
             </Link>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary"><ProtocolMark slug="variational" name="Variational" size={22} radius={7} /><span>Variational ×</span><ProtocolMark slug={slug} name={nameOf(slug)} size={22} radius={7} /><span>{nameOf(slug)}</span></div>
+          <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary"><ProtocolMark slug="variational" name="Variational" size={22} radius={7} /><span>Variational ×</span><ProtocolMark slug={slug} name={protocolName(slug) ?? ""} size={22} radius={7} /><span>{protocolName(slug)}</span></div>
         )}
       </div>
       <div className="text-[14px] leading-[1.62] text-text-muted">{body}</div>
       <div className="mt-auto flex gap-2">
         {tags.map(([t, tone]) => (
-          <>
-            <span
-              key={t}
-              className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                tone === "ok"
-                  ? "border-positive/30 bg-positive/10 text-positive"
-                  : tone === "warn"
-                    ? "border-warning/30 bg-warning/10 text-warning"
-                    : "border-border bg-surface-2 text-text-muted"
-              }`}
-            >
-              {t}
-            </span>
-          </>
+          <span
+            key={t}
+            className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+              tone === "ok"
+                ? "border-positive/30 bg-positive/10 text-positive"
+                : tone === "warn"
+                  ? "border-warning/30 bg-warning/10 text-warning"
+                  : "border-border bg-surface-2 text-text-muted"
+            }`}
+          >
+            {t}
+          </span>
         ))}
       </div>
     </div>
@@ -308,9 +321,15 @@ function HedgeRecommendations() {
       <div className="grid gap-4 sm:grid-cols-2">
         {card(
           cheapest?.partnerSlug ?? "variational",
-          `Variational × ${nameOf(cheapest?.partnerSlug ?? "variational")}`,
-          tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью."),
-          [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
+          `Variational × ${protocolName(cheapest?.partnerSlug ?? "variational")}`,
+          routeStatus === "ready"
+            ? tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью.")
+            : routeStatus === "loading"
+              ? tr(locale, "Comparing routes…", "Сравниваем маршруты…")
+              : tr(locale, "Approved delta-neutral setup with two accounts. The hourly route comparison is unavailable right now, so no cheapest route is claimed.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами. Часовое сравнение маршрутов сейчас недоступно, поэтому самый дешёвый маршрут не заявляется."),
+          routeStatus === "ready"
+            ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]]
+            : [[tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]],
           cheapest && cheapest.partnerSlug !== "variational" ? cheapest.partnerSlug : undefined,
         )}
         {card(

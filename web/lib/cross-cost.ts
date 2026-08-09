@@ -10,20 +10,16 @@
 
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
+import {
+  FUNDING_HOLD_HOURS,
+  HOURS_PER_YEAR,
+  MIN_VOLUME_USD,
+  OI_BANDS,
+  minOpenInterestUsd,
+  oiBandsFor,
+} from "@/lib/route-model";
 import { isTradfiMarket } from "@/lib/tradfi";
 import { publishedFees } from "@/lib/venue-fees";
-
-/** Funding is displayed separately for a fixed 12-hour hold. */
-const FUNDING_HOLD_HOURS = 12;
-const MIN_VOLUME_USD = 1_000; // dead-pair floor, applied to BOTH venues
-/** Low-OI routes begin at $10k gross OI. Below it no route is recommended. */
-const MIN_OPEN_INTEREST_USD = 10_000;
-const HOURS_PER_YEAR = 8_760;
-const MAIN_OI_BANDS = {
-  high: 300_000,
-  medium: 100_000,
-  low: 10_000,
-} as const;
 
 type VenueMarketRow = {
   slug: string;
@@ -75,6 +71,9 @@ export type CrossRankings = {
   bands: CrossBand[];
   /** Why pairs were excluded, so an empty result explains itself. */
   drops: Record<string, number>;
+  /** Home-venue tickers with no counterpart on the hedge venue, for diagnosis
+   *  of naming mismatches (the same instrument listed under two symbols). */
+  unmatched: string[];
 };
 
 function asNumber(value: unknown): number | null {
@@ -225,26 +224,45 @@ export async function computeCrossRankings(
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
   // Why pairs get dropped, so a strict filter can never silently empty the list.
-  const drops = { considered: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0, noFunding: 0, wildFunding: 0 };
+  // Only counters that something actually increments. `noFunding` and
+  // `wildFunding` outlived the filters they belonged to and reported a
+  // permanent 0 -- a diagnostic that always says "nothing was dropped here" is
+  // worse than no diagnostic, because it gets believed.
+  const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0 };
+  /** Markets on the home venue with no counterpart found on the hedge venue. */
+  const unmatched: string[] = [];
   for (const [sym, ra] of A) {
     // The home protocol is the thing being farmed. A hedge leg must be
     // tradeable, but it never changes the home market's category or OI band.
-    if (tradfiOnly && !isTradfiMarket(slugA, sym)) continue;
+    if (tradfiOnly && !isTradfiMarket(sym)) continue;
+    // Counted BEFORE the intersection. This used to be counted after, which
+    // made `considered` the size of the already-matched set and hid the
+    // largest silent loss of all: the two venues spell some instruments
+    // differently (Variational "SKHY" vs TxFlow "SKHYNIX"), so the same
+    // company never matches and simply vanishes from the comparison.
+    drops.considered++;
     const rb = B.get(sym); // only pairs listed on BOTH venues can be hedged
-    if (!rb) continue;
+    if (!rb) {
+      drops.notListedOnBoth++;
+      if (unmatched.length < 40) unmatched.push(sym);
+      continue;
+    }
     const volA = asNumber(ra.volume_24h_usd);
     const volB = asNumber(rb.volume_24h_usd);
     const oiA = asNumber(ra.open_interest_usd);
     const oiB = asNumber(rb.open_interest_usd);
     const costA = venueBps(ra, fillNotionalUsd);
     const costB = venueBps(rb, fillNotionalUsd);
-    drops.considered++;
     if (volA === null || volB === null || oiA === null || oiB === null) { drops.noMarketData++; continue; }
     if (costA === null || costB === null) { drops.noFeeOrBook++; continue; }
     if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) { drops.thinVolume++; continue; }
     // Both books must at least be real markets. The main venue alone decides
     // the displayed OI band and the recommendation category below.
-    if (oiA * 2 < MIN_OPEN_INTEREST_USD || oiB * 2 < MIN_OPEN_INTEREST_USD) { drops.thinOi++; continue; }
+    // The main leg is held to its own protocol's floor, because that is the
+    // market being farmed. The hedge only has to be a real market, so it is
+    // held to the absolute floor -- a deep hedge venue's higher cutoff must
+    // not delete a perfectly good market on the venue the user chose.
+    if (oiA * 2 < minOpenInterestUsd(slugA) || oiB * 2 < OI_BANDS.low) { drops.thinOi++; continue; }
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
     // the cheaper: passive on the venue whose maker fee beats what its taker
@@ -296,8 +314,10 @@ export async function computeCrossRankings(
     });
   }
 
-  // OI bands always use the main (farm) venue, never the hedge venue.
-  // Below $10k gross OI is deliberately not recommended.
+  // Bands always come from the main (farm) protocol -- both the OI value and
+  // the thresholds. What the hedge venue considers a big market is irrelevant
+  // to which band the market the user is farming belongs in.
+  const MAIN_OI_BANDS = oiBandsFor(slugA);
   const bands = [
     bandFrom("high", candidates.filter((p) => p.oiKey > MAIN_OI_BANDS.high)),
     bandFrom("medium", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.medium && p.oiKey <= MAIN_OI_BANDS.high)),
@@ -306,6 +326,7 @@ export async function computeCrossRankings(
 
   return {
     drops,
+    unmatched,
     venueA: slugA,
     venueB: slugB,
     accountVolumeUsd,
@@ -318,64 +339,10 @@ export async function computeCrossRankings(
   };
 }
 
-/**
- * Cheapest same-venue (self-match) pair for `slug`: two accounts on the same
- * book. Two market legs (the two limit legs are free), funding nets to zero at
- * equal long/short size. Usually THE cheapest hedge, so it's a candidate in
- * cheapestPartner below.
+/*
+ * `selfMatchCheapest` and `cheapestPartner` used to live here. They were dead
+ * code: the hourly worker (worker/perpfarm/jobs/hedge_recommendations.py) is
+ * the only thing that picks a hedge partner now. Keeping a second, drifting
+ * implementation that enumerated every venue in the database with no readiness
+ * filter is precisely how a fixture venue became a published recommendation.
  */
-export async function selfMatchCheapest(slug: string, accountVolumeUsd: number): Promise<number | null> {
-  const rows = await loadVenueMarkets([slug]);
-  const fillNotionalUsd = accountVolumeUsd / 2;
-  let cheapest: number | null = null;
-  for (const r of rows) {
-    const vol = asNumber(r.volume_24h_usd);
-    const oi = asNumber(r.open_interest_usd);
-    const side = venueBps(r, fillNotionalUsd, "cheapest");
-    if (vol === null || oi === null || side === null || vol < MIN_VOLUME_USD) continue;
-    if (oi * 2 < MIN_OPEN_INTEREST_USD) continue;
-    // Two market legs pay; the two resting limit legs pay the maker fee.
-    const cost = (accountVolumeUsd * (side.taker + side.maker)) / 10_000;
-    if (!Number.isFinite(cost)) continue;
-    if (cheapest === null || cost < cheapest) cheapest = cost;
-  }
-  return cheapest;
-}
-
-/**
- * Cheapest hedge partner for `slug`, INCLUDING self-match: compares the
- * same-venue route against every other venue that has snapshot data, and
- * returns whichever is cheapest overall (often the venue itself). Powers the
- * "cheapest hedge" window, which shows only the partner protocol name.
- * Reference volume, since the window has no volume input.
- */
-export async function cheapestPartner(
-  slug: string,
-  referenceVolumeUsd: number,
-): Promise<{ partnerSlug: string; cycleCostUsd: number } | null> {
-  let best: { partnerSlug: string; cycleCostUsd: number } | null = null;
-
-  // Self-match candidate (usually the cheapest -- no cross fees, limit legs).
-  const selfCost = await selfMatchCheapest(slug, referenceVolumeUsd);
-  if (selfCost !== null) best = { partnerSlug: slug, cycleCostUsd: selfCost };
-
-  const { rows } = await getPool().query<{ slug: string }>(
-    `SELECT DISTINCT v.slug
-     FROM venues v
-     JOIN markets m ON m.venue_id = v.id
-     JOIN book_snapshots b ON b.market_id = m.id
-     WHERE v.slug <> $1 AND b.ts >= now() - interval '2 days'`,
-    [slug],
-  );
-  for (const { slug: partner } of rows) {
-    const ranking = await computeCrossRankings(slug, partner, referenceVolumeUsd);
-    const cheapest = ranking.bands
-      .flatMap((band) => band.pairs)
-      .filter((p) => Number.isFinite(p.cycleCostUsd))
-      .reduce<number | null>((min, p) => (min === null || p.cycleCostUsd < min ? p.cycleCostUsd : min), null);
-    if (cheapest !== null && (best === null || cheapest < best.cycleCostUsd)) {
-      best = { partnerSlug: partner, cycleCostUsd: cheapest };
-    }
-  }
-  return best;
-}

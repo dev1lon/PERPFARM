@@ -37,9 +37,21 @@ export const TRADFI_TICKERS = new Set([
 export const TRADFI_TICKER_LIST = [...TRADFI_TICKERS];
 
 /**
- * Asset labels are venue-specific. Variational treats tokenised gold (XAUT)
- * as crypto, while TxFlow lists it with its TradFi market set.
+ * Instruments the protocols disagree about. TxFlow lists tokenised gold (XAUT)
+ * inside its TradFi market set; Variational carries no TradFi tag on it.
+ *
+ * We resolve a disagreement in favour of TradFi rather than per-venue, because
+ * the alternative is worse than either answer: classification used to depend on
+ * the `venueSlug` of whichever page the user happened to open, so the SAME
+ * instrument in the SAME cross-protocol route was TradFi when starting from
+ * TxFlow and crypto when starting from Variational.
  */
-export function isTradfiMarket(venueSlug: string, symbol: string): boolean {
-  return TRADFI_TICKERS.has(symbol) || (venueSlug === "txflow" && symbol === "XAUT");
+const TRADFI_BY_AT_LEAST_ONE_PROTOCOL = new Set(["XAUT"]);
+
+/**
+ * Whether an instrument is a TradFi market. A property of the instrument, not
+ * of the venue the question was asked from.
+ */
+export function isTradfiMarket(symbol: string): boolean {
+  return TRADFI_TICKERS.has(symbol) || TRADFI_BY_AT_LEAST_ONE_PROTOCOL.has(symbol);
 }

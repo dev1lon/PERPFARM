@@ -1,6 +1,26 @@
+import inspect
 import json
 
+from perpfarm.adapters.registry import FIXTURE_SLUGS
+from perpfarm.jobs import fee_watch
 from perpfarm.jobs.fee_watch import FeeChange, FeeWatchSummary, build_alert_payload, fee_hash
+
+
+def test_fee_watch_skips_fixture_venues():
+    """The fee watcher was the last writer that still iterated the raw registry.
+
+    It published `venue_alpha`'s fixture schedule -- a -2.0 bps maker REBATE --
+    into production `fee_schedules`, which is what let a synthetic venue win the
+    hourly "lowest cost route" comparison. Every other writer filtered fixtures;
+    this one did not, and nothing asserted that it should.
+    """
+    source = inspect.getsource(fee_watch.run_fee_watch)
+    loop = source.index("for reg in REGISTRY:")
+    guard = source.index("if reg.is_fixture:")
+    build = source.index("build_adapter(")
+
+    assert loop < guard < build, "fixtures must be skipped before an adapter is built"
+    assert "venue_alpha" in FIXTURE_SLUGS
 
 
 def test_fee_hash_is_deterministic():

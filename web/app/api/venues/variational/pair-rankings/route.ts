@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
+import {
+  FUNDING_HOLD_HOURS,
+  MIN_VOLUME_USD as SHARED_MIN_VOLUME_USD,
+  minOpenInterestUsd,
+  oiBandFor,
+} from "@/lib/route-model";
 import { TRADFI_TICKERS } from "@/lib/tradfi";
 
 export const dynamic = "force-dynamic";
@@ -12,15 +18,14 @@ const DEFAULT_ACCOUNT_VOLUME_USD = 100_000;
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
 // Pairs below this 24h volume are treated as dead and dropped from the bands.
-const MIN_VOLUME_USD = 1_000;
-// User-approved floor, expressed in the same gross-OI convention as Omni UI.
-const MIN_OPEN_INTEREST_USD = 50_000;
+const MIN_VOLUME_USD = SHARED_MIN_VOLUME_USD;
+// Floor and bands come from the shared route model, which keeps the gross-OI
+// convention and the formula identical everywhere while letting each protocol
+// keep cutoffs that match its own depth.
+const MIN_OPEN_INTEREST_USD = minOpenInterestUsd("variational");
 // Below this many live pairs the three-way OI split is noise; show one list.
 const MIN_PAIRS_FOR_BANDS = 15;
-// Fixed OI bands (gross OI, i.e. the doubled value) — approved for Variational.
-const HIGH_OI_USD = 20_000_000;
-const MEDIUM_OI_USD = 3_000_000;
-const HOLD_HOURS = 24;
+const HOLD_HOURS = FUNDING_HOLD_HOURS;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
 const QUOTE_SIZE_KEY = /^size_(\d+)([km])$/;
@@ -437,10 +442,12 @@ export async function GET(request: NextRequest) {
     } else {
       grouped = true;
       // Fixed OI thresholds (gross OI). Bands may be uneven — that's fine.
+      // Bucketed through the shared helper so the boundaries are identical to
+      // the ones the cross-protocol table and TxFlow apply.
       bands = [
-        bandFrom("high", filtered.filter((p) => p.openInterestUsd > HIGH_OI_USD), 10),
-        bandFrom("medium", filtered.filter((p) => p.openInterestUsd > MEDIUM_OI_USD && p.openInterestUsd <= HIGH_OI_USD), 10),
-        bandFrom("low", filtered.filter((p) => p.openInterestUsd <= MEDIUM_OI_USD), 10),
+        bandFrom("high", filtered.filter((p) => oiBandFor(p.openInterestUsd, "variational") === "high"), 10),
+        bandFrom("medium", filtered.filter((p) => oiBandFor(p.openInterestUsd, "variational") === "medium"), 10),
+        bandFrom("low", filtered.filter((p) => oiBandFor(p.openInterestUsd, "variational") === "low"), 10),
       ];
     }
 

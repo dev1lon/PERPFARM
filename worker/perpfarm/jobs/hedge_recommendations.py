@@ -17,6 +17,7 @@ from typing import Any
 from sqlalchemy import Engine, text
 from sqlalchemy.dialects.postgresql import insert
 
+from perpfarm.adapters.registry import FIXTURE_SLUGS
 from perpfarm.schema import hedge_route_recommendations
 
 
@@ -210,23 +211,35 @@ def run_hedge_recommendations(engine: Engine, *, ts: datetime) -> Recommendation
         summary.skipped = 1
         return summary
 
+    # This job publishes straight to the website, so it must never consider a
+    # synthetic venue.  `venue_alpha` / `venue_beta` carry made-up books and
+    # zero fees, which makes them win any "cheapest route" comparison outright:
+    # once seeded into a real database they are not merely noise, they are the
+    # answer.  Filtering at the source is what keeps them out of every
+    # downstream comparison, not just out of the row that gets written.
     query = text(
         """
         WITH active AS (
           SELECT m.id, m.venue_id, m.symbol_canonical, v.slug
           FROM markets m JOIN venues v ON v.id = m.venue_id
-          WHERE m.is_active = true
+          WHERE m.is_active = true AND v.slug <> ALL(:fixture_slugs)
         ), book AS (
+          -- DISTINCT ON alone returns the newest row that EXISTS, however old
+          -- that is.  A venue whose collection stopped weeks ago would keep
+          -- being priced off its last snapshot as if it were current, so the
+          -- window is part of the query, not an afterthought.
           SELECT DISTINCT ON (b.market_id)
             b.market_id, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k,
             b.impact_bps_100k, b.quote_curve_json
           FROM book_snapshots b
           JOIN active a ON a.id = b.market_id
+          WHERE b.ts >= now() - interval '2 days'
           ORDER BY b.market_id, b.ts DESC
         ), volume AS (
           SELECT DISTINCT ON (s.market_id) s.market_id, s.volume_24h_usd, s.open_interest_usd
           FROM volume_snapshots s
           JOIN active a ON a.id = s.market_id
+          WHERE s.ts >= now() - interval '2 days'
           ORDER BY s.market_id, s.ts DESC
         ), fee AS (
           SELECT DISTINCT ON (venue_id) venue_id, maker_bps, taker_bps
@@ -260,7 +273,7 @@ def run_hedge_recommendations(engine: Engine, *, ts: datetime) -> Recommendation
                     maker_bps=_number(row.maker_bps),
                     taker_bps=_number(row.taker_bps),
                 )
-                for row in conn.execute(query)
+                for row in conn.execute(query, {"fixture_slugs": sorted(FIXTURE_SLUGS)})
             ]
             for venue_id, (partner_id, cost) in _compute(markets).items():
                 stmt = insert(hedge_route_recommendations).values(
