@@ -74,10 +74,10 @@ function HedgeDiagram() {
 function VolumePreview() {
   const locale = useLocale();
   return (
-    <div className="flex flex-col gap-3 rounded-[16px] border border-border bg-surface-2 p-5">
+    <div className="flex flex-col gap-3 rounded-[16px] border border-white/[0.09] bg-[#161d2d] p-5 sm:p-6">
       <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Volume per account", "Объём на аккаунт")}</div>
-      <div className="flex h-[54px] items-center gap-2 rounded-xl border border-accent bg-[#141b2b] px-4 shadow-[0_0_0_3px_rgba(77,141,255,0.16)]"><span className="font-mono-num text-[16px] text-text-dim">$</span><span className="flex-1 font-mono-num text-[20px] text-text-primary">10,000</span><span className="font-mono-num text-[12px] text-text-dim">USDC</span></div>
-      <div className="flex items-center justify-between rounded-xl bg-[#141b2b] px-4 py-3"><span className="text-[13px] text-text-muted">{tr(locale, "Full hedge cycle", "Полный хедж-цикл")}</span><span className="font-mono-num text-[17px] text-text-primary">$40,000</span></div>
+      <div className="flex h-[54px] items-center gap-2 rounded-xl border border-accent bg-[#111827] px-4 shadow-[0_0_0_3px_rgba(77,141,255,0.16)]"><span className="font-mono-num text-[16px] text-text-dim">$</span><span className="flex-1 font-mono-num text-[20px] text-text-primary">10,000</span><span className="font-mono-num text-[12px] text-text-dim">USDC</span></div>
+      <div className="flex items-center justify-between rounded-xl bg-white/[0.045] px-4 py-3.5"><span className="text-[13px] text-text-muted">{tr(locale, "Full hedge cycle", "Полный хедж-цикл")}</span><span className="font-mono-num text-[18px] text-text-primary">$40,000</span></div>
       <div className="text-[12px] text-text-dim">{tr(locale, "Two accounts · $10,000 long, $10,000 short", "Два аккаунта · $10,000 в лонг, $10,000 в шорт")}</div>
     </div>
   );
@@ -87,9 +87,9 @@ function CalculationPreview() {
   const locale = useLocale();
   return (
     <div className="overflow-hidden rounded-[16px] border border-accent/30 bg-[linear-gradient(150deg,rgba(77,141,255,0.11),rgba(11,16,25,0.9)_60%)]">
-      <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><span className="font-mono-num text-[10px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендуемый маршрут")}</span><span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2 py-1 text-[10px] font-semibold text-positive"><span className="h-1 w-1 rounded-full bg-positive" />{tr(locale, "Eligible", "Подходит")}</span></div>
+      <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><span className="font-mono-num text-[10px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендуемый маршрут")}</span><span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2 py-1 text-[10px] font-semibold text-positive"><span className="h-1 w-1 rounded-full bg-positive" />{tr(locale, "Competition eligible", "Подходит для конкурса")}</span></div>
       <div className="p-4">
-        <div className="flex items-baseline gap-2 pb-3.5"><span className="font-mono-num text-[30px] text-text-primary">XAU</span><span className="text-[13px] text-text-muted">{tr(locale, "medium OI · gold", "средний OI · золото")}</span></div>
+        <div className="flex flex-wrap items-center gap-2 pb-3.5"><span className="font-mono-num text-[30px] text-text-primary">XAU</span><span className="rounded-full border border-accent/35 bg-accent/[0.09] px-2.5 py-1 font-mono-num text-[10px] tracking-[0.04em] text-accent">{tr(locale, "Medium OI", "Средний OI")}</span></div>
         <div className="grid grid-cols-2 gap-2.5"><div className="rounded-xl border border-positive/25 bg-positive/[0.06] p-3"><div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div><div className="mt-1.5 text-[14px] font-semibold text-text-primary">Variational</div></div><div className="rounded-xl border border-negative/25 bg-negative/[0.06] p-3"><div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div><div className="mt-1.5 text-[14px] font-semibold text-text-primary">TxFlow</div></div></div>
         <div className="grid grid-cols-2 gap-3 pt-3.5"><div><div className="text-[11px] text-text-muted">{tr(locale, "Holding window", "Период удержания")}</div><div className="mt-1 font-mono-num text-[16px] text-text-primary">12–24h</div></div><div><div className="text-[11px] text-text-muted">{tr(locale, "Execution cost", "Стоимость исполнения")}</div><div className="mt-1 font-mono-num text-[16px] text-positive">$18.40</div></div></div>
       </div>
