@@ -551,9 +551,6 @@ export function RouteResults({
   // share the exact same presentation and differ only in available data.
   const hasCostHistory = best.costRangeLowUsd !== best.costRangeHighUsd;
   const hold = recommendedHold(homeSlug, locale);
-  const historyDetail = hasCostHistory
-    ? tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`)
-    : tr(locale, "Latest hourly snapshot · history collecting", "Последний часовой снапшот · история собирается");
   return (
     <>
       <StaleDataNotice data={data} />
@@ -624,7 +621,6 @@ export function RouteResults({
                   tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  historyDetail,
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
