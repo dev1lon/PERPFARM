@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { RouteResults, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
+import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
 import { isTradfiMarket } from "@/lib/tradfi";
 
 type CrossPair = {
@@ -19,10 +19,13 @@ type CrossResponse = {
 };
 
 export function CrossPairRankings({
-  venueSlug, hedgeSlug, homeName, hedgeName, accountVolumeUsd, tradfiOnly = false,
+  venueSlug, hedgeSlug, homeName, hedgeName, accountVolumeUsd, tradfiOnly = false, suppressLoading = false, onLoadingChange,
 }: {
   venueSlug: string; hedgeSlug: string;
   homeName: string; hedgeName: string; accountVolumeUsd: number; tradfiOnly?: boolean;
+  /** The calculator owns the single scan state for same and cross routes. */
+  suppressLoading?: boolean;
+  onLoadingChange?: (loading: boolean) => void;
 }) {
   const locale = useLocale();
   const [response, setResponse] = useState<CrossResponse | null>(null);
@@ -32,6 +35,7 @@ export function CrossPairRankings({
 
   useEffect(() => {
     let active = true;
+    onLoadingChange?.(true);
     const url = "/api/venues/" + venueSlug + "/cross-rankings?hedge=" + encodeURIComponent(hedgeSlug) + "&accountVolumeUsd=" + accountVolumeUsd + "&tradfiOnly=" + tradfiOnly;
     fetch(url).then(async (result) => {
       if (!result.ok) throw new Error((await result.json()).error ?? "request failed");
@@ -41,13 +45,15 @@ export function CrossPairRankings({
       setError(null);
       setExpanded(null);
       setResponse(data);
+      onLoadingChange?.(false);
     }).catch((reason) => {
       if (!active) return;
       setResponse(null);
       setError(reason instanceof Error ? reason.message : "request failed");
+      onLoadingChange?.(false);
     });
     return () => { active = false; };
-  }, [venueSlug, hedgeSlug, accountVolumeUsd, tradfiOnly]);
+  }, [venueSlug, hedgeSlug, accountVolumeUsd, tradfiOnly, onLoadingChange]);
 
   // Order labels read LONG / SHORT. The model decides which venue rests the
   // limits, so the label follows that choice instead of claiming all-taker.
@@ -85,14 +91,9 @@ export function CrossPairRankings({
     return mapPairs(source);
   }, [response, tradfiOnly, oiFilter]);
 
-  if (!response && !error) return <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
+  if (!response && !error) return suppressLoading ? null : <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
   if (!response || pairs.length === 0) return <div className="mt-5 rounded-2xl border border-negative/40 bg-negative/10 p-4 text-[14px] text-negative">{error ?? tr(locale, "No liquid cross-venue pairs found.", "Ликвидных кросс-площадочных пар не найдено.")}</div>;
 
-  const rawBest = response.bands.flatMap((band) => band.pairs).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
-  const bestLongSlug = (rawBest.longVenue === venueSlug ? venueSlug : hedgeSlug) as "variational" | "txflow";
-  const bestShortSlug = (rawBest.shortVenue === venueSlug ? venueSlug : hedgeSlug) as "variational" | "txflow";
-  const bestLongName = bestLongSlug === venueSlug ? homeName : hedgeName;
-  const bestShortName = bestShortSlug === venueSlug ? homeName : hedgeName;
   const data: RankingResponse = {
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
@@ -100,5 +101,6 @@ export function CrossPairRankings({
     grouped: response.grouped,
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
   };
-  return <RouteResults data={data} top={pairs} best={pairs[0]} notionalUsd={accountVolumeUsd} hedgeName={bestShortName} homeName={bestLongName} homeSlug={bestLongSlug} hedgeSlug={bestShortSlug} isTxFlow={false} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
+  const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug as "variational" | "txflow");
+  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} notionalUsd={accountVolumeUsd} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug as "variational" | "txflow"} hedgeSlug={hedgeSlug as "variational" | "txflow"} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
 }

@@ -137,15 +137,23 @@ function feeTip(locale: Locale): string {
  * gets an explicit "+" so a credit is not misread as a cost.
  */
 function CostTile({ label, value, tip, signed = false }: { label: string; value: number | null; tip?: string; signed?: boolean }) {
+  const locale = useLocale();
+  const fundingState = signed && value !== null
+    ? value < 0
+      ? { label: tr(locale, "Receive", "Получите"), amount: formatUsd(Math.abs(value)), tone: "text-positive" }
+      : value > 0
+        ? { label: tr(locale, "Pay", "Заплатите"), amount: formatUsd(value), tone: "text-negative" }
+        : { label: null, amount: formatUsd(0), tone: "text-text-primary" }
+    : null;
   return (
-    <div className="flex items-baseline justify-between gap-2.5 rounded-[10px] bg-surface-1 px-3 py-2.5">
-      <span className="flex items-center gap-1.5 text-[12px] text-text-muted">
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-[10px] border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between">
+      <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-muted">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
       </span>
-      <span className={`font-mono-num text-[13px] ${value !== null && value < 0 ? "text-positive" : "text-text-primary"}`}>
-        {signed && value !== null && value > 0 ? "+" : ""}
-        {formatUsd(value)}
+      <span className={`shrink-0 whitespace-nowrap font-mono-num text-[13px] ${fundingState?.tone ?? (value !== null && value < 0 ? "text-positive" : "text-text-primary")}`}>
+        {fundingState?.label ? <span className="mr-1.5 font-sans text-[11px]">{fundingState.label}</span> : null}
+        {fundingState?.amount ?? formatUsd(value)}
       </span>
     </div>
   );
@@ -238,6 +246,7 @@ export function ProtocolCalculatorV2({
   const [data, setData] = useState<RankingResponse | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [oiFilter, setOiFilter] = useState<BandKey>("all");
+  const [crossLoading, setCrossLoading] = useState(false);
   const timer = useRef<number | null>(null);
 
   const requested = Number(accountVolumeInput);
@@ -283,6 +292,7 @@ export function ProtocolCalculatorV2({
     setStatus("running");
     setExpanded(null);
     setData(null);
+    setCrossLoading(hedge !== venueSlug);
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setNotionalUsd(requested);
@@ -302,24 +312,7 @@ export function ProtocolCalculatorV2({
   const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
     .slice(0, 10);
-  // `Hedge with` defines the route; this picks the pair inside it.
-  //
-  // NOT simply the global cheapest. The site's own guidance is Medium OI (fewer
-  // farmers splitting the same emission) on a TradFi market, so the headline
-  // recommendation has to follow that advice rather than contradict it one
-  // panel below. Cost decides only WITHIN that preference, and each fallback
-  // is announced in `bestRule` so the card never silently drops a criterion.
-  const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
-  const mediumPairs = grouped ? bandPairs("medium") : [];
-  const bestPick: [PairRanking | undefined, "medium-tradfi" | "medium" | "tradfi" | "cheapest"] =
-    cheapestOf(mediumPairs.filter((p) => p.competitionEligible)) !== undefined
-      ? [cheapestOf(mediumPairs.filter((p) => p.competitionEligible)), "medium-tradfi"]
-      : cheapestOf(mediumPairs) !== undefined
-        ? [cheapestOf(mediumPairs), "medium"]
-        : cheapestOf(flatPairs.filter((p) => p.competitionEligible)) !== undefined
-          ? [cheapestOf(flatPairs.filter((p) => p.competitionEligible)), "tradfi"]
-          : [cheapestOf(flatPairs), "cheapest"];
-  const [best, bestRule] = bestPick;
+  const [best, bestRule] = selectRecommendedPair(bands, venueSlug);
 
   return (
     <div className="mt-10">
@@ -406,7 +399,7 @@ export function ProtocolCalculatorV2({
       {/* The scan bar stays up until the pairs are actually on screen — the
           fetch continues after the scan animation, and a gap here reads as an
           empty result. */}
-      {(status === "running" || (status === "loaded" && ranHedge === venueSlug && !data)) && (
+      {(status === "running" || (status === "loaded" && ranHedge === venueSlug && !data) || (status === "loaded" && ranHedge !== venueSlug && crossLoading)) && (
         <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14">
           <div className="h-0.5 w-52 overflow-hidden rounded bg-white/10">
             <div className="pf-scan h-full w-1/3 bg-accent" />
@@ -429,7 +422,6 @@ export function ProtocolCalculatorV2({
           hedgeName={homeName}
           homeSlug={venueSlug}
           homeName={homeName}
-          isTxFlow={isTxFlow}
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
@@ -448,6 +440,8 @@ export function ProtocolCalculatorV2({
             hedgeName={hedgeName}
             accountVolumeUsd={notionalUsd}
             tradfiOnly={appliedTradfiOnly}
+            suppressLoading
+            onLoadingChange={setCrossLoading}
           />
         </div>
       )}
@@ -457,6 +451,44 @@ export function ProtocolCalculatorV2({
 
 /** Which criteria actually selected the recommended pair. */
 export type BestRule = "medium-tradfi" | "medium" | "tradfi" | "cheapest";
+
+type RecommendationPolicy = { preferMediumOi: boolean; preferTradfi: boolean };
+
+// This is intentionally a protocol-owned policy, not a hedge-venue setting.
+// It is kept in code while the requested CMS remains only a future plan.
+const RECOMMENDATION_POLICY: Record<"variational" | "txflow", RecommendationPolicy> = {
+  variational: { preferMediumOi: true, preferTradfi: true },
+  // TxFlow has not announced points mechanics. Its current guidance is
+  // therefore eligible trading volume on the venue it focuses on (TradFi),
+  // rather than importing Variational's Medium-OI points rule.
+  txflow: { preferMediumOi: false, preferTradfi: true },
+};
+
+/**
+ * The protocol being farmed owns the recommendation policy. `Hedge with`
+ * changes available books and costs, never the points strategy of the home
+ * page. Both same-venue and cross-venue views call this exact selector.
+ */
+export function selectRecommendedPair(
+  bands: RankingResponse["bands"],
+  homeSlug: "variational" | "txflow",
+): [PairRanking | undefined, BestRule] {
+  const all = bands.flatMap((band) => band.pairs);
+  const medium = bands.find((band) => band.key === "medium")?.pairs ?? [];
+  const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
+  const policy = RECOMMENDATION_POLICY[homeSlug];
+
+  // The primary venue, never the hedge, decides this set. Execution cost is a
+  // tie-breaker only within that home-venue strategy.
+  const preferred = policy.preferMediumOi ? medium : all;
+  const preferredTradfi = cheapestOf(preferred.filter((pair) => pair.competitionEligible));
+  if (preferredTradfi) return [preferredTradfi, policy.preferMediumOi ? "medium-tradfi" : "tradfi"];
+  const preferredAny = cheapestOf(preferred);
+  if (preferredAny) return [preferredAny, policy.preferMediumOi ? "medium" : "cheapest"];
+  const tradfi = cheapestOf(all.filter((pair) => pair.competitionEligible));
+  if (tradfi) return [tradfi, "tradfi"];
+  return [cheapestOf(all), "cheapest"];
+}
 
 export function RouteResults({
   data,
@@ -468,7 +500,6 @@ export function RouteResults({
   homeSlug,
   hedgeSlug,
   homeName,
-  isTxFlow,
   expanded,
   setExpanded,
   grouped,
@@ -484,7 +515,6 @@ export function RouteResults({
   homeSlug: "variational" | "txflow";
   hedgeSlug?: "variational" | "txflow";
   homeName: string;
-  isTxFlow: boolean;
   expanded: string | null;
   setExpanded: (v: string | null) => void;
   grouped: boolean;
@@ -517,11 +547,14 @@ export function RouteResults({
   // ends the flag would claim a benefit that no longer exists.
   const showEligible = data.competition.active;
   const bestOrders = best.entryOrders && best.exitOrders ? { entry: best.entryOrders, exit: best.exitOrders } : orders(best.firstLimitSide);
-  const isCross = best.fundingUsd !== undefined;
-  // Only the Variational same-protocol path stores 24h of snapshots and can
-  // quote a median and a percentile range. The other two price one live book,
-  // so any label promising history has to change with them.
-  const hasCostHistory = !isTxFlow && !isCross;
+  // A range is shown only when it came from more than one hourly observation.
+  // A single value is a current hourly snapshot, not a fake "$x–$x 24h range".
+  // This is deliberately data-driven: same-venue and cross-venue calculators
+  // share the exact same presentation and differ only in available data.
+  const hasCostHistory = best.costRangeLowUsd !== best.costRangeHighUsd;
+  const historyDetail = hasCostHistory
+    ? tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`)
+    : tr(locale, "Latest hourly snapshot · history collecting", "Последний часовой снапшот · история собирается");
   return (
     <>
       <StaleDataNotice data={data} />
@@ -558,7 +591,9 @@ export function RouteResults({
                   : bestRule === "medium"
                     ? tr(locale, `cheapest Medium-OI pair — no TradFi market in that band · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая пара со средним OI — TradFi в этом бэнде нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
                     : bestRule === "tradfi"
-                      ? tr(locale, `cheapest TradFi pair — no Medium-OI market available · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара — среднего OI сейчас нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
+                      ? homeSlug === "txflow"
+                        ? tr(locale, `cheapest eligible TradFi pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая eligible TradFi-пара · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
+                        : tr(locale, `cheapest TradFi pair — no Medium-OI market available · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая TradFi-пара — среднего OI сейчас нет · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)
                       : tr(locale, `cheapest available pair · ${formatUsd(notionalUsd, { decimals: 0 })} a side`, `самая дешёвая доступная пара · ${formatUsd(notionalUsd, { decimals: 0 })} на сторону`)}
               </div>
             </div>
@@ -586,10 +621,10 @@ export function RouteResults({
                 [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
                 [
-                  tr(locale, isCross ? "Estimated execution cost" : isTxFlow ? "Estimated live cost" : "Estimated cost · 24h median", isCross ? "Оценка стоимости исполнения" : isTxFlow ? "Оценка live-стоимости" : "Оценка · медиана 24ч"),
+                  tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"),
                   formatUsd(best.cycleCostUsd),
                   "text-positive",
-                  isCross ? tr(locale, "Fees + spread + impact; funding shown separately", "Комиссии + спред + impact; funding отдельно") : isTxFlow ? tr(locale, "Current L2 book snapshot", "Текущий снимок L2-стакана") : tr(locale, `24h range ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`, `Диапазон за 24ч ${formatUsd(best.costRangeLowUsd)}–${formatUsd(best.costRangeHighUsd)}`),
+                  historyDetail,
                 ],
               ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
                 <div key={k} className="flex flex-col gap-1.5">
@@ -606,7 +641,7 @@ export function RouteResults({
               <CostTile label={tr(locale, "Slippage", "Проскальзывание")} value={best.slippageCostUsd} />
               <CostTile
                 label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
-                value={isCross ? best.fundingUsd ?? null : 0}
+                value={best.fundingUsd ?? 0}
                 signed
                 tip={fundingTip(locale)}
               />
@@ -619,8 +654,8 @@ export function RouteResults({
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
               {tr(
                 locale,
-                isCross ? "Execution cost includes fees on both protocols, spread and quote impact. Funding is shown separately for a 12-hour hold and does not change the route ranking." : "Tip: when you close a leg by MARKET, set a take-profit one cent above/below the current price — the system is more likely to treat you as an organic trader, which can lead to more points.",
-                isCross ? "Стоимость исполнения включает комиссии обеих площадок, спред и impact. Funding показан отдельно за 12 часов и не влияет на ранжирование маршрута." : "Совет: закрывая ногу по MARKET, ставьте take-profit на один цент выше/ниже текущей цены — система с большей вероятностью отнесётся к вам как к органичному трейдеру, что может дать больше поинтов.",
+                "Execution cost includes fees, spread and quote impact. Funding is shown separately for a 12-hour hold and does not change the route ranking.",
+                "Стоимость исполнения включает комиссии, спред и impact. Funding показан отдельно за 12 часов и не влияет на ранжирование маршрута.",
               )}
             </div>
           </div>
@@ -775,24 +810,13 @@ export function RouteResults({
                             [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
                             [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                            // Only the Variational path has 24h history behind
-                            // it. TxFlow and cross routes are priced from one
-                            // live book, and assign the same number to all
-                            // three fields -- labelling that a "24h median"
-                            // with a "$11.43–$11.43 range" invents a history
-                            // that was never measured.
                             hasCostHistory
                               ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"]
-                              : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(p.cycleCostUsd), "text-positive"],
+                              : [tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"), formatUsd(p.cycleCostUsd), "text-positive"],
                             hasCostHistory
                               ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
-                              : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "not measured", "не измерялся"), "text-text-dim"],
-                            // No "Quoted at" tile: the snapshot time already sits
-                            // above the table, and repeating it here read as a
-                            // second, different timestamp.
-                            ...(hasCostHistory
-                              ? [[tr(locale, "Latest sampled cost", "Последняя стоимость по снапшоту"), formatUsd(p.latestCycleCostUsd), "text-text-primary"]]
-                              : []),
+                              : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "history collecting", "история собирается"), "text-text-dim"],
+                            [tr(locale, "Latest hourly cost", "Последняя стоимость за час"), formatUsd(p.latestCycleCostUsd), "text-text-primary"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
@@ -814,9 +838,9 @@ export function RouteResults({
                             [
                               tr(locale, "Funding · 12h", "Фандинг · 12ч"),
                               // Same-protocol routes hold an equal long and
-                              // short on one book, so funding cancels exactly.
-                              // That is a measured zero, not missing data.
-                              isCross ? p.fundingUsd : 0,
+                              // short on one book, so funding is a measured
+                              // zero; cross routes retain their signed value.
+                              p.fundingUsd ?? 0,
                               fundingTip(locale),
                             ],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined],
