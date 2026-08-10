@@ -823,9 +823,14 @@ export function RouteResults({
                             hasCostHistory
                               ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"]
                               : [tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"), formatUsd(p.cycleCostUsd), "text-positive"],
+                            // "history collecting" promised a range that would
+                            // never arrive: this path prices the route from the
+                            // venue's live order book on every request and never
+                            // reads stored snapshots, so there is no 24h band to
+                            // wait for. Name the basis instead of a pending one.
                             hasCostHistory
                               ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
-                              : [tr(locale, "24h range", "Диапазон за 24ч"), tr(locale, "history collecting", "история собирается"), "text-text-dim"],
+                              : [tr(locale, "Priced from", "Источник оценки"), tr(locale, "live order book", "живой стакан"), "text-text-muted"],
                           ] as [string, string, string][]
                         ).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
