@@ -47,7 +47,7 @@ export interface RankingResponse {
   sources?: { venue: string; live: boolean }[];
   /** What the headline cost IS, stated by the API. Every calculator prices the
    *  same way; they differ only in whether stored history exists yet. */
-  costBasis?: "24h-median" | "live-book";
+  costBasis?: "24h-median" | "live-book" | "latest-snapshot";
   grouped: boolean;
   bands: Band[];
 }
@@ -146,12 +146,21 @@ function headlineTiles(
     [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
     hasCostHistory
       ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(pair.cycleCostUsd), "text-positive"]
-      : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(pair.cycleCostUsd), "text-positive"],
-    // Naming the basis beats promising a range that is not coming: with no
-    // stored history this path prices from the venue's live book each request.
+      : data.costBasis === "latest-snapshot"
+        ? [tr(locale, "Estimated cost · latest snapshot", "Оценка · последний снимок"), formatUsd(pair.cycleCostUsd), "text-positive"]
+        : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(pair.cycleCostUsd), "text-positive"],
+    // Naming the basis beats promising a range that is not coming. Which basis
+    // it is matters: a cross route reads the newest STORED snapshot of both
+    // protocols, and calling that a live order book would be untrue.
     hasCostHistory
       ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(pair.costRangeLowUsd)}–${formatUsd(pair.costRangeHighUsd)}`, "text-text-muted"]
-      : [tr(locale, "Priced from", "Источник оценки"), tr(locale, "live order book", "живой стакан"), "text-text-muted"],
+      : [
+          tr(locale, "Priced from", "Источник оценки"),
+          data.costBasis === "latest-snapshot"
+            ? tr(locale, "latest hourly snapshot", "последний часовой снимок")
+            : tr(locale, "live order book", "живой стакан"),
+          "text-text-muted",
+        ],
   ];
 }
 

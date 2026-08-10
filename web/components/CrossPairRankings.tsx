@@ -98,6 +98,9 @@ export function CrossPairRankings({
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
     minVolumeUsd: response.minVolumeUsd, minOpenInterestUsd: 0, competition: { active: false, name: "" },
+    // Cross routes price from the newest STORED snapshot of each protocol, not
+    // from a live book and not from a 24h window.
+    costBasis: "latest-snapshot",
     grouped: response.grouped,
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
   };
