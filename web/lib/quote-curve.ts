@@ -39,59 +39,35 @@ export function parseCurve(value: unknown): { referencePrice: number; points: Qu
 }
 
 /**
- * Impact between two measured sizes, as a power law rather than a straight line.
+ * Linear interpolation between the two neighbouring measured sizes.
  *
- * A book does not fill linearly. Measured on production curves (leave-one-out
- * over 682 markets): near the touch the true impact sits ABOVE the chord, so a
- * straight line understates it -- median -4.8 bps at TxFlow's $1k point, -2.0
- * bps at Variational's. Deeper in the book it flips and the chord overstates,
- * +1.6 bps at TxFlow's $50k point.
+ * A power-law fit (`impact = a x size^k`) was tried here and MEASURED against
+ * production curves with leave-one-out, because the straight line is known to
+ * miss: it understates impact near the touch and overstates it deep in the
+ * book. The fit lost. On TxFlow's order book the median absolute error roughly
+ * doubled -- 4.49 -> 9.14 bps at the $10k point, 1.98 -> 7.42 bps at $50k --
+ * because the curvature reverses sign along the book, and a single exponent per
+ * segment cannot bend both ways. It helped only on Variational's widest span
+ * (median bias 0.185 -> 0.039 bps, n=11), which is not enough to pay for the
+ * regression everywhere else.
  *
- * Fitting `impact = a x size^k` through the two neighbouring measurements
- * reproduces both bends without assuming which one applies: the exponent comes
- * out of the endpoints themselves. k < 1 bows the curve above the chord, k > 1
- * below it. It still passes exactly through every measured point.
- *
- * It needs two positive impacts to take logs of, so the first segment -- which
- * starts at the touch, where impact is zero by definition -- stays linear. That
- * segment spans the smallest sizes, where the absolute error is smallest too.
+ * The real fix is narrower spans, not a cleverer curve between wide ones: see
+ * `_QUOTE_BUCKETS` in worker/perpfarm/adapters/txflow.py. Verify any future
+ * attempt with /api/diagnostics/curve-error before shipping it.
  */
-function interpolateDisplacement(
-  leftNotional: number,
-  leftDisplacement: number,
-  rightNotional: number,
-  rightDisplacement: number,
-  notionalUsd: number,
-): number {
-  if (leftNotional > 0 && leftDisplacement > 0 && rightDisplacement > 0 && rightNotional > leftNotional) {
-    const exponent = Math.log(rightDisplacement / leftDisplacement) / Math.log(rightNotional / leftNotional);
-    if (Number.isFinite(exponent)) return leftDisplacement * Math.pow(notionalUsd / leftNotional, exponent);
-  }
-  const position = (notionalUsd - leftNotional) / (rightNotional - leftNotional);
-  return leftDisplacement + (rightDisplacement - leftDisplacement) * position;
-}
-
 function interpolateQuote(points: QuotePoint[], notionalUsd: number): QuotePoint | null {
   if (notionalUsd < 0 || notionalUsd > points[points.length - 1]!.notionalUsd) return null;
   if (notionalUsd <= points[0]!.notionalUsd) return points[0]!;
-  const base = points[0]!;
   for (let index = 1; index < points.length; index++) {
     const left = points[index - 1]!;
     const right = points[index]!;
     if (notionalUsd <= right.notionalUsd) {
-      // Interpolate how far each side has moved AWAY FROM THE TOUCH, not the
-      // raw price: displacement is the quantity that follows a power law.
-      const ask = base.ask + interpolateDisplacement(
-        left.notionalUsd, left.ask - base.ask,
-        right.notionalUsd, right.ask - base.ask,
+      const position = (notionalUsd - left.notionalUsd) / (right.notionalUsd - left.notionalUsd);
+      return {
         notionalUsd,
-      );
-      const bid = base.bid - interpolateDisplacement(
-        left.notionalUsd, base.bid - left.bid,
-        right.notionalUsd, base.bid - right.bid,
-        notionalUsd,
-      );
-      return { notionalUsd, bid, ask };
+        bid: left.bid + (right.bid - left.bid) * position,
+        ask: left.ask + (right.ask - left.ask) * position,
+      };
     }
   }
   return null;
