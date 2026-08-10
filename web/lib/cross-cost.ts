@@ -9,6 +9,7 @@
  */
 
 import { getPool } from "@/lib/db";
+import { loadCostHistory, type CostSample } from "@/lib/cost-history";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
@@ -56,6 +57,10 @@ export type CrossPair = {
   slippageCostUsd: number;
   fundingUsd: number | null;
   cycleCostUsd: number;
+  /** Cost from the newest tick alone, and the 24h p25-p75 band. */
+  latestCycleCostUsd: number;
+  costRangeLowUsd: number;
+  costRangeHighUsd: number;
 };
 
 export type CrossBand = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: CrossPair[] };
@@ -75,6 +80,8 @@ export type CrossRankings = {
   /** Home-venue tickers with no counterpart on the hedge venue, for diagnosis
    *  of naming mismatches (the same instrument listed under two symbols). */
   unmatched: string[];
+  /** What the headline number is, same vocabulary as the other calculators. */
+  costBasis: "24h-median" | "latest-snapshot";
 };
 
 function asNumber(value: unknown): number | null {
@@ -196,6 +203,9 @@ function round(p: CrossPair): CrossPair {
     feeCostUsd: Number(p.feeCostUsd.toFixed(2)),
     fundingUsd: p.fundingUsd === null ? null : Number(p.fundingUsd.toFixed(2)),
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
+    latestCycleCostUsd: Number(p.latestCycleCostUsd.toFixed(2)),
+    costRangeLowUsd: Number(p.costRangeLowUsd.toFixed(2)),
+    costRangeHighUsd: Number(p.costRangeHighUsd.toFixed(2)),
   };
 }
 
@@ -213,7 +223,12 @@ export async function computeCrossRankings(
   accountVolumeUsd: number,
   tradfiOnly = false,
 ): Promise<CrossRankings> {
-  const rows = await loadVenueMarkets([slugA, slugB]);
+  const [rows, histA, histB] = await Promise.all([
+    loadVenueMarkets([slugA, slugB]),
+    loadCostHistory(slugA, accountVolumeUsd / 2),
+    loadCostHistory(slugB, accountVolumeUsd / 2),
+  ]);
+  let observations = 0;
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
     [slugA, new Map()],
     [slugB, new Map()],
@@ -295,7 +310,35 @@ export async function computeCrossRankings(
       : (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
     // Funding is informative, not part of the execution-cost ranking: it can
     // move either way during the hold and is shown separately in the UI.
-    const cycleCostUsd = execCostUsd;
+    //
+    // The 24h band prices the WHOLE ROUTE at each hourly tick and takes
+    // percentiles of that, rather than of either leg on its own: the cost is a
+    // joint property of both books at the same moment, and the maker side can
+    // change between ticks. Both series come from the same cron, so index i is
+    // the same tick on both venues.
+    const historyA = histA.get(sym) ?? [];
+    const historyB = histB.get(sym) ?? [];
+    const routeSamples: number[] = [];
+    for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
+      const a = historyA[i]!;
+      const b = historyB[i]!;
+      const takerOf = (leg: CostSample, fee: number) => fee + leg.legBps;
+      const onA = costA.makerFee + takerOf(b, costB.takerFee);
+      const onB = costB.makerFee + takerOf(a, costA.takerFee);
+      routeSamples.push((accountVolumeUsd * Math.min(onA, onB)) / 10_000);
+    }
+    const sorted = [...routeSamples].sort((left, right) => left - right);
+    const percentile = (q: number) => {
+      if (sorted.length === 0) return execCostUsd;
+      const position = (sorted.length - 1) * q;
+      const lower = Math.floor(position);
+      const upper = Math.ceil(position);
+      return sorted[lower]! + (sorted[upper]! - sorted[lower]!) * (position - lower);
+    };
+    const cycleCostUsd = percentile(0.5);
+    const costRangeLowUsd = percentile(0.25);
+    const costRangeHighUsd = percentile(0.75);
+    observations = Math.max(observations, sorted.length);
 
     candidates.push({
       pair: sym,
@@ -313,6 +356,9 @@ export async function computeCrossRankings(
       feeCostUsd,
       fundingUsd,
       cycleCostUsd,
+      latestCycleCostUsd: execCostUsd,
+      costRangeLowUsd,
+      costRangeHighUsd,
       oiKey: displayedOiA,
     });
   }
@@ -338,6 +384,7 @@ export async function computeCrossRankings(
     holdHours: FUNDING_HOLD_HOURS,
     minVolumeUsd: MIN_VOLUME_USD,
     grouped: true,
+    costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
     bands,
   };
 }

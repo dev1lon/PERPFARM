@@ -10,11 +10,13 @@ type CrossPair = {
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number | null; cycleCostUsd: number;
+  latestCycleCostUsd: number; costRangeLowUsd: number; costRangeHighUsd: number;
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
   asOf: string; accountVolumeUsd: number; fillNotionalUsd: number; totalCycleVolumeUsd: number;
   holdHours: number; minVolumeUsd: number; grouped: boolean;
+  costBasis?: "24h-median" | "latest-snapshot";
   bands: { key: CrossBandKey; pairs: CrossPair[] }[];
 };
 
@@ -70,9 +72,9 @@ export function CrossPairRankings({
       competitionEligible: isTradfiMarket(pair.pair),
       firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
       cycleCostUsd: pair.cycleCostUsd,
-      latestCycleCostUsd: pair.cycleCostUsd,
-      costRangeLowUsd: pair.cycleCostUsd,
-      costRangeHighUsd: pair.cycleCostUsd,
+      latestCycleCostUsd: pair.latestCycleCostUsd,
+      costRangeLowUsd: pair.costRangeLowUsd,
+      costRangeHighUsd: pair.costRangeHighUsd,
       spreadCostUsd: pair.spreadCostUsd,
       slippageCostUsd: pair.slippageCostUsd,
       costTier: executionTier(pair),
@@ -98,9 +100,8 @@ export function CrossPairRankings({
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
     minVolumeUsd: response.minVolumeUsd, minOpenInterestUsd: 0, competition: { active: false, name: "" },
-    // Cross routes price from the newest STORED snapshot of each protocol, not
-    // from a live book and not from a 24h window.
-    costBasis: "latest-snapshot",
+    // Same vocabulary as the other calculators: the API says what the number is.
+    costBasis: response.costBasis ?? "latest-snapshot",
     grouped: response.grouped,
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
   };
