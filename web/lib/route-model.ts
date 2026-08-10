@@ -102,3 +102,29 @@ export function oiBandFor(displayedOiUsd: number, venueSlug: string): OiBandKey 
   if (displayedOiUsd >= bands.low) return "low";
   return null;
 }
+
+export type CostTier = "low" | "medium" | "high";
+
+/**
+ * How expensive the ORDER BOOK is, graded on the same scale everywhere.
+ *
+ * Fees are excluded deliberately. They are identical for every pair on a
+ * protocol, so grading them says nothing about the pair and everything about
+ * the venue -- and with one absolute scale the badge collapsed: measured on
+ * live data, "Low" was unreachable on TxFlow (its 5.7 bps fee alone exceeds
+ * any low threshold) while "High" was unreachable on Variational (its worst
+ * pair costs 4.6 bps in total). One of the three colours never appeared on
+ * each protocol.
+ *
+ * What actually varies pair to pair is spread and quote impact. Grading that
+ * lets one rule serve every protocol: the venue's fee shifts the origin, the
+ * book decides the colour.
+ */
+const BOOK_COST_LOW_BPS = 1.5;
+const BOOK_COST_MEDIUM_BPS = 4;
+
+export function executionTier(cycleCostUsd: number, feeCostUsd: number, accountVolumeUsd: number): CostTier {
+  if (accountVolumeUsd <= 0) return "high";
+  const bookBps = ((cycleCostUsd - feeCostUsd) / accountVolumeUsd) * 10_000;
+  return bookBps <= BOOK_COST_LOW_BPS ? "low" : bookBps <= BOOK_COST_MEDIUM_BPS ? "medium" : "high";
+}

@@ -8,6 +8,7 @@ import {
   displayedOpenInterestUsd,
   minOpenInterestUsd,
   oiBandFor,
+  executionTier,
 } from "@/lib/route-model";
 import { TRADFI_TICKERS } from "@/lib/tradfi";
 
@@ -193,10 +194,8 @@ export async function GET(request: NextRequest) {
         // fees, as bps of account volume. Grading Variational on legBps alone
         // happened to work only because its fees are zero -- on TxFlow the same
         // rule badged a 5.7 bps route "Low execution cost".
-        const costTier: CostTier = ((): CostTier => {
-          const bps = (cycleCostUsd / accountVolumeUsd) * 10_000;
-          return bps <= 3 ? "low" : bps <= 8 ? "medium" : "high";
-        })();
+        // Variational charges 0/0, so the whole cycle cost IS book cost.
+        const costTier: CostTier = executionTier(cycleCostUsd, 0, accountVolumeUsd);
         return {
           pair: row.pair,
           // Omni displays gross OI (user side plus OLP counterparty); the
@@ -245,8 +244,10 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // Newest snapshot in the set: this labels when the data was last refreshed,
+    // and a single market that skipped a run must not backdate the whole table.
     const asOf = candidates.reduce(
-      (oldest, candidate) => (candidate.quoteAsOf < oldest ? candidate.quoteAsOf : oldest),
+      (newest, candidate) => (candidate.quoteAsOf > newest ? candidate.quoteAsOf : newest),
       candidates[0]?.quoteAsOf ?? new Date().toISOString(),
     );
 

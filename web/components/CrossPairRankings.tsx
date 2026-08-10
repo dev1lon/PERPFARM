@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
+import { executionTier } from "@/lib/route-model";
 import { isTradfiMarket } from "@/lib/tradfi";
 
 type CrossPair = {
@@ -59,10 +60,6 @@ export function CrossPairRankings({
 
   // Order labels read LONG / SHORT. The model decides which venue rests the
   // limits, so the label follows that choice instead of claiming all-taker.
-  const executionTier = (pair: CrossPair): "low" | "medium" | "high" => {
-    const bps = pair.cycleCostUsd / accountVolumeUsd * 10_000;
-    return bps <= 3 ? "low" : bps <= 8 ? "medium" : "high";
-  };
   const mapPairs = (source: CrossPair[]): PairRanking[] => source.map((pair) => {
     const longIsMaker = pair.longVenue === pair.makerVenue;
     return {
@@ -77,7 +74,7 @@ export function CrossPairRankings({
       costRangeHighUsd: pair.costRangeHighUsd,
       spreadCostUsd: pair.spreadCostUsd,
       slippageCostUsd: pair.slippageCostUsd,
-      costTier: executionTier(pair),
+      costTier: executionTier(pair.cycleCostUsd, pair.feeCostUsd, accountVolumeUsd),
       fundingUsd: pair.fundingUsd,
       feeCostUsd: pair.feeCostUsd,
       entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",

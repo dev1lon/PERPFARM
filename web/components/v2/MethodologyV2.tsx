@@ -145,7 +145,24 @@ function InputCards() {
           <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is shown separately from execution cost. For cross-protocol routes, we average the two funding rates over the latest 24h and estimate the difference for a fixed 12-hour hold. A + value is an expected credit; a − value is an expected payment. Equal-size legs on one protocol net to $0. Funding can change while the hedge is open, so it never changes the route ranking.", "Фандинг показан отдельно от стоимости исполнения. Для кросс-маршрута мы усредняем ставки двух площадок за последние 24ч и оцениваем разницу для фиксированного удержания 12 часов. Значение со знаком + — ожидаемый доход, со знаком − — ожидаемый расход. Ноги равного размера на одной площадке нетятся в $0. Фандинг может меняться во время удержания, поэтому не влияет на ранжирование маршрута.")}</div>
         </div>
         <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
-          <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
+          <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "What the Low / Medium / High badge means", "Что означает плашка Low / Medium / High")}</div></div>
+          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">
+            {tr(
+              locale,
+              "The badge grades the ORDER BOOK only: half the spread you cross plus quote impact at your size. It deliberately leaves out the protocol's fee, because that fee is the same for every pair on that protocol — it tells you about the venue, not about the pair you are choosing between. Low is up to 1.5 bps of book cost, Medium up to 4 bps, High above that. The same scale applies on every protocol and to cross-protocol routes.",
+              "Плашка оценивает только СТАКАН: половину пересекаемого спреда плюс quote impact на ваш размер. Комиссия протокола в неё намеренно не входит — она одинакова для всех пар этой площадки и говорит о площадке, а не о паре, которую вы выбираете. Low — до 1.5 bps стоимости стакана, Medium — до 4 bps, High — выше. Шкала одна для всех протоколов и для кросс-маршрутов.",
+            )}
+          </div>
+          <div className="max-w-[640px] text-[13px] leading-[1.65] text-text-dim">
+            {tr(
+              locale,
+              "This is an execution-cost grade, not a risk score: it says nothing about liquidation, volatility or protocol safety. A pair can be badged Low and still be expensive overall if the protocol's fee is high — the full cost is always in the breakdown.",
+              "Это оценка стоимости исполнения, а не риска: она ничего не говорит о ликвидации, волатильности или надёжности протокола. Пара может иметь плашку Low и всё равно быть дорогой в сумме, если у протокола высокая комиссия — полная стоимость всегда в разборе.",
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
+          <div className="flex items-center gap-3">{num("06")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
           <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">{tr(locale, "The protocol rules that affect farming efficiency are shown alongside the route analysis.", "Правила протокола, влияющие на эффективность фарма, показываются вместе с анализом маршрута.")}</div>
           <div className="flex flex-wrap gap-1.5">
             {["holding time", "open interest", "eligible volume", "maker liquidity", "activity"].map((m) => (

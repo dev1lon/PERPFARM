@@ -108,7 +108,7 @@ function costTierLabel(locale: Locale, tier: CostTier): string {
 function CostTierBadge({ costTier }: { costTier: CostTier }) {
   const locale = useLocale();
   return (
-    <span title={tr(locale, "Based on 24h spread and quote-impact data; this is not a liquidation-risk score.", "На основе 24ч спреда и quote impact; это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
+    <span title={tr(locale, "Grades the order book only: half-spread plus quote impact at your size, excluding the protocol fee (which is the same for every pair here). Low up to 1.5 bps, Medium up to 4 bps. Not a liquidation-risk score.", "Оценивает только стакан: полспреда плюс quote impact на ваш размер, без комиссии протокола (она одинакова для всех пар). Low — до 1.5 bps, Medium — до 4 bps. Это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
       <span className={`h-[5px] w-[5px] rounded-full ${COST_TIER_DOT[costTier]}`} />
       {costTierLabel(locale, costTier)}
     </span>

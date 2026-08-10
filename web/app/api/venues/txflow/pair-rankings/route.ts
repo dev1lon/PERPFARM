@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
-import { displayedOpenInterestUsd, FUNDING_HOLD_HOURS, MIN_VOLUME_USD, OI_BANDS, oiBandFor } from "@/lib/route-model";
+import { displayedOpenInterestUsd, executionTier, FUNDING_HOLD_HOURS, MIN_VOLUME_USD, OI_BANDS, oiBandFor } from "@/lib/route-model";
 import { isTradfiMarket } from "@/lib/tradfi";
 import { publishedFees } from "@/lib/venue-fees";
 
@@ -23,13 +23,6 @@ const FEE_BPS = TXFLOW_FEES.makerBps + TXFLOW_FEES.takerBps; // 5.7 bps per cycl
  * the market list, the book, open interest, 24h volume -- the worker already
  * records hourly.
  */
-type CostTier = "low" | "medium" | "high";
-
-/** One tier definition for every protocol: total cycle cost, fees included. */
-function costTier(cycleCostUsd: number, accountVolumeUsd: number): CostTier {
-  const bps = (cycleCostUsd / accountVolumeUsd) * 10_000;
-  return bps <= 3 ? "low" : bps <= 8 ? "medium" : "high";
-}
 
 export async function GET(request: NextRequest) {
   const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
@@ -44,7 +37,7 @@ export async function GET(request: NextRequest) {
     const fillNotionalUsd = accountVolumeUsd / 2;
     const markets = await loadVenueMarkets("txflow", fillNotionalUsd);
 
-    let oldestBookTs: string | null = null;
+    let newestBookTs: string | null = null;
     let observations = 0;
     const pairs = [...markets.values()]
       .map((market) => {
@@ -60,8 +53,12 @@ export async function GET(request: NextRequest) {
 
         const costOf = (legBps: number) => (2 * fillNotionalUsd * (legBps + FEE_BPS)) / 10_000;
         const cycleCostUsd = costOf(quote.median.legBps);
+        const feeCostUsd = (2 * fillNotionalUsd * FEE_BPS) / 10_000;
         observations = Math.max(observations, quote.observations);
-        if (oldestBookTs === null || market.bookTs < oldestBookTs) oldestBookTs = market.bookTs;
+        // The NEWEST snapshot, not the oldest: one market that skipped a run
+        // (a TradFi book with no resting orders outside its session) must not
+        // date-stamp the whole table two hours back.
+        if (newestBookTs === null || market.bookTs > newestBookTs) newestBookTs = market.bookTs;
 
         return {
           pair: market.pair,
@@ -76,10 +73,10 @@ export async function GET(request: NextRequest) {
           costRangeHighUsd: Number(costOf(quote.high.legBps).toFixed(2)),
           spreadCostUsd: Number((2 * fillNotionalUsd * (quote.median.spreadBps / 2) / 10_000).toFixed(2)),
           slippageCostUsd: Number((2 * fillNotionalUsd * quote.median.impactBps / 10_000).toFixed(2)),
-          feeCostUsd: Number((2 * fillNotionalUsd * FEE_BPS / 10_000).toFixed(2)),
+          feeCostUsd: Number(feeCostUsd.toFixed(2)),
           // Equal long and short on the SAME venue: funding cancels out.
           fundingUsd: 0,
-          costTier: costTier(cycleCostUsd, accountVolumeUsd),
+          costTier: executionTier(cycleCostUsd, feeCostUsd, accountVolumeUsd),
         };
       })
       .filter((row): row is NonNullable<typeof row> => row !== null)
@@ -107,7 +104,7 @@ export async function GET(request: NextRequest) {
       band("low", pairs.filter((p) => oiBandFor(p.openInterestUsd, "txflow") === "low")),
     ].filter((entry) => entry.pairs.length > 0);
 
-    const asOf = oldestBookTs ?? new Date().toISOString();
+    const asOf = newestBookTs ?? new Date().toISOString();
     return NextResponse.json({
       asOf,
       fillNotionalUsd,

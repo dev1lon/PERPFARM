@@ -31,6 +31,9 @@ from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, 
 class SnapshotSyncSummary:
     written: int = 0
     skipped: int = 0
+    # Which markets were skipped and why. A bare count could not answer "why is
+    # UVXY two hours stale?" -- the reason was discarded at the moment we had it.
+    skips: list[tuple[str, str]] = field(default_factory=list)
     errors: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -85,10 +88,12 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
             book = adapter.get_orderbook_top(symbol)
             funding = adapter.get_funding(symbol)
             volume = adapter.get_volume(symbol)
-        except (NotImplementedError, MarketUnavailable):
+        except (NotImplementedError, MarketUnavailable) as reason:
             # unwired adapter, or a market that's temporarily closed (weekend
-            # FX/metals): expected, skip -- don't fail the whole run.
+            # FX/metals): expected, skip -- don't fail the whole run. The reason
+            # is recorded so a stale market can be explained instead of guessed.
             summary.skipped += 1
+            summary.skips.append((f"{slug}:{symbol}", str(reason) or type(reason).__name__))
             continue
         except Exception as exc:  # noqa: BLE001 -- one market must not sink the batch
             summary.errors.append((f"{slug}:{symbol}", str(exc)))

@@ -187,6 +187,10 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
         )
+        # Name the skipped markets. A count alone cannot explain why one pair
+        # is hours staler than the rest of its protocol.
+        for market, reason in summary.skips:
+            click.echo(f"  skipped {market}: {reason}")
         # Group failures by venue: one venue under maintenance produces an error
         # per market, which used to flood the log with a dozen identical lines.
         by_venue: dict[str, list[tuple[str, str]]] = {}
