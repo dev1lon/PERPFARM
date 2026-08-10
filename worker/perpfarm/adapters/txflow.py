@@ -33,7 +33,22 @@ from perpfarm.adapters.base import (
 INFO_URL = "https://api.txflow.com/info"
 FEE_SOURCE_URL = "https://docs.txflow.com/perp/trading-fees"
 _HOURS_PER_YEAR = 8760.0
-_QUOTE_BUCKETS = (1_000.0, 10_000.0, 50_000.0, 100_000.0)
+# Geometric ladder, ~2-2.5x between neighbours. Interpolation error scales with
+# the RATIO of adjacent points, not their dollar gap, so even spacing would
+# waste points up top and still leave a wide hole at the bottom. Measured on
+# production curves, the old 1k/10k/50k/100k ladder was off by up to 1.6 bps in
+# the middle of its widest span; these sizes close that. The book is already in
+# memory, so extra points cost one more walk each, not another request.
+_QUOTE_BUCKETS = (
+    500.0,
+    1_000.0,
+    2_500.0,
+    5_000.0,
+    10_000.0,
+    25_000.0,
+    50_000.0,
+    100_000.0,
+)
 
 
 def _float(value: object | None) -> float | None:

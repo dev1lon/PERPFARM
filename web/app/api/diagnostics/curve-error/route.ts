@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     );
 
     // errorBps per dropped notional, across every market.
-    const byNotional = new Map<number, number[]>();
+    const byNotional = new Map<number, { linear: number[]; power: number[] }>();
     let curvesSeen = 0;
     const sizesSeen = new Set<number>();
 
@@ -62,17 +62,29 @@ export async function GET(request: NextRequest) {
         const span = right.notionalUsd - left.notionalUsd;
         if (span <= 0) continue;
         const position = (target.notionalUsd - left.notionalUsd) / span;
-        const predictedAsk = left.ask + (right.ask - left.ask) * position;
-        const predictedBid = left.bid + (right.bid - left.bid) * position;
+        const linearAsk = left.ask + (right.ask - left.ask) * position;
+        const linearBid = left.bid + (right.bid - left.bid) * position;
+
+        // The same two neighbours fitted as impact = a x size^k, which is what
+        // the model now uses. Reported side by side so the change is measured,
+        // not asserted.
+        const power = (ln: number, ld: number, rn: number, rd: number) => {
+          if (ln > 0 && ld > 0 && rd > 0 && rn > ln) {
+            const k = Math.log(rd / ld) / Math.log(rn / ln);
+            if (Number.isFinite(k)) return ld * Math.pow(target.notionalUsd / ln, k);
+          }
+          return ld + (rd - ld) * position;
+        };
+        const powerAsk = base.ask + power(left.notionalUsd, left.ask - base.ask, right.notionalUsd, right.ask - base.ask);
+        const powerBid = base.bid - power(left.notionalUsd, base.bid - left.bid, right.notionalUsd, base.bid - right.bid);
 
         // Impact of one crossing leg, cheaper side, exactly as the model reads it.
         const impact = (bid: number, ask: number) =>
           Math.min(Math.max(ask - base.ask, 0), Math.max(base.bid - bid, 0)) / referencePrice * 10_000;
         const actualBps = impact(target.bid, target.ask);
-        const predictedBps = impact(predictedBid, predictedAsk);
-
-        const bucket = byNotional.get(target.notionalUsd) ?? [];
-        bucket.push(predictedBps - actualBps);
+        const bucket = byNotional.get(target.notionalUsd) ?? { linear: [], power: [] };
+        bucket.linear.push(impact(linearBid, linearAsk) - actualBps);
+        bucket.power.push(impact(powerBid, powerAsk) - actualBps);
         byNotional.set(target.notionalUsd, bucket);
       }
     }
@@ -80,16 +92,17 @@ export async function GET(request: NextRequest) {
     const perSize = [...byNotional.entries()]
       .sort(([a], [b]) => a - b)
       .map(([notionalUsd, errors]) => {
-        const overstated = errors.filter((e) => e > 0.01).length;
-        const understated = errors.filter((e) => e < -0.01).length;
+        const summarise = (values: number[]) => ({
+          medianErrorBps: Number((median(values) ?? 0).toFixed(4)),
+          medianAbsErrorBps: Number((median(values.map(Math.abs)) ?? 0).toFixed(4)),
+          worstOverstateBps: Number(Math.max(0, ...values).toFixed(4)),
+          worstUnderstateBps: Number(Math.min(0, ...values).toFixed(4)),
+        });
         return {
           notionalUsd,
-          samples: errors.length,
-          medianErrorBps: Number((median(errors) ?? 0).toFixed(4)),
-          worstOverstateBps: Number(Math.max(0, ...errors).toFixed(4)),
-          worstUnderstateBps: Number(Math.min(0, ...errors).toFixed(4)),
-          overstated,
-          understated,
+          samples: errors.linear.length,
+          linear: summarise(errors.linear),
+          power: summarise(errors.power),
         };
       });
 
