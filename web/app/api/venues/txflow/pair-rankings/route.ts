@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { loadCostHistory, quoteFromSamples, type CostSample } from "@/lib/cost-history";
 import { displayedOpenInterestUsd, FUNDING_HOLD_HOURS, OI_BANDS } from "@/lib/route-model";
 import { publishedFees } from "@/lib/venue-fees";
 
@@ -157,6 +158,12 @@ export async function GET(request: NextRequest) {
       .filter((market) => market.tagIds?.includes(5) === true || market.baseCurrency === "BTC" || market.baseCurrency === "ETH");
     const fillNotionalUsd = accountVolumeUsd / 2;
 
+    // Stored snapshots turn the live book into a 24h median. History is an
+    // enhancement, never a dependency: if the database is unreachable the
+    // route still prices from the live book alone and says so.
+    const history = await loadCostHistory("txflow", fillNotionalUsd).catch(() => new Map<string, CostSample[]>());
+    let observations = 0;
+
     // Counted, not swallowed: a scan that lost half its markets to rate
     // limiting must not look identical to a scan of a thin venue.
     let rateLimitedMarkets = 0;
@@ -183,18 +190,32 @@ export async function GET(request: NextRequest) {
         const sellBps = (mid - sellVwap) / mid * 10_000;
         const marketBps = Math.min(buyBps, sellBps);
         const firstLimitSide = buyBps <= sellBps ? "short" : "long";
+        const spreadBps = (ask - bid) / mid * 10_000;
+
+        // The live book is one observation. Combined with the stored 24h
+        // snapshots it produces the same median-and-range quote every other
+        // protocol publishes, instead of a single reading dressed as a median.
+        const live: CostSample = {
+          legBps: marketBps,
+          spreadBps,
+          impactBps: Math.max(marketBps - spreadBps / 2, 0),
+        };
+        const quote = quoteFromSamples(live, history.get(market.baseCurrency) ?? []);
+        if (quote === null) return null;
+
         // A delta-neutral cycle executes two maker and two taker fills, each at
         // the requested half-account notional. The active side crosses its real
         // L2 book; the resting side pays the maker fee only.
-        const cycleCostUsd = 2 * fillNotionalUsd * (marketBps + TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
-        const spreadBps = (ask - bid) / mid * 10_000;
-        const spreadCostUsd = 2 * fillNotionalUsd * (spreadBps / 2) / 10_000;
+        const feeBps = TAKER_FEE_BPS + MAKER_FEE_BPS;
+        const costOf = (legBps: number) => (2 * fillNotionalUsd * (legBps + feeBps)) / 10_000;
+        const spreadCostUsd = 2 * fillNotionalUsd * (quote.median.spreadBps / 2) / 10_000;
         // Whatever the market order pays beyond the half-spread, i.e. how far it
         // walks the book. Zero on a book deep enough to fill at the top level.
-        const slippageCostUsd = 2 * fillNotionalUsd * Math.max(marketBps - spreadBps / 2, 0) / 10_000;
+        const slippageCostUsd = 2 * fillNotionalUsd * quote.median.impactBps / 10_000;
         // Fees are most of the cost here and must be reported, not implied:
         // at $10k fills they are $12 of a $12.03 cycle.
-        const feeCostUsd = 2 * fillNotionalUsd * (TAKER_FEE_BPS + MAKER_FEE_BPS) / 10_000;
+        const feeCostUsd = 2 * fillNotionalUsd * feeBps / 10_000;
+        observations = Math.max(observations, quote.observations);
         return {
           pair: market.baseCurrency,
           // TxFlow has no confirmed OI display multiplier. Preserve its raw
@@ -204,16 +225,16 @@ export async function GET(request: NextRequest) {
           competitionEligible: market.tagIds?.includes(5) === true,
           firstLimitSide,
           quoteAsOf: new Date().toISOString(),
-          cycleCostUsd: Number(cycleCostUsd.toFixed(2)),
-          latestCycleCostUsd: Number(cycleCostUsd.toFixed(2)),
-          costRangeLowUsd: Number(cycleCostUsd.toFixed(2)),
-          costRangeHighUsd: Number(cycleCostUsd.toFixed(2)),
+          cycleCostUsd: Number(costOf(quote.median.legBps).toFixed(2)),
+          latestCycleCostUsd: Number(costOf(quote.latest.legBps).toFixed(2)),
+          costRangeLowUsd: Number(costOf(quote.low.legBps).toFixed(2)),
+          costRangeHighUsd: Number(costOf(quote.high.legBps).toFixed(2)),
           spreadCostUsd: Number(spreadCostUsd.toFixed(2)),
           slippageCostUsd: Number(slippageCostUsd.toFixed(2)),
           feeCostUsd: Number(feeCostUsd.toFixed(2)),
           // Equal long and short on the SAME venue: funding cancels out.
           fundingUsd: 0,
-          costTier: costTier(marketBps),
+          costTier: costTier(quote.median.legBps),
         };
       } catch (error) {
         if (error instanceof RateLimited) rateLimitedMarkets++;
@@ -258,6 +279,9 @@ export async function GET(request: NextRequest) {
       minOpenInterestUsd: LOW_OI_USD,
       competition: { active: false, name: "" },
       sources: [{ venue: "TxFlow", live: true }],
+      // What the headline number actually is, so the page states the basis
+      // rather than inferring it from which protocol was opened.
+      costBasis: observations > 1 ? "24h-median" : "live-book",
       grouped,
       bands,
     });

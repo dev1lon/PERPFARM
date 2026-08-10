@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
-import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
+import { loadCostHistory, percentileSample, sampleFromSnapshot } from "@/lib/cost-history";
+import { quoteCurveMarketSide } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
   MIN_VOLUME_USD as SHARED_MIN_VOLUME_USD,
@@ -42,15 +43,6 @@ type MarketRow = {
   quote_curve_json?: unknown;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
-};
-
-type BookHistoryRow = {
-  pair: string;
-  spread_bps: string | number | null;
-  impact_bps_10k: string | number | null;
-  impact_bps_50k: string | number | null;
-  impact_bps_100k: string | number | null;
-  quote_curve_json: unknown;
 };
 
 type CostTier = "low" | "medium" | "high";
@@ -173,65 +165,6 @@ async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, L
   return costs;
 }
 
-// Piecewise-linear impact at an arbitrary notional from the published buckets.
-// Impact is 0 at size 0; missing buckets are skipped; sizes past the last
-// anchor clamp to it (the fill notional never exceeds $100k here).
-function impactAtNotional(
-  notional: number,
-  anchors: Array<[number, number | null]>,
-): number | null {
-  const points: Array<[number, number]> = [[0, 0]];
-  for (const [x, y] of anchors) if (y !== null) points.push([x, y]);
-  if (points.length < 2) return null;
-  points.sort((a, b) => a[0] - b[0]);
-  if (notional <= points[0][0]) return points[0][1];
-  for (let i = 1; i < points.length; i++) {
-    if (notional <= points[i][0]) {
-      const [x0, y0] = points[i - 1];
-      const [x1, y1] = points[i];
-      return y0 + ((y1 - y0) * (notional - x0)) / (x1 - x0);
-    }
-  }
-  return points[points.length - 1][1];
-}
-
-type ImpactSnapshot = {
-  spread_bps?: string | number | null;
-  impact_bps_10k?: string | number | null;
-  impact_bps_50k?: string | number | null;
-  impact_bps_100k?: string | number | null;
-  quote_curve_json?: unknown;
-};
-
-type CostSample = { legBps: number; spreadBps: number; impactBps: number };
-
-function sampleFromSnapshot(snapshot: ImpactSnapshot, fillNotionalUsd: number): CostSample | null {
-  const spreadBps = asNumber(snapshot.spread_bps);
-  const impactBps = quoteCurveImpactBps(snapshot.quote_curve_json, fillNotionalUsd, "cheapest") ?? impactAtNotional(fillNotionalUsd, [
-    [10_000, asNumber(snapshot.impact_bps_10k)],
-    [50_000, asNumber(snapshot.impact_bps_50k)],
-    [100_000, asNumber(snapshot.impact_bps_100k)],
-  ]);
-  if (spreadBps === null || impactBps === null) return null;
-  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps };
-}
-
-function percentileSample(samples: CostSample[], percentile: number): CostSample | null {
-  if (samples.length === 0) return null;
-  const sorted = [...samples].sort((left, right) => left.legBps - right.legBps);
-  const position = (sorted.length - 1) * percentile;
-  const lowerIndex = Math.floor(position);
-  const upperIndex = Math.ceil(position);
-  const lower = sorted[lowerIndex]!;
-  const upper = sorted[upperIndex]!;
-  const fraction = position - lowerIndex;
-  return {
-    legBps: lower.legBps + (upper.legBps - lower.legBps) * fraction,
-    spreadBps: lower.spreadBps + (upper.spreadBps - lower.spreadBps) * fraction,
-    impactBps: lower.impactBps + (upper.impactBps - lower.impactBps) * fraction,
-  };
-}
-
 function round(value: PairRanking): PairRanking {
   return {
     ...value,
@@ -284,36 +217,6 @@ async function loadMarkets(): Promise<MarketRow[]> {
   return rows;
 }
 
-/**
- * 24h of book snapshots for the percentile range. Every hourly snapshot of all
- * ~540 markets carries a quote curve, so the raw pull is tens of megabytes and
- * can outlast the request. Sampling every other snapshot keeps the full 24h
- * window (and a representative spread of quotes) at half the payload.
- */
-const HISTORY_SAMPLE_STRIDE = 2;
-const HISTORY_MAX_SNAPSHOTS = 24;
-
-async function loadBookHistory(): Promise<BookHistoryRow[]> {
-  const { rows } = await getPool().query<BookHistoryRow>(
-    `WITH v AS (SELECT id FROM venues WHERE slug = 'variational'),
-     ranked AS (
-       SELECT m.symbol_canonical AS pair,
-              b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
-              to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
-              row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
-       FROM book_snapshots b
-       JOIN markets m ON m.id = b.market_id
-       WHERE m.venue_id = (SELECT id FROM v)
-         AND b.ts >= now() - interval '24 hours'
-     )
-     SELECT pair, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
-     FROM ranked
-     WHERE rn <= $1 AND (rn - 1) % $2 = 0`,
-    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE],
-  );
-  return rows;
-}
-
 export async function GET(request: NextRequest) {
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
@@ -339,19 +242,12 @@ export async function GET(request: NextRequest) {
     let liveQuotesOk = true;
     const [rows, bookHistory, liveSideCosts] = await Promise.all([
       loadMarkets(),
-      loadBookHistory(),
+      loadCostHistory("variational", fillNotionalUsd),
       loadLiveSideCosts(fillNotionalUsd).catch(() => {
         liveQuotesOk = false;
         return new Map<string, LiveSideCost>();
       }),
     ]);
-
-    const historyByPair = new Map<string, BookHistoryRow[]>();
-    for (const snapshot of bookHistory) {
-      const rowsForPair = historyByPair.get(snapshot.pair) ?? [];
-      rowsForPair.push(snapshot);
-      historyByPair.set(snapshot.pair, rowsForPair);
-    }
 
     // Staging intentionally has no snapshot cron. Always prefer live volume/OI
     // and add live-only rows when the saved snapshots have aged past the query
@@ -382,9 +278,7 @@ export async function GET(request: NextRequest) {
               legBps: liveSide.spreadBps / 2 + liveSide.marketImpactBps,
             };
         const latestSample = liveSample ?? sampleFromSnapshot(row, fillNotionalUsd);
-        const historicalSamples = (historyByPair.get(row.pair) ?? [])
-          .map((snapshot) => sampleFromSnapshot(snapshot, fillNotionalUsd))
-          .filter((sample): sample is CostSample => sample !== null);
+        const historicalSamples = bookHistory.get(row.pair) ?? [];
         const p25Sample = percentileSample(historicalSamples, 0.25) ?? latestSample;
         const p50Sample = percentileSample(historicalSamples, 0.5) ?? latestSample;
         const p75Sample = percentileSample(historicalSamples, 0.75) ?? latestSample;
@@ -470,6 +364,9 @@ export async function GET(request: NextRequest) {
         // One entry per protocol whose data this run needs — ready for the
         // cross-protocol case, where either side's feed can be down.
         sources: [{ venue: "Variational", live: liveQuotesOk }],
+        // What the headline number is, stated by the API rather than inferred
+        // by the page from which protocol was opened.
+        costBasis: bookHistory.size > 0 ? "24h-median" : "live-book",
         tradfiOnly,
         grouped,
         bands,

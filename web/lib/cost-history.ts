@@ -1,0 +1,163 @@
+/**
+ * The cost model, shared by every protocol's calculator.
+ *
+ * One principle, one formula, one data path, whichever protocol asked:
+ *
+ *   legBps = spread/2 + quote impact at the fill size   (what ONE market
+ *            order pays against mid; the resting limit legs cross nothing)
+ *   cycle  = 2 x fill x (legBps + feeBps) / 10 000      (4 fills: 2 passive,
+ *            2 crossing)
+ *
+ * The headline number is the 24h MEDIAN of that, with p25-p75 as the range,
+ * so a single lucky or unlucky book snapshot cannot set the price. Protocols
+ * differ only in their data (fees, depth, OI scale) -- never in how the number
+ * is derived. TxFlow used to be priced from a single live snapshot while
+ * Variational used percentiles, which is why one page could promise a "24h
+ * median" the other had no way to produce.
+ */
+import { getPool } from "@/lib/db";
+import { quoteCurveImpactBps } from "@/lib/quote-curve";
+
+/**
+ * How much of the 24h window to actually pull.
+ *
+ * Every hourly snapshot of all ~540 Variational markets carries a quote curve,
+ * so the raw pull is tens of megabytes and can outlast the request. Sampling
+ * every other snapshot keeps the full window (and a representative spread of
+ * quotes) at half the payload.
+ */
+const HISTORY_MAX_SNAPSHOTS = 24;
+const HISTORY_SAMPLE_STRIDE = 2;
+const HISTORY_WINDOW_HOURS = 24;
+
+export type CostSample = { legBps: number; spreadBps: number; impactBps: number };
+
+export type ImpactSnapshot = {
+  spread_bps?: string | number | null;
+  impact_bps_10k?: string | number | null;
+  impact_bps_50k?: string | number | null;
+  impact_bps_100k?: string | number | null;
+  quote_curve_json?: unknown;
+};
+
+function asNumber(value: unknown): number | null {
+  const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+/**
+ * Piecewise-linear impact at an arbitrary notional from the published buckets.
+ * Impact is 0 at size 0; missing buckets are skipped; sizes past the last
+ * anchor clamp to it.
+ */
+export function impactAtNotional(notional: number, anchors: Array<[number, number | null]>): number | null {
+  const points: Array<[number, number]> = [[0, 0]];
+  for (const [x, y] of anchors) if (y !== null) points.push([x, y]);
+  if (points.length < 2) return null;
+  points.sort((a, b) => a[0] - b[0]);
+  if (notional <= points[0][0]) return points[0][1];
+  for (let i = 1; i < points.length; i++) {
+    if (notional <= points[i][0]) {
+      const [x0, y0] = points[i - 1];
+      const [x1, y1] = points[i];
+      return y0 + ((y1 - y0) * (notional - x0)) / (x1 - x0);
+    }
+  }
+  return points[points.length - 1][1];
+}
+
+/** One stored book snapshot, priced at the requested fill size. */
+export function sampleFromSnapshot(snapshot: ImpactSnapshot, fillNotionalUsd: number): CostSample | null {
+  const spreadBps = asNumber(snapshot.spread_bps);
+  const impactBps = quoteCurveImpactBps(snapshot.quote_curve_json, fillNotionalUsd, "cheapest") ?? impactAtNotional(fillNotionalUsd, [
+    [10_000, asNumber(snapshot.impact_bps_10k)],
+    [50_000, asNumber(snapshot.impact_bps_50k)],
+    [100_000, asNumber(snapshot.impact_bps_100k)],
+  ]);
+  if (spreadBps === null || impactBps === null) return null;
+  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps };
+}
+
+/** Linear-interpolated percentile over `legBps`, carrying its components. */
+export function percentileSample(samples: CostSample[], percentile: number): CostSample | null {
+  if (samples.length === 0) return null;
+  const sorted = [...samples].sort((left, right) => left.legBps - right.legBps);
+  const position = (sorted.length - 1) * percentile;
+  const lowerIndex = Math.floor(position);
+  const upperIndex = Math.ceil(position);
+  const lower = sorted[lowerIndex]!;
+  const upper = sorted[upperIndex]!;
+  const fraction = position - lowerIndex;
+  return {
+    legBps: lower.legBps + (upper.legBps - lower.legBps) * fraction,
+    spreadBps: lower.spreadBps + (upper.spreadBps - lower.spreadBps) * fraction,
+    impactBps: lower.impactBps + (upper.impactBps - lower.impactBps) * fraction,
+  };
+}
+
+type BookHistoryRow = ImpactSnapshot & { pair: string };
+
+/**
+ * 24h of stored book snapshots for one protocol, already priced at the fill
+ * size and keyed by canonical pair.
+ *
+ * The worker snapshots every live protocol hourly, so this works for any of
+ * them -- the caller passes a slug, not a hard-coded venue.
+ */
+export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number): Promise<Map<string, CostSample[]>> {
+  const { rows } = await getPool().query<BookHistoryRow>(
+    `WITH v AS (SELECT id FROM venues WHERE slug = $3),
+     ranked AS (
+       SELECT m.symbol_canonical AS pair,
+              b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+              to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
+              row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
+       FROM book_snapshots b
+       JOIN markets m ON m.id = b.market_id
+       WHERE m.venue_id = (SELECT id FROM v)
+         AND b.ts >= now() - make_interval(hours => $4)
+     )
+     SELECT pair, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
+     FROM ranked
+     WHERE rn <= $1 AND (rn - 1) % $2 = 0`,
+    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+  );
+
+  const byPair = new Map<string, CostSample[]>();
+  for (const row of rows) {
+    const sample = sampleFromSnapshot(row, fillNotionalUsd);
+    if (sample === null) continue;
+    const existing = byPair.get(row.pair);
+    if (existing) existing.push(sample);
+    else byPair.set(row.pair, [sample]);
+  }
+  return byPair;
+}
+
+export type CostQuote = {
+  /** p50 of the 24h window -- the headline. */
+  median: CostSample;
+  low: CostSample;
+  high: CostSample;
+  latest: CostSample;
+  /** How many observations backed it; 1 means only the live book. */
+  observations: number;
+};
+
+/**
+ * Combine the live reading with stored history into the quote every calculator
+ * publishes. With no history the live sample answers all four, and the caller
+ * reports the basis honestly rather than dressing one snapshot as a median.
+ */
+export function quoteFromSamples(live: CostSample | null, history: CostSample[]): CostQuote | null {
+  const samples = live === null ? history : [live, ...history];
+  if (samples.length === 0) return null;
+  const median = percentileSample(samples, 0.5)!;
+  return {
+    median,
+    low: percentileSample(samples, 0.25)!,
+    high: percentileSample(samples, 0.75)!,
+    latest: live ?? median,
+    observations: samples.length,
+  };
+}

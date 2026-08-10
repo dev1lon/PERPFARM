@@ -45,6 +45,9 @@ export interface RankingResponse {
   /** Per-protocol live-feed status; a false `live` means the ranking fell back
    *  to saved snapshots for that protocol. */
   sources?: { venue: string; live: boolean }[];
+  /** What the headline cost IS, stated by the API. Every calculator prices the
+   *  same way; they differ only in whether stored history exists yet. */
+  costBasis?: "24h-median" | "live-book";
   grouped: boolean;
   bands: Band[];
 }
@@ -567,7 +570,12 @@ export function RouteResults({
   // A single value is a current hourly snapshot, not a fake "$x–$x 24h range".
   // This is deliberately data-driven: same-venue and cross-venue calculators
   // share the exact same presentation and differ only in available data.
-  const hasCostHistory = best.costRangeLowUsd !== best.costRangeHighUsd;
+  // The API states the basis; the range check only covers an older response
+  // that predates the field. Either way this is decided by the DATA, never by
+  // which protocol was opened -- one calculator, one presentation.
+  const hasCostHistory = data.costBasis
+    ? data.costBasis === "24h-median"
+    : best.costRangeLowUsd !== best.costRangeHighUsd;
   const hold = recommendedHold(homeSlug, locale);
   const bestRuleLabel = bestRule === "medium-tradfi"
     ? tr(locale, "Cheapest medium-OI TradFi pair", "Самая дешёвая TradFi-пара со средним OI")
