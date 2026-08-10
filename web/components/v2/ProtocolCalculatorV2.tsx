@@ -115,6 +115,20 @@ function CostTierBadge({ costTier }: { costTier: CostTier }) {
   );
 }
 
+/**
+ * The one caveat that belongs on the headline number itself: it is measured
+ * from hourly snapshots, and on a thin book the real spread at the moment of
+ * trading can be wider than any of them. Stated where the claim is made, not
+ * buried on the methodology page.
+ */
+function snapshotTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Measured from hourly order-book snapshots, not from a quote taken at this second. On thin markets — and on any market outside its trading session — the spread at the moment you actually trade can be wider than this estimate.",
+    "Считается по часовым снимкам стакана, а не по котировке на эту секунду. На тонких рынках — и на любом рынке вне его торговой сессии — спред в момент реальной сделки может оказаться шире этой оценки.",
+  );
+}
+
 function feeTip(locale: Locale): string {
   return tr(
     locale,
@@ -138,17 +152,17 @@ function headlineTiles(
   pair: PairRanking,
   hold: string,
   hasCostHistory: boolean,
-): Array<[string, string, string]> {
+): Array<[string, string, string, string?]> {
   return [
     [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
     [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
     [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
     [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
     hasCostHistory
-      ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(pair.cycleCostUsd), "text-positive"]
+      ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(pair.cycleCostUsd), "text-positive", snapshotTip(locale)]
       : data.costBasis === "latest-snapshot"
-        ? [tr(locale, "Estimated cost · latest snapshot", "Оценка · последний снимок"), formatUsd(pair.cycleCostUsd), "text-positive"]
-        : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(pair.cycleCostUsd), "text-positive"],
+        ? [tr(locale, "Estimated cost · latest snapshot", "Оценка · последний снимок"), formatUsd(pair.cycleCostUsd), "text-positive", snapshotTip(locale)]
+        : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(pair.cycleCostUsd), "text-positive", snapshotTip(locale)],
     // Naming the basis beats promising a range that is not coming. Which basis
     // it is matters: a cross route reads the newest STORED snapshot of both
     // protocols, and calling that a live order book would be untrue.
@@ -679,11 +693,14 @@ export function RouteResults({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-6">
-              {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls]) => (
+              {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls, tip]) => (
                 <div key={k} className="flex flex-col gap-1.5">
                   {/* No nowrap: at six columns "Estimated cost · 24h median"
                       overflowed its cell and printed on top of the next label. */}
-                  <div className="text-[11px] leading-[1.35] text-text-muted">{k}</div>
+                  <div className="flex items-center gap-1.5 text-[11px] leading-[1.35] text-text-muted">
+                    {k}
+                    {tip ? <InfoTip text={tip} /> : null}
+                  </div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
                 </div>
               ))}
@@ -854,9 +871,12 @@ export function RouteResults({
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-6">
-                        {headlineTiles(locale, data, p, hold, hasCostHistory).map(([k, v, cls]) => (
+                        {headlineTiles(locale, data, p, hold, hasCostHistory).map(([k, v, cls, tip]) => (
                           <div key={k} className="flex flex-col gap-1">
-                            <div className="text-[11px] text-text-muted">{k}</div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                              {k}
+                              {tip ? <InfoTip text={tip} /> : null}
+                            </div>
                             <div className={`font-mono-num text-[15px] ${cls}`}>{v}</div>
                           </div>
                         ))}

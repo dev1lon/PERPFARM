@@ -13,7 +13,6 @@ import { TRADFI_TICKERS } from "@/lib/tradfi";
 
 export const dynamic = "force-dynamic";
 
-const VARIATIONAL_STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
 // The requested volume is entry plus exit turnover on one account. The
 // two-account hedge has four equal fills and twice that volume in total.
 const DEFAULT_ACCOUNT_VOLUME_USD = 100_000;
@@ -30,7 +29,8 @@ const MIN_PAIRS_FOR_BANDS = 15;
 const HOLD_HOURS = FUNDING_HOLD_HOURS;
 const TRADFI_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const TRADFI_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
-const QUOTE_SIZE_KEY = /^size_(\d+)([km])$/;
+/** Past this age the newest snapshot is called out as stale in the UI. */
+const STALE_SNAPSHOT_MS = 3 * 60 * 60 * 1_000;
 
 
 type MarketRow = {
@@ -68,15 +68,6 @@ type PairRanking = {
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
-type LiveSideCost = {
-  firstLimitSide: "long" | "short";
-  marketImpactBps: number;
-  spreadBps: number | null;
-  quoteAsOf: string | null;
-  volume24hUsd: number | null;
-  openInterestUsd: number | null;
-};
-type QuotePair = [bid: number, ask: number];
 
 function asNumber(value: unknown): number | null {
   const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -85,84 +76,6 @@ function asNumber(value: unknown): number | null {
 
 function competitionIsActive(now = Date.now()): boolean {
   return now >= TRADFI_COMPETITION_START_UTC && now < TRADFI_COMPETITION_END_UTC;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function quotePair(value: unknown): QuotePair | null {
-  if (!isRecord(value)) return null;
-  const bid = asNumber(value.bid);
-  const ask = asNumber(value.ask);
-  return bid !== null && ask !== null && bid > 0 && ask > 0 ? [bid, ask] : null;
-}
-
-/** Normalize Omni's live RFQ fields into the snapshot curve schema. */
-function quoteCurveFromListing(listing: Record<string, unknown>): Record<string, unknown> | null {
-  if (!isRecord(listing.quotes)) return null;
-  const base = quotePair(listing.quotes.base) ?? quotePair(listing.quotes.size_1k);
-  const referencePrice = asNumber(listing.mark_price);
-  if (base === null || referencePrice === null || referencePrice <= 0) return null;
-
-  const points: Array<Record<string, number>> = [{ notional_usd: 0, bid: base[0], ask: base[1] }];
-  for (const [key, value] of Object.entries(listing.quotes)) {
-    const match = QUOTE_SIZE_KEY.exec(key);
-    const quote = quotePair(value);
-    if (match === null || quote === null) continue;
-    const multiplier = match[2] === "k" ? 1_000 : 1_000_000;
-    points.push({ notional_usd: Number(match[1]) * multiplier, bid: quote[0], ask: quote[1] });
-  }
-  return { reference_price: referencePrice, points };
-}
-
-/**
- * The two MARKET fills have the same direction: LIMIT LONG first means two
- * sells; LIMIT SHORT first means two buys. Pick the cheaper live side. The
- * 24h median remains based on saved direction-averaged observations.
- */
-async function loadLiveSideCosts(fillNotionalUsd: number): Promise<Map<string, LiveSideCost>> {
-  // Hard timeout: the venue's public API can hang or block server-side callers,
-  // and without this the whole serverless request stalls until Vercel kills it
-  // (the ranking then falls back to saved snapshots instead of failing).
-  const response = await fetch(VARIATIONAL_STATS_URL, {
-    next: { revalidate: 60 },
-    signal: AbortSignal.timeout(6_000),
-    // The venue's edge rejects or stalls requests carrying the default runtime
-    // agent; the worker reaches the same endpoint fine with ordinary client
-    // headers, so send those from the server too.
-    headers: {
-      Accept: "application/json",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    },
-  });
-  if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
-  const payload: unknown = await response.json();
-  if (!isRecord(payload) || !Array.isArray(payload.listings)) throw new Error("Invalid Variational stats");
-
-  const costs = new Map<string, LiveSideCost>();
-  for (const listing of payload.listings) {
-    if (!isRecord(listing) || typeof listing.ticker !== "string" || !isRecord(listing.quotes)) continue;
-    const curve = quoteCurveFromListing(listing);
-    const side = quoteCurveMarketSide(curve, fillNotionalUsd);
-    if (side === null) continue;
-    const openInterest = isRecord(listing.open_interest) ? listing.open_interest : null;
-    const longOpenInterest = openInterest ? asNumber(openInterest.long_open_interest) : null;
-    const shortOpenInterest = openInterest ? asNumber(openInterest.short_open_interest) : null;
-    costs.set(listing.ticker, {
-      firstLimitSide: side.firstLimitSide,
-      marketImpactBps: side.marketImpactBps,
-      spreadBps: asNumber(listing.base_spread_bps),
-      quoteAsOf: typeof listing.quotes.updated_at === "string" ? listing.quotes.updated_at : null,
-      volume24hUsd: asNumber(listing.volume_24h),
-      openInterestUsd:
-        longOpenInterest !== null && shortOpenInterest !== null
-          ? longOpenInterest + shortOpenInterest
-          : null,
-    });
-  }
-  return costs;
 }
 
 function round(value: PairRanking): PairRanking {
@@ -239,52 +152,25 @@ export async function GET(request: NextRequest) {
     // still rank from saved snapshots, but the response says so explicitly so
     // the UI can tell the user WHICH protocol's live data is missing rather
     // than quietly showing stale numbers as if they were live.
-    let liveQuotesOk = true;
-    const [rows, bookHistory, liveSideCosts] = await Promise.all([
+    const [rows, bookHistory] = await Promise.all([
       loadMarkets(),
       loadCostHistory("variational", fillNotionalUsd),
-      loadLiveSideCosts(fillNotionalUsd).catch(() => {
-        liveQuotesOk = false;
-        return new Map<string, LiveSideCost>();
-      }),
     ]);
 
-    // Staging intentionally has no snapshot cron. Always prefer live volume/OI
-    // and add live-only rows when the saved snapshots have aged past the query
-    // window. Historical DB rows still supply the 24h percentile estimates
-    // whenever they are available.
+    const newestBookTs = rows.reduce<string | null>((newest, row) => (newest === null || row.book_ts > newest ? row.book_ts : newest), null);
+    const snapshotsAreFresh = newestBookTs !== null && Date.now() - new Date(newestBookTs).getTime() < STALE_SNAPSHOT_MS;
     const marketRows = new Map(rows.map((row) => [row.pair, row]));
-    for (const [pair, live] of liveSideCosts) {
-      if (marketRows.has(pair)) continue;
-      marketRows.set(pair, {
-        book_ts: live.quoteAsOf ?? new Date().toISOString(),
-        pair,
-        spread_bps: live.spreadBps,
-        volume_24h_usd: live.volume24hUsd,
-        open_interest_usd: live.openInterestUsd,
-      });
-    }
 
     const candidates = [...marketRows.values()]
       .map((row): PairRanking | null => {
-        const liveSide = liveSideCosts.get(row.pair);
-        const volume24hUsd = liveSide?.volume24hUsd ?? asNumber(row.volume_24h_usd);
-        const oiRaw = liveSide?.openInterestUsd ?? asNumber(row.open_interest_usd);
-        const liveSample = liveSide?.spreadBps === null || liveSide?.spreadBps === undefined
-          ? null
-          : {
-              spreadBps: liveSide.spreadBps,
-              impactBps: liveSide.marketImpactBps,
-              legBps: liveSide.spreadBps / 2 + liveSide.marketImpactBps,
-            };
-        const latestSample = liveSample ?? sampleFromSnapshot(row, fillNotionalUsd);
+        const volume24hUsd = asNumber(row.volume_24h_usd);
+        const oiRaw = asNumber(row.open_interest_usd);
+        // Priced from stored snapshots only -- see lib/cost-history.ts. The
+        // stored quote curve carries bid AND ask per size, so the side that is
+        // cheaper to cross comes out of the same row; no live quote needed.
         const historicalSamples = bookHistory.get(row.pair) ?? [];
-        // The live quote is the most recent OBSERVATION of the same quantity,
-        // so it joins the 24h window rather than sitting outside it. TxFlow
-        // already combined them this way; leaving Variational to take
-        // percentiles over stored rows only meant the two calculators answered
-        // the same question differently.
-        const quote = quoteFromSamples(latestSample, historicalSamples);
+        const latestSample = sampleFromSnapshot(row, fillNotionalUsd);
+        const quote = quoteFromSamples(null, historicalSamples.length > 0 ? historicalSamples : latestSample ? [latestSample] : []);
         const p25Sample = quote?.low ?? null;
         const p50Sample = quote?.median ?? null;
         const p75Sample = quote?.high ?? null;
@@ -303,7 +189,14 @@ export async function GET(request: NextRequest) {
         const p75LegBps = p75Sample.legBps;
         const costFromLegBps = (legBps: number) => (2 * fillNotionalUsd * legBps) / 10_000;
         const cycleCostUsd = costFromLegBps(p50LegBps);
-        const costTier: CostTier = p50LegBps <= 2 ? "low" : p50LegBps <= 6 ? "medium" : "high";
+        // One tier definition for every protocol: total cycle cost including
+        // fees, as bps of account volume. Grading Variational on legBps alone
+        // happened to work only because its fees are zero -- on TxFlow the same
+        // rule badged a 5.7 bps route "Low execution cost".
+        const costTier: CostTier = ((): CostTier => {
+          const bps = (cycleCostUsd / accountVolumeUsd) * 10_000;
+          return bps <= 3 ? "low" : bps <= 8 ? "medium" : "high";
+        })();
         return {
           pair: row.pair,
           // Omni displays gross OI (user side plus OLP counterparty); the
@@ -311,8 +204,8 @@ export async function GET(request: NextRequest) {
           openInterestUsd: displayedOpenInterestUsd(oiRaw, "variational"),
           volume24hUsd,
           competitionEligible: TRADFI_TICKERS.has(row.pair),
-          firstLimitSide: liveSide?.firstLimitSide ?? "long",
-          quoteAsOf: liveSide?.quoteAsOf ?? row.book_ts,
+          firstLimitSide: quoteCurveMarketSide(row.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? "long",
+          quoteAsOf: row.book_ts,
           cycleCostUsd,
           latestCycleCostUsd: costFromLegBps(latestLegBps),
           costRangeLowUsd: costFromLegBps(p25LegBps),
@@ -369,7 +262,9 @@ export async function GET(request: NextRequest) {
         competition: { active: competitionActive, name: "TradFi Trading Competition #5" },
         // One entry per protocol whose data this run needs — ready for the
         // cross-protocol case, where either side's feed can be down.
-        sources: [{ venue: "Variational", live: liveQuotesOk }],
+        // Snapshots are the only source now. "live" reports whether the
+        // newest one is fresh enough to price from, not whether an API answered.
+        sources: [{ venue: "Variational", live: snapshotsAreFresh }],
         // What the headline number is, stated by the API rather than inferred
         // by the page from which protocol was opened.
         costBasis: bookHistory.size > 0 ? "24h-median" : "live-book",

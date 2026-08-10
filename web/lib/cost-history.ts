@@ -16,7 +16,7 @@
  * median" the other had no way to produce.
  */
 import { getPool } from "@/lib/db";
-import { quoteCurveImpactBps } from "@/lib/quote-curve";
+import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
 
 /**
  * How much of the 24h window to actually pull.
@@ -130,6 +130,91 @@ export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number
     const existing = byPair.get(row.pair);
     if (existing) existing.push(sample);
     else byPair.set(row.pair, [sample]);
+  }
+  return byPair;
+}
+
+export type VenueMarket = {
+  pair: string;
+  /** When the newest snapshot behind this market was taken. */
+  bookTs: string;
+  volume24hUsd: number | null;
+  /** As stored by the adapter, before any per-protocol display convention. */
+  openInterestUsd: number | null;
+  /** Which leg rests its limit orders: the side that is cheaper to cross. */
+  firstLimitSide: "long" | "short";
+  /** The 24h window, newest first, already priced at the fill size. */
+  samples: CostSample[];
+};
+
+type VenueMarketRow = ImpactSnapshot & {
+  pair: string;
+  ts: string;
+  rn: number;
+  volume_24h_usd: string | number | null;
+  open_interest_usd: string | number | null;
+};
+
+/**
+ * Everything a calculator needs for one protocol, from stored snapshots only.
+ *
+ * There is no live venue call anywhere in the pricing path. A per-visitor scan
+ * of a venue's API meant ~80 requests per run (TxFlow rate-limited us with 429s
+ * for it), a number that changed between two runs a second apart, and the same
+ * market reading differently on the protocol page than in the cross table. The
+ * worker already records all of it hourly; the site reads what it recorded.
+ */
+export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: number): Promise<Map<string, VenueMarket>> {
+  const { rows } = await getPool().query<VenueMarketRow>(
+    `WITH v AS (SELECT id FROM venues WHERE slug = $3),
+     ranked AS (
+       SELECT m.symbol_canonical AS pair, b.ts,
+              b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+              to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
+              row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
+       FROM book_snapshots b
+       JOIN markets m ON m.id = b.market_id
+       WHERE m.venue_id = (SELECT id FROM v) AND m.is_active = true
+         AND b.ts >= now() - make_interval(hours => $4)
+     ),
+     vol AS (
+       SELECT DISTINCT ON (s.market_id) m.symbol_canonical AS pair,
+              s.volume_24h_usd, s.open_interest_usd
+       FROM volume_snapshots s
+       JOIN markets m ON m.id = s.market_id
+       WHERE m.venue_id = (SELECT id FROM v) AND m.is_active = true
+       ORDER BY s.market_id, s.ts DESC
+     )
+     SELECT ranked.pair, ranked.ts, ranked.rn,
+            ranked.spread_bps, ranked.impact_bps_10k, ranked.impact_bps_50k,
+            ranked.impact_bps_100k, ranked.quote_curve_json,
+            vol.volume_24h_usd, vol.open_interest_usd
+     FROM ranked LEFT JOIN vol ON vol.pair = ranked.pair
+     WHERE ranked.rn <= $1 AND (ranked.rn - 1) % $2 = 0
+     ORDER BY ranked.pair, ranked.rn`,
+    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+  );
+
+  const byPair = new Map<string, VenueMarket>();
+  for (const row of rows) {
+    const sample = sampleFromSnapshot(row, fillNotionalUsd);
+    if (sample === null) continue;
+    const existing = byPair.get(row.pair);
+    if (existing) {
+      existing.samples.push(sample);
+      continue;
+    }
+    // rn = 1 sorts first, so the first row seen for a pair is its newest.
+    // The stored quote curve carries bid AND ask per size, so the cheaper
+    // side to cross is derivable from it -- no live book required.
+    byPair.set(row.pair, {
+      pair: row.pair,
+      bookTs: row.ts,
+      volume24hUsd: asNumber(row.volume_24h_usd),
+      openInterestUsd: asNumber(row.open_interest_usd),
+      firstLimitSide: quoteCurveMarketSide(row.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? "long",
+      samples: [sample],
+    });
   }
   return byPair;
 }
