@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function parseCurve(value: unknown): { referencePrice: number; points: QuotePoint[] } | null {
+export function parseCurve(value: unknown): { referencePrice: number; points: QuotePoint[] } | null {
   let raw = value;
   if (typeof raw === "string") {
     try {
