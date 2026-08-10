@@ -672,7 +672,9 @@ export function RouteResults({
             <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-6">
               {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls]) => (
                 <div key={k} className="flex flex-col gap-1.5">
-                  <div className="whitespace-nowrap text-[11px] text-text-muted">{k}</div>
+                  {/* No nowrap: at six columns "Estimated cost · 24h median"
+                      overflowed its cell and printed on top of the next label. */}
+                  <div className="text-[11px] leading-[1.35] text-text-muted">{k}</div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
                 </div>
               ))}

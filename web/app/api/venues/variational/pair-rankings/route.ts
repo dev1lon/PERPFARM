@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPool } from "@/lib/db";
-import { loadCostHistory, percentileSample, sampleFromSnapshot } from "@/lib/cost-history";
+import { loadCostHistory, quoteFromSamples, sampleFromSnapshot } from "@/lib/cost-history";
 import { quoteCurveMarketSide } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
@@ -279,9 +279,15 @@ export async function GET(request: NextRequest) {
             };
         const latestSample = liveSample ?? sampleFromSnapshot(row, fillNotionalUsd);
         const historicalSamples = bookHistory.get(row.pair) ?? [];
-        const p25Sample = percentileSample(historicalSamples, 0.25) ?? latestSample;
-        const p50Sample = percentileSample(historicalSamples, 0.5) ?? latestSample;
-        const p75Sample = percentileSample(historicalSamples, 0.75) ?? latestSample;
+        // The live quote is the most recent OBSERVATION of the same quantity,
+        // so it joins the 24h window rather than sitting outside it. TxFlow
+        // already combined them this way; leaving Variational to take
+        // percentiles over stored rows only meant the two calculators answered
+        // the same question differently.
+        const quote = quoteFromSamples(latestSample, historicalSamples);
+        const p25Sample = quote?.low ?? null;
+        const p50Sample = quote?.median ?? null;
+        const p75Sample = quote?.high ?? null;
         if (
           latestSample === null || p25Sample === null || p50Sample === null || p75Sample === null ||
           volume24hUsd === null || oiRaw === null ||
