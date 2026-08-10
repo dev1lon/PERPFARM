@@ -124,6 +124,38 @@ function feeTip(locale: Locale): string {
 }
 
 /**
+ * The six headline tiles, identical in the recommended route and in an expanded
+ * table row.
+ *
+ * They used to be written out twice and had drifted: the route said "Estimated
+ * execution cost" with no range, while the row two panels below described the
+ * very same number as "Estimated cost · 24h median" and showed one. One
+ * definition, so the same number cannot be described two ways.
+ */
+function headlineTiles(
+  locale: Locale,
+  data: RankingResponse,
+  pair: PairRanking,
+  hold: string,
+  hasCostHistory: boolean,
+): Array<[string, string, string]> {
+  return [
+    [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
+    [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
+    [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
+    [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
+    hasCostHistory
+      ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(pair.cycleCostUsd), "text-positive"]
+      : [tr(locale, "Estimated cost · live book", "Оценка · текущий стакан"), formatUsd(pair.cycleCostUsd), "text-positive"],
+    // Naming the basis beats promising a range that is not coming: with no
+    // stored history this path prices from the venue's live book each request.
+    hasCostHistory
+      ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(pair.costRangeLowUsd)}–${formatUsd(pair.costRangeHighUsd)}`, "text-text-muted"]
+      : [tr(locale, "Priced from", "Источник оценки"), tr(locale, "live order book", "живой стакан"), "text-text-muted"],
+  ];
+}
+
+/**
  * One line of the cost breakdown. The same tile is used in the recommended
  * route and in an expanded table row, so the headline route is itemised
  * exactly like the row a user opens to check it.
@@ -637,22 +669,11 @@ export function RouteResults({
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-5">
-              {([
-                [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
-                [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
-                [
-                  tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"),
-                  formatUsd(best.cycleCostUsd),
-                  "text-positive",
-                ],
-              ] as Array<[string, string, string, string?]>).map(([k, v, cls, detail]) => (
+            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-6">
+              {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls]) => (
                 <div key={k} className="flex flex-col gap-1.5">
                   <div className="whitespace-nowrap text-[11px] text-text-muted">{k}</div>
                   <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
-                  {detail && <div className="font-mono-num text-[11px] text-text-muted">{detail}</div>}
                 </div>
               ))}
             </div>
@@ -822,25 +843,7 @@ export function RouteResults({
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-6">
-                        {(
-                          [
-                            [tr(locale, "Position per leg", "Позиция на ногу"), formatUsd(data.fillNotionalUsd, { decimals: 0 }), "text-text-primary"],
-                            [tr(locale, "Volume per account", "Объём на аккаунт"), formatUsd(data.accountVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                            [tr(locale, "Full hedge cycle", "Полный цикл"), formatUsd(data.totalCycleVolumeUsd, { decimals: 0 }), "text-text-primary"],
-                            [tr(locale, "Hold", "Удержание"), hold, "text-text-primary"],
-                            hasCostHistory
-                              ? [tr(locale, "Estimated cost · 24h median", "Оценка · медиана 24ч"), formatUsd(p.cycleCostUsd), "text-positive"]
-                              : [tr(locale, "Estimated execution cost", "Оценка стоимости исполнения"), formatUsd(p.cycleCostUsd), "text-positive"],
-                            // "history collecting" promised a range that would
-                            // never arrive: this path prices the route from the
-                            // venue's live order book on every request and never
-                            // reads stored snapshots, so there is no 24h band to
-                            // wait for. Name the basis instead of a pending one.
-                            hasCostHistory
-                              ? [tr(locale, "24h range", "Диапазон за 24ч"), `${formatUsd(p.costRangeLowUsd)}–${formatUsd(p.costRangeHighUsd)}`, "text-text-muted"]
-                              : [tr(locale, "Priced from", "Источник оценки"), tr(locale, "live order book", "живой стакан"), "text-text-muted"],
-                          ] as [string, string, string][]
-                        ).map(([k, v, cls]) => (
+                        {headlineTiles(locale, data, p, hold, hasCostHistory).map(([k, v, cls]) => (
                           <div key={k} className="flex flex-col gap-1">
                             <div className="text-[11px] text-text-muted">{k}</div>
                             <div className={`font-mono-num text-[15px] ${cls}`}>{v}</div>
