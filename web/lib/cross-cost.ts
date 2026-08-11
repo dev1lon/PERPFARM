@@ -164,8 +164,17 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        ORDER BY s.market_id, s.ts DESC
      ),
      fund AS (
-       -- The 12-hour estimate uses the latest 24 hours of funding readings.
-       SELECT f.market_id, AVG(f.funding_rate_annualized) AS funding
+       -- MEDIAN of the last 24 hours, not the mean.
+       --
+       -- Funding on a thin market is not a smooth series: TxFlow's BZ readings
+       -- swing between -1288% and +612% annualised hour to hour and flip sign,
+       -- so a mean is dominated by whichever spikes the window happens to
+       -- contain -- our 24h mean and an external tool's disagreed by 1.85x on
+       -- that pair while agreeing to 3.6% on a stable one. The median is the
+       -- rate that actually persisted, and it is the same choice already made
+       -- for execution cost.
+       SELECT f.market_id,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY f.funding_rate_annualized) AS funding
        FROM funding_snapshots f
        JOIN markets m ON m.id = f.market_id
        JOIN v ON v.id = m.venue_id
