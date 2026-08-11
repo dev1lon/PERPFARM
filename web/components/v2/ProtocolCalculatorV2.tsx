@@ -6,6 +6,7 @@ import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { InfoTip } from "@/components/v2/InfoTip";
+import { protocolName } from "@/lib/venue-status";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
@@ -27,6 +28,10 @@ export interface PairRanking {
   feeCostUsd?: number;
   entryOrders?: string;
   exitOrders?: string;
+  /** Which protocol holds each leg. Chosen per pair by the funding direction,
+   *  so it is NOT simply the page you opened. */
+  longVenue?: string;
+  shortVenue?: string;
 }
 type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
@@ -595,6 +600,18 @@ export function RouteResults({
 }) {
   const locale = useLocale();
   const shortSlug = hedgeSlug ?? homeSlug;
+  /**
+   * Legs per PAIR, not per page. The model picks which protocol is long from
+   * the funding direction and returns it on every row; rendering `homeSlug` as
+   * LONG for the whole table threw that away, so the same trade appeared
+   * mirrored depending on which protocol's page you happened to be on.
+   */
+  const legsOf = (pair: PairRanking) => {
+    const longVenue = pair.longVenue ?? homeSlug;
+    const shortVenue = pair.shortVenue ?? shortSlug;
+    const nameOf = (slug: string) => protocolName(slug) ?? (slug === homeSlug ? homeName : hedgeName);
+    return { longSlug: longVenue, longName: nameOf(longVenue), shortSlug: shortVenue, shortName: nameOf(shortVenue) };
+  };
   // Switching band changes the list length, which would otherwise slide the
   // page under the finger. Anchor the filter row: remember where it sat, then
   // scroll by the delta after the new list renders.
@@ -672,22 +689,22 @@ export function RouteResults({
               <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
             </div>
             <div className="my-4 overflow-hidden rounded-[14px] border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-              <RecommendedRouteDiagram longName={homeName} shortName={hedgeName} />
+              <RecommendedRouteDiagram longName={legsOf(best).longName} shortName={legsOf(best).shortName} />
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug={homeSlug} name={homeName} size={26} radius={8} />
-                  <div className="text-[16px] font-semibold text-text-primary">{homeName}</div>
+                  <ProtocolMark slug={legsOf(best).longSlug} name={legsOf(best).longName} size={26} radius={8} />
+                  <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).longName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
               </div>
               <div className="flex flex-col gap-2.5 rounded-[14px] border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug={shortSlug} name={hedgeName} size={26} radius={8} />
-                  <div className="text-[16px] font-semibold text-text-primary">{hedgeName}</div>
+                  <ProtocolMark slug={legsOf(best).shortSlug} name={legsOf(best).shortName} size={26} radius={8} />
+                  <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).shortName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
@@ -731,7 +748,7 @@ export function RouteResults({
           </div>
           {/* The 3D route is decorative; phones skip it to save space + battery. */}
           <div className="hidden border-t border-border lg:block lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-            <RouteMap mode="result" pair={best.pair} longLabel={homeName} shortLabel={hedgeName} height={360} />
+            <RouteMap mode="result" pair={best.pair} longLabel={legsOf(best).longName} shortLabel={legsOf(best).shortName} height={360} />
           </div>
         </div>
       </div>
@@ -804,12 +821,12 @@ export function RouteResults({
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={7} />
-                        <span className="text-[13px] text-text-primary">{homeName}</span>
+                        <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={7} />
+                        <span className="text-[13px] text-text-primary">{legsOf(p).longName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug={shortSlug} name={hedgeName} size={22} radius={7} />
-                        <span className="text-[13px] text-text-primary">{hedgeName}</span>
+                        <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={7} />
+                        <span className="text-[13px] text-text-primary">{legsOf(p).shortName}</span>
                       </div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.exit}</div>
@@ -835,7 +852,7 @@ export function RouteResults({
                       <div className="flex min-w-0 items-center gap-1.5 pl-[26px] font-mono-num text-[10px] text-text-muted">
                         <span className="truncate">L {homeName}</span>
                         <span className="text-text-dim">·</span>
-                        <span className="truncate">S {hedgeName}</span>
+                        <span className="truncate">S {legsOf(p).shortName}</span>
                         <span className="ml-auto shrink-0">OI {compactUsd(p.openInterestUsd)}</span>
                       </div>
                     </div>
@@ -856,16 +873,16 @@ export function RouteResults({
                         <div className="flex flex-col gap-2 rounded-[12px] border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={7} />
-                            <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
+                            <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={7} />
+                            <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).longName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
                         </div>
                         <div className="flex flex-col gap-2 rounded-[12px] border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug={shortSlug} name={hedgeName} size={22} radius={7} />
-                            <span className="text-[15px] font-semibold text-text-primary">{hedgeName}</span>
+                            <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={7} />
+                            <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).shortName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
                         </div>

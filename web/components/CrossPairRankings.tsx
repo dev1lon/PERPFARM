@@ -77,6 +77,8 @@ export function CrossPairRankings({
       costTier: executionTier(pair.cycleCostUsd, pair.feeCostUsd, accountVolumeUsd),
       fundingUsd: pair.fundingUsd,
       feeCostUsd: pair.feeCostUsd,
+      longVenue: pair.longVenue,
+      shortVenue: pair.shortVenue,
       entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
       exitOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
     };
