@@ -300,14 +300,27 @@ export async function computeCrossRankings(
     // executable pair now that route ranking uses execution cost only.
     const fA = asNumber(ra.funding);
     const fB = asNumber(rb.funding);
-    // The requested protocol is always the main leg: long it, short the hedge.
-    // That leaves funding visibly positive or negative instead of choosing a
-    // direction just because it makes funding look favourable.
-    const longVenue = slugA;
-    const shortVenue = slugB;
+
+    // WHICH LEG IS LONG is a free choice, so it is made rather than inherited.
+    //
+    // The position is delta-neutral either way, and the maker-side decision
+    // above does not depend on it: execution cost is identical in both
+    // directions. Only funding differs -- longs pay the funding rate, shorts
+    // receive it -- so longing the venue with the LOWER rate turns funding into
+    // a credit instead of a charge.
+    //
+    // Previously the page you happened to open decided it: the requested
+    // protocol was always the long leg. The same pair therefore read +$5.58 on
+    // one protocol's page and -$5.59 on the other's -- the identical trade,
+    // shown as a gain or a loss depending on where you clicked.
+    const rateA = fA ?? 0;
+    const rateB = fB ?? 0;
+    const longFirst = rateA <= rateB;
+    const longVenue = longFirst ? slugA : slugB;
+    const shortVenue = longFirst ? slugB : slugA;
     const fundingUsd = fA === null || fB === null
       ? null
-      : (fillNotionalUsd * (fA - fB) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
+      : (fillNotionalUsd * (Math.min(fA, fB) - Math.max(fA, fB)) * FUNDING_HOLD_HOURS) / HOURS_PER_YEAR;
     // Funding is informative, not part of the execution-cost ranking: it can
     // move either way during the hold and is shown separately in the UI.
     //
