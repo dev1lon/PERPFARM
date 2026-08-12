@@ -301,9 +301,6 @@ export async function computeCrossRankings(
 
     // Each venue turns over `accountVolumeUsd` across its open and close.
     const execCostUsd = (accountVolumeUsd * (makerSide.maker + takerSide.taker)) / 10_000;
-    const feeCostUsd = (accountVolumeUsd * (makerSide.makerFee + takerSide.takerFee)) / 10_000;
-    const spreadCostUsd = (accountVolumeUsd * takerSide.spreadBps) / 10_000;
-    const slippageCostUsd = (accountVolumeUsd * takerSide.impactBps) / 10_000;
 
     // Funding is displayed separately. It must never exclude an otherwise
     // executable pair now that route ranking uses execution cost only.
@@ -338,28 +335,49 @@ export async function computeCrossRankings(
     // joint property of both books at the same moment, and the maker side can
     // change between ticks. Both series come from the same cron, so index i is
     // the same tick on both venues.
+    // Each observation carries its own parts, so the breakdown shown under a
+    // route is the SAME observation as its headline. Taking the parts from the
+    // newest snapshot while the headline came from the median made them
+    // disagree: XRP read spread $4.41 + slippage $0.23 + fees $2.85 = $7.49
+    // under a headline of $5.28, because its book had just widened.
+    type RouteSample = { totalUsd: number; spreadUsd: number; slippageUsd: number; feeUsd: number };
+    const usd = (bps: number) => (accountVolumeUsd * bps) / 10_000;
+    const routeOf = (maker: typeof costA, taker: typeof costB, takerBook: CostSample): RouteSample => {
+      const feeBps = maker.makerFee + taker.takerFee;
+      return {
+        totalUsd: usd(feeBps + takerBook.legBps),
+        spreadUsd: usd(takerBook.spreadBps / 2),
+        slippageUsd: usd(takerBook.impactBps),
+        feeUsd: usd(feeBps),
+      };
+    };
+    const latest: RouteSample = restOnA <= restOnB
+      ? routeOf(costA, costB, { legBps: costB.taker - costB.takerFee, spreadBps: costB.spreadBps * 2, impactBps: costB.impactBps })
+      : routeOf(costB, costA, { legBps: costA.taker - costA.takerFee, spreadBps: costA.spreadBps * 2, impactBps: costA.impactBps });
+
     const historyA = histA.get(sym) ?? [];
     const historyB = histB.get(sym) ?? [];
-    const routeSamples: number[] = [];
+    const routeSamples: RouteSample[] = [];
     for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
       const a = historyA[i]!;
       const b = historyB[i]!;
-      const takerOf = (leg: CostSample, fee: number) => fee + leg.legBps;
-      const onA = costA.makerFee + takerOf(b, costB.takerFee);
-      const onB = costB.makerFee + takerOf(a, costA.takerFee);
-      routeSamples.push((accountVolumeUsd * Math.min(onA, onB)) / 10_000);
+      // The maker side is re-decided at every tick: which venue is cheaper to
+      // rest on can change as the two books move against each other.
+      const onA = routeOf(costA, costB, b);
+      const onB = routeOf(costB, costA, a);
+      routeSamples.push(onA.totalUsd <= onB.totalUsd ? onA : onB);
     }
-    const sorted = [...routeSamples].sort((left, right) => left - right);
-    const percentile = (q: number) => {
-      if (sorted.length === 0) return execCostUsd;
-      const position = (sorted.length - 1) * q;
-      const lower = Math.floor(position);
-      const upper = Math.ceil(position);
-      return sorted[lower]! + (sorted[upper]! - sorted[lower]!) * (position - lower);
-    };
-    const cycleCostUsd = percentile(0.5);
-    const costRangeLowUsd = percentile(0.25);
-    const costRangeHighUsd = percentile(0.75);
+    const sorted = [...routeSamples].sort((left, right) => left.totalUsd - right.totalUsd);
+    // Nearest-rank, so the parts belong to a real observation and still add up.
+    const at = (q: number): RouteSample =>
+      sorted.length === 0 ? latest : sorted[Math.min(sorted.length - 1, Math.round((sorted.length - 1) * q))]!;
+    const median = at(0.5);
+    const cycleCostUsd = median.totalUsd;
+    const costRangeLowUsd = at(0.25).totalUsd;
+    const costRangeHighUsd = at(0.75).totalUsd;
+    const spreadCostUsd = median.spreadUsd;
+    const slippageCostUsd = median.slippageUsd;
+    const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
     candidates.push({
