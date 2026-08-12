@@ -39,35 +39,69 @@ export function parseCurve(value: unknown): { referencePrice: number; points: Qu
 }
 
 /**
- * Linear interpolation between the two neighbouring measured sizes.
+ * How far each side has moved from the touch, between two measured sizes.
  *
- * A power-law fit (`impact = a x size^k`) was tried here and MEASURED against
- * production curves with leave-one-out, because the straight line is known to
- * miss: it understates impact near the touch and overstates it deep in the
- * book. The fit lost. On TxFlow's order book the median absolute error roughly
- * doubled -- 4.49 -> 9.14 bps at the $10k point, 1.98 -> 7.42 bps at $50k --
- * because the curvature reverses sign along the book, and a single exponent per
- * segment cannot bend both ways. It helped only on Variational's widest span
- * (median bias 0.185 -> 0.039 bps, n=11), which is not enough to pay for the
- * regression everywhere else.
+ * A straight line is right for narrow gaps and wrong for wide ones, and we know
+ * where the boundary is because both were measured (leave-one-out over 682
+ * production curves, /api/diagnostics/curve-error):
  *
- * The real fix is narrower spans, not a cleverer curve between wide ones: see
- * `_QUOTE_BUCKETS` in worker/perpfarm/adapters/txflow.py. Verify any future
- * attempt with /api/diagnostics/curve-error before shipping it.
+ *   TxFlow, gaps up to 2.5x   a power fit made it WORSE -- median absolute
+ *                             error 4.49 -> 9.14 bps at $10k, 1.98 -> 7.42 at
+ *                             $50k. The curvature reverses sign along the book
+ *                             (concave near the touch, convex deep in it) and
+ *                             one exponent per segment cannot bend both ways.
+ *   Variational, one 100x gap the same fit HELPED -- median bias 0.185 -> 0.039
+ *                             bps. Over two decades a straight line simply
+ *                             cannot follow the shape.
+ *
+ * So the rule follows the evidence rather than picking a side: fit
+ * `displacement = a x size^k` only when the two anchors are far enough apart
+ * for the shape to matter, and keep the straight line otherwise. The exponent
+ * comes from the anchors themselves, so nothing is assumed about which way the
+ * curve bends. Variational publishes only 1k / 100k / 1m and has no trading API
+ * to ask for more (checked 2026-08-12), so that gap is not going away.
  */
+const POWER_FIT_MIN_SPAN_RATIO = 10;
+
+function interpolateDisplacement(
+  leftNotional: number,
+  leftDisplacement: number,
+  rightNotional: number,
+  rightDisplacement: number,
+  notionalUsd: number,
+): number {
+  const wideGap = leftNotional > 0 && rightNotional >= leftNotional * POWER_FIT_MIN_SPAN_RATIO;
+  // Needs two positive displacements to take logs of. The first segment starts
+  // at the touch, where displacement is zero by definition, so it stays linear.
+  if (wideGap && leftDisplacement > 0 && rightDisplacement > 0) {
+    const exponent = Math.log(rightDisplacement / leftDisplacement) / Math.log(rightNotional / leftNotional);
+    if (Number.isFinite(exponent)) return leftDisplacement * Math.pow(notionalUsd / leftNotional, exponent);
+  }
+  const position = (notionalUsd - leftNotional) / (rightNotional - leftNotional);
+  return leftDisplacement + (rightDisplacement - leftDisplacement) * position;
+}
+
 function interpolateQuote(points: QuotePoint[], notionalUsd: number): QuotePoint | null {
   if (notionalUsd < 0 || notionalUsd > points[points.length - 1]!.notionalUsd) return null;
   if (notionalUsd <= points[0]!.notionalUsd) return points[0]!;
+  const base = points[0]!;
   for (let index = 1; index < points.length; index++) {
     const left = points[index - 1]!;
     const right = points[index]!;
     if (notionalUsd <= right.notionalUsd) {
-      const position = (notionalUsd - left.notionalUsd) / (right.notionalUsd - left.notionalUsd);
-      return {
+      // Interpolate the move AWAY FROM THE TOUCH, not the raw price: that
+      // displacement is the quantity with a shape worth following.
+      const ask = base.ask + interpolateDisplacement(
+        left.notionalUsd, left.ask - base.ask,
+        right.notionalUsd, right.ask - base.ask,
         notionalUsd,
-        bid: left.bid + (right.bid - left.bid) * position,
-        ask: left.ask + (right.ask - left.ask) * position,
-      };
+      );
+      const bid = base.bid - interpolateDisplacement(
+        left.notionalUsd, base.bid - left.bid,
+        right.notionalUsd, base.bid - right.bid,
+        notionalUsd,
+      );
+      return { notionalUsd, bid, ask };
     }
   }
   return null;

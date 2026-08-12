@@ -12,9 +12,8 @@ So the two hourly tables carry months of rows that nothing can read, and
 curve. `volume_snapshots` is deliberately NOT touched: pruning it to 24h would
 silently empty the charts.
 
-Retention is generous on purpose. The reader needs 24 hours; keeping several
-days means a cron outage over a weekend cannot destroy the window it will want
-when it comes back.
+Retention is 36 hours: the 24 the readers use, plus 12 so a cron that runs late
+or misses a turn never destroys the window it will want when it returns.
 """
 
 from __future__ import annotations
@@ -24,8 +23,9 @@ from dataclasses import dataclass, field
 from sqlalchemy import Engine, text
 
 
-#: Well past the 24h the site reads, so a missed run is never fatal.
-RETENTION_DAYS = 7
+#: The readers need 24 hours; the extra 12 is the margin for a cron that runs
+#: late or misses a turn. Anything older is unreachable by every query we have.
+RETENTION_HOURS = 36
 
 #: Only tables whose readers use a short window. See the module docstring for
 #: why `volume_snapshots` is absent -- it is not an oversight.
@@ -38,7 +38,7 @@ class PruneSummary:
     errors: list[str] = field(default_factory=list)
 
 
-def run_prune_snapshots(engine: Engine, *, retention_days: int = RETENTION_DAYS) -> PruneSummary:
+def run_prune_snapshots(engine: Engine, *, retention_hours: int = RETENTION_HOURS) -> PruneSummary:
     """Delete rows older than the retention window from the short-window tables."""
 
     summary = PruneSummary()
@@ -46,8 +46,8 @@ def run_prune_snapshots(engine: Engine, *, retention_days: int = RETENTION_DAYS)
         try:
             with engine.begin() as conn:
                 result = conn.execute(
-                    text(f"DELETE FROM {table} WHERE ts < now() - make_interval(days => :days)"),
-                    {"days": retention_days},
+                    text(f"DELETE FROM {table} WHERE ts < now() - make_interval(hours => :hours)"),
+                    {"hours": retention_hours},
                 )
                 summary.deleted[table] = result.rowcount or 0
         except Exception as exc:  # noqa: BLE001 -- housekeeping must never sink the run

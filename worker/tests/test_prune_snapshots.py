@@ -11,6 +11,6 @@ def test_volume_snapshots_are_never_pruned():
     assert set(prune_snapshots.PRUNABLE_TABLES) == {"book_snapshots", "funding_snapshots"}
 
 
-def test_retention_is_well_clear_of_the_read_window():
-    """Readers need 24 hours; a missed weekend of crons must not destroy it."""
-    assert prune_snapshots.RETENTION_DAYS >= 3
+def test_retention_clears_the_read_window_with_margin():
+    """Readers need 24 hours; a late or missed cron must not destroy it."""
+    assert prune_snapshots.RETENTION_HOURS > 24
