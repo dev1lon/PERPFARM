@@ -62,6 +62,54 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // ?all=true compares the three aggregates across every pair, to decide
+    // between median and a trimmed mean on evidence instead of one example.
+    if (request.nextUrl.searchParams.get("all") === "true") {
+      const { rows: allRows } = await getPool().query<Row & { pair: string }>(
+        `SELECT m.symbol_canonical AS pair, v.slug, f.ts, f.funding_rate_raw,
+                f.interval_hours, f.funding_rate_annualized
+         FROM funding_snapshots f
+         JOIN markets m ON m.id = f.market_id
+         JOIN venues v ON v.id = m.venue_id
+         WHERE m.is_active = true AND f.ts >= now() - interval '24 hours'`,
+        [],
+      );
+      const series = new Map<string, number[]>();
+      for (const row of allRows) {
+        const key = `${row.pair}|${row.slug}`;
+        const list = series.get(key) ?? [];
+        list.push(Number(row.funding_rate_annualized));
+        series.set(key, list);
+      }
+      const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+      const medianOf = (xs: number[]) => {
+        const s2 = [...xs].sort((x, y) => x - y);
+        const mid = (s2.length - 1) / 2;
+        return (s2[Math.floor(mid)]! + s2[Math.ceil(mid)]!) / 2;
+      };
+      const trimmed = (xs: number[], frac = 0.1) => {
+        const s2 = [...xs].sort((x, y) => x - y);
+        const k = Math.max(1, Math.floor(s2.length * frac));
+        const cut = s2.length - 2 * k > 0 ? s2.slice(k, s2.length - k) : s2;
+        return mean(cut);
+      };
+      const stats = [...series.entries()]
+        .filter(([, xs]) => xs.length >= 8)
+        .map(([key, xs]) => {
+          const [pair, venue] = key.split("|");
+          const m = mean(xs), md = medianOf(xs), tr = trimmed(xs);
+          return {
+            pair, venue, samples: xs.length,
+            mean: Number(m.toFixed(4)), median: Number(md.toFixed(4)), trimmed10: Number(tr.toFixed(4)),
+            // How far the median sits from the aggregate that actually accrues.
+            medianVsMean: Number(Math.abs(md - m).toFixed(4)),
+            trimmedVsMean: Number(Math.abs(tr - m).toFixed(4)),
+          };
+        })
+        .sort((a, b) => b.medianVsMean - a.medianVsMean);
+      return NextResponse.json({ pairs: stats.length, stats });
+    }
+
     const [a, b] = venues;
     const spreadAnnualised = a && b ? Number((a.avg24hAnnualised - b.avg24hAnnualised).toFixed(6)) : null;
     return NextResponse.json({
