@@ -9,6 +9,7 @@ from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.catalog import refresh_catalog
 from perpfarm.jobs.fee_watch import run_fee_watch
+from perpfarm.jobs.prune_snapshots import run_prune_snapshots
 from perpfarm.jobs.sync_snapshots import run_sync_snapshots
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -187,6 +188,18 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
         )
+        # Housekeeping AFTER the write, so a failure here can never cost us the
+        # snapshots this run just collected. Non-fatal for the same reason.
+        try:
+            pruned = run_prune_snapshots(engine)
+            if any(pruned.deleted.values()):
+                click.echo(
+                    "prune: " + ", ".join(f"{table} -{count}" for table, count in pruned.deleted.items() if count)
+                )
+            for failure in pruned.errors:
+                click.echo(f"  prune skipped: {failure}", err=True)
+        except Exception as exc:  # noqa: BLE001 -- never let cleanup fail the cron
+            click.echo(f"  prune skipped: {exc}", err=True)
         # Name the skipped markets. A count alone cannot explain why one pair
         # is hours staler than the rest of its protocol.
         for market, reason in summary.skips:
