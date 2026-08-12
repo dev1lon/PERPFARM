@@ -164,22 +164,37 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        ORDER BY s.market_id, s.ts DESC
      ),
      fund AS (
-       -- MEDIAN of the last 24 hours, not the mean.
+       -- TRIMMED MEAN of the last 24 hours: drop the extreme 10% at each end,
+       -- average the rest.
        --
-       -- Funding on a thin market is not a smooth series: TxFlow's BZ readings
-       -- swing between -1288% and +612% annualised hour to hour and flip sign,
-       -- so a mean is dominated by whichever spikes the window happens to
-       -- contain -- our 24h mean and an external tool's disagreed by 1.85x on
-       -- that pair while agreeing to 3.6% on a stable one. The median is the
-       -- rate that actually persisted, and it is the same choice already made
-       -- for execution cost.
-       SELECT f.market_id,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY f.funding_rate_annualized) AS funding
-       FROM funding_snapshots f
-       JOIN markets m ON m.id = f.market_id
-       JOIN v ON v.id = m.venue_id
-       WHERE f.ts >= now() - interval '24 hours'
-       GROUP BY f.market_id
+       -- Funding is not like execution cost, and the two need different
+       -- statistics. You cross the spread ONCE, so its typical value -- the
+       -- median -- is what you will meet. Funding ACCRUES EVERY HOUR you hold,
+       -- so the total is the sum, and the mean is the aggregate that matches
+       -- it. A median answers "what did a typical hour look like", which is
+       -- not the question.
+       --
+       -- Measured over 707 pair-venue series: for most pairs all three agree,
+       -- but in the tail the median sits 3-5x further from the mean than a
+       -- trimmed mean does, and on skewed pairs it is simply wrong -- KSTR's
+       -- median is 0.000 against a mean of -1.059, and ONE's median even flips
+       -- the sign. Trimming keeps the additive property while stopping one
+       -- reading (TxFlow's BZ swings between -1288% and +612% annualised) from
+       -- setting the number by itself.
+       SELECT market_id, AVG(funding_rate_annualized) AS funding
+       FROM (
+         SELECT f.market_id, f.funding_rate_annualized,
+                row_number() OVER (PARTITION BY f.market_id ORDER BY f.funding_rate_annualized) AS rank_asc,
+                count(*) OVER (PARTITION BY f.market_id) AS n
+         FROM funding_snapshots f
+         JOIN markets m ON m.id = f.market_id
+         JOIN v ON v.id = m.venue_id
+         WHERE f.ts >= now() - interval '24 hours'
+       ) ranked
+       -- Too few readings to trim: keep them all rather than throw away half.
+       WHERE n < 5
+          OR (rank_asc > floor(n * 0.1) AND rank_asc <= n - floor(n * 0.1))
+       GROUP BY market_id
      ),
      fee AS (
        SELECT DISTINCT ON (venue_id) venue_id, taker_bps, maker_bps
