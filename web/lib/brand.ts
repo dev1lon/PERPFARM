@@ -189,6 +189,11 @@ export const BRAND: Record<string, BrandAssets> = {
     // teal brand tile fills the mark box as-is
     mark: "logos/qfex/logo.jpg",
   },
+  truenorth: {
+    // navy brand tile with the blue mark on it -- fills the mark box as-is,
+    // same as QFEX. No wordmark shipped, so the name renders as text.
+    mark: "logos/truenorth/logo.jpg",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {

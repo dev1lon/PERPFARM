@@ -52,6 +52,7 @@ export const RADAR: HomeProtocol[] = [
   { slug: "reya", name: "Reya" },
   { slug: "ondo", name: "Ondo" },
   { slug: "qfex", name: "QFEX" },
+  { slug: "truenorth", name: "TrueNorth" },
 ];
 
 /** Total tracked protocols, for the hero badge. */

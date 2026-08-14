@@ -68,13 +68,13 @@ function StaleDataNotice({ data }: { data: RankingResponse }) {
       <span className="mt-0.5 flex-none font-mono-num text-[13px] text-warning">!</span>
       <div className="text-[13px] leading-[1.6] text-text-primary">
         <span className="font-semibold">
-          {tr(locale, `${names}: live quotes unavailable`, `${names}: живые котировки недоступны`)}
+          {tr(locale, `${names}: numbers may be out of date`, `${names}: цифры могли устареть`)}
         </span>{" "}
         <span className="text-text-muted">
           {tr(
             locale,
-            `The protocol's public API did not respond, so these numbers come from the last saved snapshots (${formatUtcDateTime(data.asOf)}) — not live prices.`,
-            `Публичный API протокола не ответил, поэтому цифры взяты из последних сохранённых снимков (${formatUtcDateTime(data.asOf)}) — это не живые котировки.`,
+            `The hourly collector has missed its last few runs, so this is priced from the newest saved snapshot (${formatUtcDateTime(data.asOf)}) and may no longer match the live book.`,
+            `Почасовой сбор пропустил несколько запусков, поэтому расчёт сделан по последнему сохранённому снимку (${formatUtcDateTime(data.asOf)}) и может расходиться с текущим стаканом.`,
           )}
         </span>
       </div>
