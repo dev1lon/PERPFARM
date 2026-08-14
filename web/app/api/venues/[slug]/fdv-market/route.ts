@@ -49,8 +49,8 @@ function sortMarkets(markets: FdvMarket[]): FdvMarket[] {
   return markets.sort((a, b) => thresholdValue(a.threshold) - thresholdValue(b.threshold));
 }
 
-async function getLiveMarkets(): Promise<FdvMarketResponse> {
-  const response = await fetch(POLYMARKET_EVENT_URL, {
+async function getLiveMarkets(eventUrl: string): Promise<FdvMarketResponse> {
+  const response = await fetch(eventUrl, {
     next: { revalidate: 3600 },
     signal: AbortSignal.timeout(8_000),
   });
@@ -84,9 +84,18 @@ async function getLiveMarkets(): Promise<FdvMarketResponse> {
   };
 }
 
-export async function GET() {
+/** Only Variational has a launch-FDV market on Polymarket to read. */
+const EVENT_BY_SLUG: Record<string, string> = { variational: POLYMARKET_EVENT_URL };
+
+export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const eventUrl = EVENT_BY_SLUG[slug];
+  if (!eventUrl) {
+    return NextResponse.json({ error: "No FDV market for this protocol" }, { status: 404 });
+  }
+
   try {
-    return NextResponse.json(await getLiveMarkets(), {
+    return NextResponse.json(await getLiveMarkets(eventUrl), {
       headers: { "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=3600" },
     });
   } catch {

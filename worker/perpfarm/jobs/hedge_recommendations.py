@@ -10,6 +10,7 @@ route scan.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -73,6 +74,38 @@ def _number(value: object) -> float | None:
     return number if number == number and number not in (float("inf"), float("-inf")) else None
 
 
+#: Above this ratio between two measured sizes, a straight line stops following
+#: the book's shape and the segment is fitted as `displacement = a * size^k`.
+#: Kept identical to POWER_FIT_MIN_SPAN_RATIO in web/lib/quote-curve.ts, where
+#: the value was measured (leave-one-out over 682 production curves): the power
+#: fit made TxFlow's closely-spaced ladder worse and Variational's 100x gap
+#: markedly better. Variational publishes 1k / 100k / 1m, so both of its
+#: segments are wide -- the worker interpolating them linearly meant it and the
+#: website priced the same market differently, and the worker's number is what
+#: picks the hedge partner shown on the page.
+POWER_FIT_MIN_SPAN_RATIO = 10.0
+
+
+def _interpolate_displacement(
+    left_size: float,
+    left_displacement: float,
+    right_size: float,
+    right_displacement: float,
+    notional_usd: float,
+) -> float:
+    """Move away from the touch at `notional_usd`, between two measured sizes."""
+
+    wide_gap = left_size > 0 and right_size >= left_size * POWER_FIT_MIN_SPAN_RATIO
+    # Needs two positive displacements to take logs of. The first segment starts
+    # at the touch, where displacement is zero by definition, so it stays linear.
+    if wide_gap and left_displacement > 0 and right_displacement > 0:
+        exponent = math.log(right_displacement / left_displacement) / math.log(right_size / left_size)
+        if math.isfinite(exponent):
+            return left_displacement * (notional_usd / left_size) ** exponent
+    position = (notional_usd - left_size) / (right_size - left_size)
+    return left_displacement + (right_displacement - left_displacement) * position
+
+
 def _curve_impact_bps(value: object, notional_usd: float, *, cheapest: bool) -> float | None:
     raw: Any = value
     if isinstance(raw, str):
@@ -106,9 +139,15 @@ def _curve_impact_bps(value: object, notional_usd: float, *, cheapest: bool) -> 
         left_size, (left_bid, left_ask) = anchors[index - 1]
         right_size, (right_bid, right_ask) = anchors[index]
         if notional_usd <= right_size:
-            position = (notional_usd - left_size) / (right_size - left_size)
-            bid = left_bid + (right_bid - left_bid) * position
-            ask = left_ask + (right_ask - left_ask) * position
+            # Interpolate the move AWAY FROM THE TOUCH, not the raw price: that
+            # displacement is the quantity with a shape worth following. Same
+            # derivation as web/lib/quote-curve.ts.
+            ask = base_ask + _interpolate_displacement(
+                left_size, left_ask - base_ask, right_size, right_ask - base_ask, notional_usd
+            )
+            bid = base_bid - _interpolate_displacement(
+                left_size, base_bid - left_bid, right_size, base_bid - right_bid, notional_usd
+            )
             break
     buy = max(ask - base_ask, 0) / reference * 10_000
     sell = max(base_bid - bid, 0) / reference * 10_000

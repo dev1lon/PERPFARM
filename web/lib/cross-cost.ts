@@ -9,7 +9,7 @@
  */
 
 import { getPool } from "@/lib/db";
-import { loadCostHistory, type CostSample } from "@/lib/cost-history";
+import { impactAtNotional, loadCostHistory, type CostSample } from "@/lib/cost-history";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
@@ -87,24 +87,6 @@ export type CrossRankings = {
 function asNumber(value: unknown): number | null {
   const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(n) ? n : null;
-}
-
-// Piecewise-linear impact at an arbitrary notional from the published buckets
-// (0 at size 0; missing buckets skipped; past the last anchor clamps to it).
-function impactAtNotional(notional: number, anchors: Array<[number, number | null]>): number | null {
-  const points: Array<[number, number]> = [[0, 0]];
-  for (const [x, y] of anchors) if (y !== null) points.push([x, y]);
-  if (points.length < 2) return null;
-  points.sort((a, b) => a[0] - b[0]);
-  if (notional <= points[0][0]) return points[0][1];
-  for (let i = 1; i < points.length; i++) {
-    if (notional <= points[i][0]) {
-      const [x0, y0] = points[i - 1];
-      const [x1, y1] = points[i];
-      return y0 + ((y1 - y0) * (notional - x0)) / (x1 - x0);
-    }
-  }
-  return points[points.length - 1][1];
 }
 
 /** What one venue costs, in bps of the turnover done on it, per order type.

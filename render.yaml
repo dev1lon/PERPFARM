@@ -14,8 +14,8 @@
 # against the prod Supabase -- locally, or from a Render Shell tab on any cron
 # service (the shell opens inside rootDir worker/): python -m alembic upgrade head
 #
-# TODO(verify): confirm Blueprint field names (runtime/schedule/envVars) against
-# https://render.com/docs/blueprint-spec before deploying.
+# The field names below (runtime/schedule/envVars) are confirmed by the cron
+# running in production, not just by the Blueprint spec.
 
 services:
   # The one cron. Hourly market-data sync

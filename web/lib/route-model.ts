@@ -28,6 +28,24 @@ export const HOURS_PER_YEAR = 8_760;
 export const MIN_VOLUME_USD = 1_000;
 
 /**
+ * Past this age the newest snapshot is no longer "live".
+ *
+ * The worker runs hourly, so three hours means it has missed two turns. The
+ * rule lives here because every protocol has to answer the freshness question
+ * the same way: TxFlow's endpoint used to report `live: true` unconditionally,
+ * so a stopped cron kept publishing days-old books as current while the
+ * Variational page beside it correctly reported staleness.
+ */
+export const STALE_SNAPSHOT_MS = 3 * 60 * 60 * 1_000;
+
+/** Whether the newest snapshot in a set is recent enough to price from. */
+export function snapshotsAreFresh(newestBookTs: string | null, now = Date.now()): boolean {
+  if (newestBookTs === null) return false;
+  const takenAt = new Date(newestBookTs).getTime();
+  return Number.isFinite(takenAt) && now - takenAt < STALE_SNAPSHOT_MS;
+}
+
+/**
  * How a protocol's stored open interest becomes the number we display.
  *
  * Protocols do not agree on what "open interest" counts, so a single global

@@ -2,8 +2,8 @@
 
 Venues are categorized as "automated" in the data model: their existence and
 display name come from code (the registry), not from hand-edited YAML. Manual
-YAML files (points_programs.yaml etc.) reference venues by slug and expect
-the row to already exist -- run this before `perpfarm ingest-manual`.
+YAML files (venue_meta.yaml, execution_rules.yaml) reference venues by slug and
+expect the row to already exist -- run this before `perpfarm ingest-manual`.
 """
 
 from sqlalchemy import Engine

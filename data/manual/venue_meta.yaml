@@ -1,5 +1,6 @@
-# See points_programs.yaml for the note on venue_alpha/venue_beta being
-# synthetic fixture venues.
+# venue_alpha/venue_beta are synthetic fixture venues: dev/test only. Their
+# rows here are never seeded into a real database -- ingest_manual filters them
+# out by FIXTURE_SLUGS.
 
 venue_meta:
   - venue: venue_alpha

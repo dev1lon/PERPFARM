@@ -1,7 +1,8 @@
-# See points_programs.yaml for the note on venue_alpha/venue_beta being
-# synthetic fixture venues. These two rows are the "maker-rebate vs
-# taker-only-points" contrast the scoring engine's unit tests (Phase 2) rely
-# on to exercise the maker/taker recommendation logic.
+# venue_alpha/venue_beta are synthetic fixture venues: dev/test only, never
+# seeded into a real database. The two rows are the "maker-rebate vs
+# taker-only-points" contrast the fixture tests rely on -- venue_alpha's
+# negative maker fee is what test_hedge_recommendations.py uses to prove a
+# fixture venue would win every route comparison if it ever reached one.
 
 execution_rules:
   - venue: venue_alpha

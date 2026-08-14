@@ -34,7 +34,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function fetchDuneRows(queryId: string): Promise<Record<string, unknown>[]> {
   const apiKey = process.env.DUNE_API_KEY;
   if (!apiKey) return [];
-  const response = await fetch(`${DUNE_RESULTS_URL}/${queryId}/results?limit=1000`, {
+  const response = await fetch(`${DUNE_RESULTS_URL}/${encodeURIComponent(queryId)}/results?limit=1000`, {
     headers: { "X-Dune-Api-Key": apiKey },
     next: { revalidate: 60 * 60 },
     signal: AbortSignal.timeout(8_000),

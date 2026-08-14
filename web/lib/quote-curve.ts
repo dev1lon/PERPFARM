@@ -42,8 +42,9 @@ export function parseCurve(value: unknown): { referencePrice: number; points: Qu
  * How far each side has moved from the touch, between two measured sizes.
  *
  * A straight line is right for narrow gaps and wrong for wide ones, and we know
- * where the boundary is because both were measured (leave-one-out over 682
- * production curves, /api/diagnostics/curve-error):
+ * where the boundary is because both were measured: leave-one-out over 682
+ * production curves, run once from a temporary diagnostic endpoint that was
+ * removed after it answered the question. The result:
  *
  *   TxFlow, gaps up to 2.5x   a power fit made it WORSE -- median absolute
  *                             error 4.49 -> 9.14 bps at $10k, 1.98 -> 7.42 at
