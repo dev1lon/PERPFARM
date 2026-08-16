@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { computeCrossRankings } from "@/lib/cross-cost";
 import { isReadyVenue } from "@/lib/venue-status";
 
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .filter(([key, count]) => key !== "considered" && count > 0)
         .map(([key, count]) => `${key}: ${count}`)
         .join(", ");
-      throw new Error(
+      throw new UserFacingError(
         `No liquid pairs listed on both ${slug} and ${hedge}` +
           (why ? ` (of ${result.drops.considered} shared markets — ${why})` : ""),
       );
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not load cross-protocol data" },
+      { error: publicMessage(error, "Could not compare these two protocols right now. Try again in a minute.") },
       { status: 502 },
     );
   }

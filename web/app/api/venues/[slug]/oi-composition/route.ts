@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
 import { displayedOpenInterestUsd } from "@/lib/route-model";
 import { TRADFI_TICKER_LIST } from "@/lib/tradfi";
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not load open-interest composition" },
+      { error: publicMessage(error, "Could not load open-interest composition") },
       { status: 502 },
     );
   }

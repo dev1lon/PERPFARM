@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicMessage } from "@/lib/api-error";
 import { loadTxflowActivity } from "@/lib/activity/txflow";
 import { loadVariationalActivity } from "@/lib/activity/variational";
 import type { ActivityResponse } from "@/lib/activity/types";
@@ -30,7 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     return NextResponse.json(await load());
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not load activity data" },
+      { error: publicMessage(error, "Could not load activity data") },
       { status: 502 },
     );
   }

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
 import {
   FUNDING_HOLD_HOURS,
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (candidates.length === 0) {
       const name = protocolName(slug) ?? slug;
-      throw new Error(
+      throw new UserFacingError(
         tradfiOnly
           ? `No liquid TradFi markets on ${name} in the last 24 hours`
           : `No liquid ${name} markets in the last 24 hours`,
@@ -251,7 +252,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not load market data" },
+      { error: publicMessage(error, "Could not load market data right now. Try again in a minute.") },
       { status: 502 },
     );
   }

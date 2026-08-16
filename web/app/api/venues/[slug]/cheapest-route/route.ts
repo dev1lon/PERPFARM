@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
 import { isReadyVenue } from "@/lib/venue-status";
 
@@ -42,6 +43,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not load cheapest hedge" }, { status: 502 });
+    return NextResponse.json({ error: publicMessage(error, "Could not load cheapest hedge") }, { status: 502 });
   }
 }
