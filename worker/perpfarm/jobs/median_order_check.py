@@ -189,6 +189,31 @@ def _cost_precomputed(snapshots: list[Snapshot], fill_usd: float) -> float | Non
     return median_spread / 2 + impact
 
 
+def _cost_representative(snapshots: list[Snapshot], fill_usd: float) -> float | None:
+    """Cost of the ONE snapshot whose spread sits in the middle of the window.
+
+    The third option, and the cheap one that changes no arithmetic: the database
+    picks a representative row per market and the page prices it exactly as it
+    prices a live snapshot today -- same interpolation, same real observation,
+    so the parts still add up to the headline.
+
+    Spread is the selector because it is the dominant term (on a typical route
+    $3.12 of $3.64) and because it is a stored scalar, so the choice can be made
+    in SQL without teaching Postgres the quote-curve maths.
+    """
+    priced = [
+        (s.spread_bps, s)
+        for s in snapshots
+        if _curve_impact_bps(s.curve, fill_usd, cheapest=True) is not None
+    ]
+    if not priced:
+        return None
+    priced.sort(key=lambda item: item[0])
+    spread, snapshot = priced[len(priced) // 2]
+    impact = _curve_impact_bps(snapshot.curve, fill_usd, cheapest=True)
+    return spread / 2 + impact if impact is not None else None
+
+
 def _percentile(values: list[float], fraction: float) -> float:
     ordered = sorted(values)
     index = min(len(ordered) - 1, int(round((len(ordered) - 1) * fraction)))
@@ -206,34 +231,39 @@ def run(slug: str, *, top: int = 10) -> None:
     print(f"venue={slug} markets={len(by_pair)} snapshots/market={min(windows)}-{max(windows)}")
     print()
 
-    for fill in FILL_SIZES_USD:
-        differences: list[tuple[float, float, str, float, float]] = []
-        for pair, snapshots in by_pair.items():
-            today = _cost_today(snapshots, fill)
-            proposed = _cost_precomputed(snapshots, fill)
-            if today is None or proposed is None or today <= 0:
-                continue
-            absolute = abs(proposed - today)
-            differences.append((absolute / today * 100, absolute, pair, today, proposed))
-        if not differences:
-            print(f"fill ${fill:,.0f}: no comparable markets")
-            continue
+    schemes = (
+        ("per-anchor medians", _cost_precomputed),
+        ("one representative snapshot", _cost_representative),
+    )
 
-        percentages = [d[0] for d in differences]
-        # A $1.00 route is the user's own yardstick: a leg priced at `bps` costs
-        # 2 x fill x bps / 10_000 per cycle, so the RELATIVE error is what
-        # carries over to dollars whatever the volume.
-        print(
-            f"fill ${fill:,.0f}: markets={len(differences)} "
-            f"median={statistics.median(percentages):.3f}% "
-            f"p95={_percentile(percentages, 0.95):.3f}% "
-            f"max={max(percentages):.3f}%  "
-            f"-> $1.00 route reads ${1 + statistics.median(percentages) / 100:.4f} typically, "
-            f"${1 + max(percentages) / 100:.4f} worst case"
-        )
-        worst = sorted(differences, reverse=True)[:top]
-        for percent, _absolute, pair, today, proposed in worst:
-            print(f"    {pair:<12} {today:8.3f} bps -> {proposed:8.3f} bps  ({percent:+.2f}%)")
+    for fill in FILL_SIZES_USD:
+        print(f"fill ${fill:,.0f}")
+        for label, scheme in schemes:
+            differences: list[tuple[float, str, float, float]] = []
+            for pair, snapshots in by_pair.items():
+                today = _cost_today(snapshots, fill)
+                proposed = scheme(snapshots, fill)
+                if today is None or proposed is None or today <= 0:
+                    continue
+                differences.append((abs(proposed - today) / today * 100, pair, today, proposed))
+            if not differences:
+                print(f"  {label:<28} no comparable markets")
+                continue
+
+            percentages = [d[0] for d in differences]
+            # A $1.00 route is the yardstick: a leg priced at `bps` costs
+            # 2 x fill x bps / 10_000 per cycle, so the RELATIVE error is what
+            # carries over into dollars whatever the volume.
+            print(
+                f"  {label:<28} markets={len(differences):<4} "
+                f"median={statistics.median(percentages):7.3f}% "
+                f"p95={_percentile(percentages, 0.95):7.3f}% "
+                f"max={max(percentages):8.3f}%  "
+                f"-> $1.00 reads ${1 + statistics.median(percentages) / 100:.4f} / "
+                f"${1 + max(percentages) / 100:.4f} worst"
+            )
+            for percent, pair, today, proposed in sorted(differences, reverse=True)[:top]:
+                print(f"      {pair:<12} {today:8.3f} bps -> {proposed:8.3f} bps  ({percent:+.2f}%)")
         print()
 
 
