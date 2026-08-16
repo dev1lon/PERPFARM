@@ -46,7 +46,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     return NextResponse.json(
       { asOf: new Date().toISOString(), ...result },
-      { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=60" } },
+      // Five minutes: this reads TWO venues' 24h history, so it is the most
+      // expensive query on the site and the snapshots behind it move hourly.
+      { headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=300" } },
     );
   } catch (error) {
     return NextResponse.json(
