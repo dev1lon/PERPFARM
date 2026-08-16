@@ -11,7 +11,7 @@ type CrossPair = {
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number | null; cycleCostUsd: number;
-  latestCycleCostUsd: number; costRangeLowUsd: number; costRangeHighUsd: number;
+  costRangeLowUsd: number; costRangeHighUsd: number;
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
@@ -65,11 +65,9 @@ export function CrossPairRankings({
     return {
       pair: pair.pair,
       openInterestUsd: pair.mainOiUsd,
-      volume24hUsd: pair.volume24hMinUsd,
       competitionEligible: isTradfiMarket(pair.pair),
       firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
       cycleCostUsd: pair.cycleCostUsd,
-      latestCycleCostUsd: pair.latestCycleCostUsd,
       costRangeLowUsd: pair.costRangeLowUsd,
       costRangeHighUsd: pair.costRangeHighUsd,
       spreadCostUsd: pair.spreadCostUsd,

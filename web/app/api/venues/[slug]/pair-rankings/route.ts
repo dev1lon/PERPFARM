@@ -76,12 +76,10 @@ type CostTier = "low" | "medium" | "high";
 type PairRanking = {
   pair: string;
   openInterestUsd: number;
-  volume24hUsd: number;
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   quoteAsOf: string;
   cycleCostUsd: number;
-  latestCycleCostUsd: number;
   costRangeLowUsd: number;
   costRangeHighUsd: number;
   // cycleCost = spread + slippage + fees. The two resting LIMIT legs are free;
@@ -102,9 +100,7 @@ function round(value: PairRanking): PairRanking {
   return {
     ...value,
     openInterestUsd: Math.round(value.openInterestUsd),
-    volume24hUsd: Math.round(value.volume24hUsd),
     cycleCostUsd: usd(value.cycleCostUsd),
-    latestCycleCostUsd: usd(value.latestCycleCostUsd),
     costRangeLowUsd: usd(value.costRangeLowUsd),
     costRangeHighUsd: usd(value.costRangeHighUsd),
     spreadCostUsd: usd(value.spreadCostUsd),
@@ -170,9 +166,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const costOf = (legBps: number) => (2 * fillNotionalUsd * (legBps + feeBps)) / 10_000;
         const cycleCostUsd = costOf(quote.median.legBps);
         const feeCostUsd = (2 * fillNotionalUsd * feeBps) / 10_000;
-        // The newest sample of the window, not the median dressed up as one:
-        // loadVenueMarkets returns each pair's snapshots newest first.
-        const latestSample = market.samples[0]!;
         observations = Math.max(observations, quote.observations);
         // The NEWEST snapshot dates the table: one market that skipped a run (a
         // TradFi book with no resting orders outside its session) must not
@@ -182,12 +175,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return {
           pair: market.pair,
           openInterestUsd,
-          volume24hUsd: market.volume24hUsd,
           competitionEligible: eligible,
           firstLimitSide: market.firstLimitSide,
           quoteAsOf: market.bookTs,
           cycleCostUsd,
-          latestCycleCostUsd: costOf(latestSample.legBps),
           costRangeLowUsd: costOf(quote.low.legBps),
           costRangeHighUsd: costOf(quote.high.legBps),
           // The breakdown uses the same p50 observation as the headline, so the

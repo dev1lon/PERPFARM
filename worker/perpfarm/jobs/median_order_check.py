@@ -119,40 +119,62 @@ def _cost_today(snapshots: list[Snapshot], fill_usd: float) -> float | None:
     return statistics.median(legs) if legs else None
 
 
+def _displacements(snapshot: Snapshot) -> dict[float, tuple[float, float]] | None:
+    """How far each side sits from the touch, per size, in price units.
+
+    Displacement -- not the raw quote -- is the quantity worth taking a median
+    of. A raw bid/ask carries the market price, which drifts during the day, so
+    a median of prices across 24h mixes price levels: the median bid at size 0
+    and the median bid at $100k can come from hours whose underlying price
+    differed by more than the whole depth of the book. Measuring the median of
+    the DISTANCE from the touch removes the drift entirely.
+    """
+    points: dict[float, tuple[float, float]] = {}
+    for point in snapshot.curve.get("points", []):
+        if not isinstance(point, dict):
+            continue
+        size = _number(point.get("notional_usd"))
+        bid, ask = _number(point.get("bid")), _number(point.get("ask"))
+        if size is not None and bid is not None and ask is not None:
+            points[size] = (bid, ask)
+    if 0.0 not in points:
+        return None
+    base_bid, base_ask = points[0.0]
+    return {size: (base_bid - bid, ask - base_ask) for size, (bid, ask) in points.items()}
+
+
 def _cost_precomputed(snapshots: list[Snapshot], fill_usd: float) -> float | None:
     """Median at each published anchor first, then interpolate to the fill size.
 
-    The median curve is assembled from the per-anchor medians and fed through
-    the SAME interpolation the site uses, so only the order of operations
-    differs from `_cost_today`.
+    The median curve is rebuilt from the per-anchor median DISPLACEMENTS around
+    a single reference price, then fed through the SAME interpolation the site
+    uses -- so only the order of operations differs from `_cost_today`.
     """
     sizes = _anchor_sizes(snapshots)
     if len(sizes) < 2:
         return None
 
-    reference = statistics.median(
-        [r for r in (_number(s.curve.get("reference_price")) for s in snapshots) if r]
-    )
-    if not reference:
+    references = [r for r in (_number(s.curve.get("reference_price")) for s in snapshots) if r]
+    if not references:
+        return None
+    reference = statistics.median(references)
+
+    per_snapshot = [d for d in (_displacements(s) for s in snapshots) if d]
+    if not per_snapshot:
         return None
 
     median_points = []
     for size in sizes:
-        bids, asks = [], []
-        for snapshot in snapshots:
-            for point in snapshot.curve.get("points", []):
-                if not isinstance(point, dict) or _number(point.get("notional_usd")) != size:
-                    continue
-                bid, ask = _number(point.get("bid")), _number(point.get("ask"))
-                if bid is not None and ask is not None:
-                    bids.append(bid)
-                    asks.append(ask)
-        if bids and asks:
+        bid_moves = [d[size][0] for d in per_snapshot if size in d]
+        ask_moves = [d[size][1] for d in per_snapshot if size in d]
+        if bid_moves and ask_moves:
+            # Rebuilt around one price level, so only the shape of the book
+            # survives into the comparison.
             median_points.append(
                 {
                     "notional_usd": size,
-                    "bid": statistics.median(bids),
-                    "ask": statistics.median(asks),
+                    "bid": reference - statistics.median(bid_moves),
+                    "ask": reference + statistics.median(ask_moves),
                 }
             )
 

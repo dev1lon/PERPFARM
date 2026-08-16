@@ -14,11 +14,9 @@ type CostTier = "low" | "medium" | "high";
 export interface PairRanking {
   pair: string;
   openInterestUsd: number;
-  volume24hUsd: number;
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
-  latestCycleCostUsd: number;
   costRangeLowUsd: number;
   costRangeHighUsd: number;
   spreadCostUsd: number;

@@ -57,8 +57,7 @@ export type CrossPair = {
   slippageCostUsd: number;
   fundingUsd: number | null;
   cycleCostUsd: number;
-  /** Cost from the newest tick alone, and the 24h p25-p75 band. */
-  latestCycleCostUsd: number;
+  /** The 24h p25-p75 band around the median cost. */
   costRangeLowUsd: number;
   costRangeHighUsd: number;
 };
@@ -209,7 +208,6 @@ function round(p: CrossPair): CrossPair {
     feeCostUsd: Number(p.feeCostUsd.toFixed(2)),
     fundingUsd: p.fundingUsd === null ? null : Number(p.fundingUsd.toFixed(2)),
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
-    latestCycleCostUsd: Number(p.latestCycleCostUsd.toFixed(2)),
     costRangeLowUsd: Number(p.costRangeLowUsd.toFixed(2)),
     costRangeHighUsd: Number(p.costRangeHighUsd.toFixed(2)),
   };
@@ -393,7 +391,6 @@ export async function computeCrossRankings(
       feeCostUsd,
       fundingUsd,
       cycleCostUsd,
-      latestCycleCostUsd: execCostUsd,
       costRangeLowUsd,
       costRangeHighUsd,
       oiKey: displayedOiA,
