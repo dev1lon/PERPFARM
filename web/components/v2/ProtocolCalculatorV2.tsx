@@ -122,6 +122,14 @@ function orders(firstLimitSide: "long" | "short") {
 
 const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
 
+/**
+ * Height of one collapsed table row, measured in the browser (identical in both
+ * layouts). Used only by the blank rows that keep a short last page from
+ * shifting everything below it, so if a row's padding ever changes, the reserved
+ * space is a few pixels off -- cosmetic, never wrong data.
+ */
+const ROW_HEIGHT_PX = 69;
+
 const COST_TIER_TONE: Record<CostTier, string> = {
   low: "border-positive/30 bg-positive/10 text-positive",
   medium: "border-warning/30 bg-warning/10 text-warning",
@@ -1025,17 +1033,22 @@ export function RouteResults({
               </button>
             )}
 
-            {/* The last page is usually short, and without this the block below
-                the table jumps upward when you reach it. Blank rows hold the
-                height instead of a fixed pixel value, so they stay correct if a
-                row's padding ever changes. Desktop only: the narrow layout
-                already shows five rows behind a "show all" toggle. */}
+            {/* The last page is short (243 pairs leave three on page 25), and
+                without these the whole block below the table slides up when you
+                reach it. Blank rows hold the space.
+
+                Only as many as the layout would actually show: the narrow
+                layout keeps five rows behind its "show all" toggle, so padding
+                it to ten would open a large gap instead of closing one. */}
             {Array.from({ length: Math.max(0, PAGE_SIZE - visible.length) }).map((_, index) => (
-              <div key={`filler-${index}`} aria-hidden className="hidden rounded-[14px] border border-transparent lg:block">
-                <div className={`grid ${GRID} items-center gap-3 px-[18px] py-3.5`}>
-                  <div className="font-mono-num text-[13px] text-transparent">00</div>
-                </div>
-              </div>
+              <div
+                key={`filler-${index}`}
+                aria-hidden
+                className={`rounded-[14px] border border-transparent ${
+                  index < Math.max(0, (showAllMobile ? PAGE_SIZE : 5) - visible.length) ? "" : "hidden lg:block"
+                }`}
+                style={{ height: ROW_HEIGHT_PX }}
+              />
             ))}
 
             {matches.length === 0 && (
