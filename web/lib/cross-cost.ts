@@ -72,6 +72,10 @@ export type CrossRankings = {
   totalCycleVolumeUsd: number;
   holdHours: number;
   minVolumeUsd: number;
+  /** The farmed protocol's own OI floor -- what the market you farm must clear. */
+  minOpenInterestUsd: number;
+  /** The hedge only has to be a real market, so it is held to the absolute floor. */
+  hedgeMinOpenInterestUsd: number;
   grouped: boolean;
   bands: CrossBand[];
   /** Every eligible pair, cheapest first -- what the "All" tab pages through. */
@@ -419,6 +423,8 @@ export async function computeCrossRankings(
     totalCycleVolumeUsd: accountVolumeUsd * 2,
     holdHours: FUNDING_HOLD_HOURS,
     minVolumeUsd: MIN_VOLUME_USD,
+    minOpenInterestUsd: minOpenInterestUsd(slugA),
+    hedgeMinOpenInterestUsd: OI_BANDS.low,
     grouped: true,
     costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
     bands,

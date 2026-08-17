@@ -56,6 +56,30 @@ export interface RankingResponse {
   /** Every eligible pair, cheapest first. The OI tabs show a curated ten each;
    *  this is what the "All" tab pages through and the ticker search looks in. */
   pairs?: PairRanking[];
+  /** Cross-protocol only: the hedge leg's own, lower OI floor. */
+  hedgeMinOpenInterestUsd?: number;
+}
+
+/**
+ * Why the list is shorter than the protocol's market count.
+ *
+ * The floors are per protocol and were invisible: a market could be missing
+ * with no way to tell whether it is unlisted, illiquid, or simply outside the
+ * top ten. Stated next to the count, in the numbers the API actually applied.
+ */
+function eligibilityTip(locale: Locale, data: RankingResponse, homeName: string, hedgeName: string): string {
+  const usd = (value: number) => compactUsd(value);
+  const base = tr(
+    locale,
+    `Only markets that can actually be traded at this size are listed: at least ${usd(data.minVolumeUsd)} of 24h volume, and open interest of ${usd(data.minOpenInterestUsd)} or more on ${homeName}.`,
+    `В списке только рынки, которые реально исполнимы на этом размере: не меньше ${usd(data.minVolumeUsd)} объёма за 24ч и открытый интерес от ${usd(data.minOpenInterestUsd)} на ${homeName}.`,
+  );
+  if (data.hedgeMinOpenInterestUsd === undefined) return base;
+  return `${base} ${tr(
+    locale,
+    `The hedge leg on ${hedgeName} only has to be a real market, so it is held to a lower floor of ${usd(data.hedgeMinOpenInterestUsd)} — the protocol you farm sets the bar, not the one you hedge on. That is also why the pair count differs depending on which protocol you start from.`,
+    `К хедж-ноге на ${hedgeName} требование мягче — ${usd(data.hedgeMinOpenInterestUsd)}, ей достаточно быть настоящим рынком. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому число пар зависит от того, с какого протокола вы начали.`,
+  )}`;
 }
 
 /** Names the protocols whose live feed is down, so the warning can be specific. */
@@ -782,7 +806,7 @@ export function RouteResults({
       <div className="pt-11">
         <div className="flex flex-col items-start gap-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col items-start gap-2">
-            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
+            <h2 className="flex items-center gap-2 text-[22px] font-bold tracking-[-0.018em] text-text-primary">
               {needle !== ""
                 ? tr(
                     locale,
@@ -800,11 +824,14 @@ export function RouteResults({
                       `${matches.length} cheapest ${pluralEn(matches.length, "pair", "pairs")}`,
                       `${matches.length} ${pluralRu(matches.length, "самая дешёвая пара", "самые дешёвые пары", "самых дешёвых пар")}`,
                     )}
+              <InfoTip text={eligibilityTip(locale, data, homeName, hedgeName)} />
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <label className="flex h-[34px] items-center gap-2 rounded-[10px] border border-border bg-bg px-3">
+            {/* The shell shows the focus state, so the input suppresses its own
+                inset ring (see .pf-inline-input in globals.css). */}
+            <label className="pf-transition flex h-[34px] items-center gap-2 rounded-[10px] border border-border bg-bg px-3 focus-within:border-accent/50">
               <span aria-hidden className="font-mono-num text-[12px] text-text-dim">⌕</span>
               <input
                 type="search"
@@ -812,7 +839,7 @@ export function RouteResults({
                 onChange={(event) => search(event.target.value)}
                 placeholder={tr(locale, "Find ticker", "Поиск тикера")}
                 aria-label={tr(locale, "Find a pair by ticker", "Найти пару по тикеру")}
-                className="w-[104px] bg-transparent text-[12px] font-medium text-text-primary placeholder:text-text-dim focus:outline-none"
+                className="pf-inline-input w-[104px] bg-transparent text-[12px] font-medium text-text-primary placeholder:text-text-dim focus:outline-none"
               />
             </label>
             {grouped && (
@@ -998,6 +1025,19 @@ export function RouteResults({
               </button>
             )}
 
+            {/* The last page is usually short, and without this the block below
+                the table jumps upward when you reach it. Blank rows hold the
+                height instead of a fixed pixel value, so they stay correct if a
+                row's padding ever changes. Desktop only: the narrow layout
+                already shows five rows behind a "show all" toggle. */}
+            {Array.from({ length: Math.max(0, PAGE_SIZE - visible.length) }).map((_, index) => (
+              <div key={`filler-${index}`} aria-hidden className="hidden rounded-[14px] border border-transparent lg:block">
+                <div className={`grid ${GRID} items-center gap-3 px-[18px] py-3.5`}>
+                  <div className="font-mono-num text-[13px] text-transparent">00</div>
+                </div>
+              </div>
+            ))}
+
             {matches.length === 0 && (
               <div className="rounded-[14px] border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
                 {tr(
@@ -1014,9 +1054,12 @@ export function RouteResults({
                   type="button"
                   onClick={() => goToPage(safePage - 1)}
                   disabled={safePage === 0}
-                  className="pf-transition rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pf-transition flex items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {tr(locale, "← Previous", "← Назад")}
+                  {/* The glyph sits on the text baseline by default, which reads
+                      as slightly low; leading-none centres it against the word. */}
+                  <span aria-hidden className="text-[14px] leading-none">←</span>
+                  {tr(locale, "Previous", "Назад")}
                 </button>
                 <div className="font-mono-num text-[12px] text-text-muted">
                   {tr(
@@ -1029,9 +1072,10 @@ export function RouteResults({
                   type="button"
                   onClick={() => goToPage(safePage + 1)}
                   disabled={safePage >= pageCount - 1}
-                  className="pf-transition rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pf-transition flex items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {tr(locale, "Next →", "Вперёд →")}
+                  {tr(locale, "Next", "Вперёд")}
+                  <span aria-hidden className="text-[14px] leading-none">→</span>
                 </button>
               </div>
             )}

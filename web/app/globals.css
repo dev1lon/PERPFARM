@@ -206,9 +206,12 @@ body {
   outline-offset: 2px;
 }
 
-/* The volume field already highlights its full container on focus. Avoid a
-   second inset browser outline around just the digits. */
-.pf-inline-number-input:focus-visible {
+/* Fields whose CONTAINER carries the focus state -- the volume input and the
+   ticker search both sit inside a bordered shell that lights up on focus. The
+   ring stays reachable for keyboard users; what is suppressed is the SECOND,
+   inset outline the browser draws around just the text inside the shell. */
+.pf-inline-number-input:focus-visible,
+.pf-inline-input:focus-visible {
   outline: none;
   outline-offset: 0;
 }
