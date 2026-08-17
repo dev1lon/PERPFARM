@@ -117,8 +117,21 @@ function InputCards() {
       <div className="grid gap-3.5 md:grid-cols-3">
         <div className={card}>
           <div className="flex items-center gap-3">{num("01")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Market eligibility", "Пригодность рынка")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Only tradable markets are considered: asset availability, enough liquidity for the selected position size, sufficient market activity, and any protocol-specific eligibility rules.", "Учитываются только торгуемые рынки: доступность актива, достаточная ликвидность для выбранного размера позиции, достаточная рыночная активность и правила eligibility конкретного протокола.")}</div>
-          <div className="mt-auto flex flex-wrap gap-1.5">{chip("availability")}{chip("liquidity")}{chip("eligibility")}</div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">
+            {tr(
+              locale,
+              "A market is listed only if it can actually be traded at the size you entered: at least $1,000 of 24-hour volume, and open interest above the floor of the protocol you are farming — $50,000 on Variational, $10,000 on TxFlow. The floors differ because the two venues' markets differ by orders of magnitude, so one number would filter everything on one and nothing on the other.",
+              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: объём за 24 часа не меньше $1 000 и открытый интерес выше порога того протокола, который вы фармите — $50 000 у Variational, $10 000 у TxFlow. Пороги разные, потому что рынки этих площадок отличаются на порядки: одно число отсеяло бы на одной всё, а на другой — ничего.",
+            )}
+          </div>
+          <div className="text-[14px] leading-[1.65] text-text-muted">
+            {tr(
+              locale,
+              "On a cross-protocol route the hedge leg only has to be a real market, so it is held to the lower $10,000 floor: the protocol you farm sets the bar, not the one you hedge on. This is why the same two protocols can list one more pair when you start from the other side — a market can clear TxFlow's floor as a farm and fail Variational's.",
+              "В кросс-маршруте к хедж-ноге требование мягче — ей достаточно быть настоящим рынком, порог $10 000. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому те же две площадки могут показать на одну пару больше, если начать с другой стороны: рынок проходит порог TxFlow как фарм и не проходит порог Variational.",
+            )}
+          </div>
+          <div className="mt-auto flex flex-wrap gap-1.5">{chip("$1K · 24h volume")}{chip("$50K · OI Variational")}{chip("$10K · OI TxFlow")}</div>
         </div>
         <div className={card}>
           <div className="flex items-center gap-3">{num("02")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Entry and exit", "Вход и выход")}</div></div>

@@ -63,23 +63,18 @@ export interface RankingResponse {
 /**
  * Why the list is shorter than the protocol's market count.
  *
- * The floors are per protocol and were invisible: a market could be missing
- * with no way to tell whether it is unlisted, illiquid, or simply outside the
- * top ten. Stated next to the count, in the numbers the API actually applied.
+ * Deliberately two lines: the tooltip is a hover affordance, so anything long
+ * enough to need scrolling cannot be read (it closes when the pointer leaves
+ * the "?"). The floors are stated in the numbers the API actually applied; the
+ * reasoning behind them lives on the methodology page, which can hold it.
  */
-function eligibilityTip(locale: Locale, data: RankingResponse, homeName: string, hedgeName: string): string {
+function eligibilityTip(locale: Locale, data: RankingResponse, homeName: string): string {
   const usd = (value: number) => compactUsd(value);
-  const base = tr(
+  return tr(
     locale,
-    `Only markets that can actually be traded at this size are listed: at least ${usd(data.minVolumeUsd)} of 24h volume, and open interest of ${usd(data.minOpenInterestUsd)} or more on ${homeName}.`,
-    `В списке только рынки, которые реально исполнимы на этом размере: не меньше ${usd(data.minVolumeUsd)} объёма за 24ч и открытый интерес от ${usd(data.minOpenInterestUsd)} на ${homeName}.`,
+    `Listed only if the market is tradable at this size: ${usd(data.minVolumeUsd)}+ of 24h volume and ${usd(data.minOpenInterestUsd)}+ open interest on ${homeName}. Full rules on the Methodology page.`,
+    `В списке только рынки, исполнимые на этом размере: объём за 24ч от ${usd(data.minVolumeUsd)} и открытый интерес от ${usd(data.minOpenInterestUsd)} на ${homeName}. Полные правила — на странице «Методология».`,
   );
-  if (data.hedgeMinOpenInterestUsd === undefined) return base;
-  return `${base} ${tr(
-    locale,
-    `The hedge leg on ${hedgeName} only has to be a real market, so it is held to a lower floor of ${usd(data.hedgeMinOpenInterestUsd)} — the protocol you farm sets the bar, not the one you hedge on. That is also why the pair count differs depending on which protocol you start from.`,
-    `К хедж-ноге на ${hedgeName} требование мягче — ${usd(data.hedgeMinOpenInterestUsd)}, ей достаточно быть настоящим рынком. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому число пар зависит от того, с какого протокола вы начали.`,
-  )}`;
 }
 
 /** Names the protocols whose live feed is down, so the warning can be specific. */
@@ -845,7 +840,7 @@ export function RouteResults({
                       `${matches.length} cheapest ${pluralEn(matches.length, "pair", "pairs")}`,
                       `${matches.length} ${pluralRu(matches.length, "самая дешёвая пара", "самые дешёвые пары", "самых дешёвых пар")}`,
                     )}
-              <InfoTip text={eligibilityTip(locale, data, homeName, hedgeName)} />
+              <InfoTip text={eligibilityTip(locale, data, homeName)} />
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
