@@ -41,6 +41,26 @@ export function formatUtcDateTime(iso: string | null | undefined): string {
   return `${day}, ${time} UTC`;
 }
 
+/**
+ * Russian noun form for a count. Russian takes three: 1 пара, 2 пары, 5 пар —
+ * and it goes by the LAST digits, so 241 reads like 1 and 111 reads like 11.
+ * Without this, a count and its noun disagree ("241 подходящих пар" instead of
+ * "241 подходящая пара").
+ */
+export function pluralRu(count: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(count) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) return many;
+  if (last === 1) return one;
+  if (last >= 2 && last <= 4) return few;
+  return many;
+}
+
+/** English is the simple case, kept beside its Russian counterpart. */
+export function pluralEn(count: number, one: string, many: string): string {
+  return count === 1 ? one : many;
+}
+
 export function daysUntil(iso: string | null): number | null {
   if (!iso) return null;
   const target = new Date(iso).getTime();

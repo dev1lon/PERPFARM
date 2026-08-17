@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { formatUsd, formatUtcDateTime } from "@/lib/format";
+import { formatUsd, formatUtcDateTime, pluralEn, pluralRu } from "@/lib/format";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
@@ -784,10 +784,22 @@ export function RouteResults({
           <div className="flex flex-col items-start gap-2">
             <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
               {needle !== ""
-                ? tr(locale, `${matches.length} matching pairs`, `${matches.length} найденных пар`)
+                ? tr(
+                    locale,
+                    `${matches.length} ${pluralEn(matches.length, "match", "matches")}`,
+                    `${matches.length} ${pluralRu(matches.length, "совпадение", "совпадения", "совпадений")}`,
+                  )
                 : oiFilter === "all"
-                  ? tr(locale, `${matches.length} eligible pairs`, `${matches.length} подходящих пар`)
-                  : tr(locale, `${matches.length} cheapest pairs`, `${matches.length} самых дешёвых пар`)}
+                  ? tr(
+                      locale,
+                      `${matches.length} eligible ${pluralEn(matches.length, "pair", "pairs")}`,
+                      `${matches.length} ${pluralRu(matches.length, "подходящая пара", "подходящие пары", "подходящих пар")}`,
+                    )
+                  : tr(
+                      locale,
+                      `${matches.length} cheapest ${pluralEn(matches.length, "pair", "pairs")}`,
+                      `${matches.length} ${pluralRu(matches.length, "самая дешёвая пара", "самые дешёвые пары", "самых дешёвых пар")}`,
+                    )}
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
@@ -1009,8 +1021,8 @@ export function RouteResults({
                 <div className="font-mono-num text-[12px] text-text-muted">
                   {tr(
                     locale,
-                    `Page ${safePage + 1} of ${pageCount} · ${matches.length} pairs`,
-                    `Страница ${safePage + 1} из ${pageCount} · ${matches.length} пар`,
+                    `Page ${safePage + 1} of ${pageCount} · ${matches.length} ${pluralEn(matches.length, "pair", "pairs")}`,
+                    `Страница ${safePage + 1} из ${pageCount} · ${matches.length} ${pluralRu(matches.length, "пара", "пары", "пар")}`,
                   )}
                 </div>
                 <button
