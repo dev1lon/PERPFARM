@@ -150,8 +150,12 @@ function InputRow({
 
 function InputCards() {
   const locale = useLocale();
-  const body = "max-w-[68ch] text-[15px] leading-[1.7] text-text-primary";
-  const note = "max-w-[68ch] text-[13px] leading-[1.65] text-text-muted";
+  // Measured, not guessed: `68ch` resolved to 747px here, because `ch` is the
+  // width of Jakarta's zero (~0.73em) rather than an average letter -- that put
+  // 95 characters on a line, well past comfortable reading. 600px lands at
+  // roughly 75.
+  const body = "max-w-[600px] text-[15px] leading-[1.7] text-text-primary";
+  const note = "max-w-[600px] text-[13px] leading-[1.65] text-text-muted";
   const chip = (t: string) => (
     <span key={t} className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono-num text-[11px] text-text-primary">
       {t}
