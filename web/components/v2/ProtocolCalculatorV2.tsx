@@ -122,13 +122,6 @@ function orders(firstLimitSide: "long" | "short") {
 
 const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
 
-/**
- * Height of one collapsed table row, measured in the browser (identical in both
- * layouts). Used only by the blank rows that keep a short last page from
- * shifting everything below it, so if a row's padding ever changes, the reserved
- * space is a few pixels off -- cosmetic, never wrong data.
- */
-const ROW_HEIGHT_PX = 69;
 
 const COST_TIER_TONE: Record<CostTier, string> = {
   low: "border-positive/30 bg-positive/10 text-positive",
@@ -681,6 +674,26 @@ export function RouteResults({
     setPage(0);
     setQuery(value);
   };
+
+  /**
+   * Keep the table's height once a full page has been seen.
+   *
+   * The last page is short (243 pairs leave three on page 25) and so is a search
+   * result, and everything below the table used to slide up to meet it. Blank
+   * filler rows were the obvious fix and the wrong one: rows are not all the
+   * same height, so a fixed row height overshot by ~100px. Measuring a real full
+   * page instead is exact in both layouts, whatever the row contents.
+   *
+   * Only measured with every row collapsed -- an open row adds its breakdown
+   * panel, which is not the height we want to hold.
+   */
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [fullPageHeight, setFullPageHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (expanded === null && visible.length === PAGE_SIZE && rowsRef.current) {
+      setFullPageHeight(rowsRef.current.getBoundingClientRect().height);
+    }
+  }, [expanded, visible.length, oiFilter, showAllMobile, needle]);
   useLayoutEffect(() => {
     if (anchorTop.current === null) return;
     const next = filterRowRef.current?.getBoundingClientRect().top;
@@ -868,7 +881,14 @@ export function RouteResults({
         </div>
 
         <div className="lg:overflow-x-auto">
-          <div className="space-y-2.5 lg:min-w-[900px]">
+          <div
+            ref={rowsRef}
+            className="space-y-2.5 lg:min-w-[900px]"
+            // Holds the height of a full page so a short one does not pull the
+            // rest of the page upward. Dropped while a row is expanded, which
+            // legitimately makes the table taller.
+            style={expanded === null && fullPageHeight !== null ? { minHeight: fullPageHeight } : undefined}
+          >
             {/* Column headers belong to the wide table only. */}
             <div className={`hidden lg:grid ${GRID} items-center gap-3 rounded-xl border border-border bg-surface-1 px-[18px] py-3.5 text-[12px] font-medium text-text-muted`}>
               <div>#</div>
@@ -1033,23 +1053,6 @@ export function RouteResults({
               </button>
             )}
 
-            {/* The last page is short (243 pairs leave three on page 25), and
-                without these the whole block below the table slides up when you
-                reach it. Blank rows hold the space.
-
-                Only as many as the layout would actually show: the narrow
-                layout keeps five rows behind its "show all" toggle, so padding
-                it to ten would open a large gap instead of closing one. */}
-            {Array.from({ length: Math.max(0, PAGE_SIZE - visible.length) }).map((_, index) => (
-              <div
-                key={`filler-${index}`}
-                aria-hidden
-                className={`rounded-[14px] border border-transparent ${
-                  index < Math.max(0, (showAllMobile ? PAGE_SIZE : 5) - visible.length) ? "" : "hidden lg:block"
-                }`}
-                style={{ height: ROW_HEIGHT_PX }}
-              />
-            ))}
 
             {matches.length === 0 && (
               <div className="rounded-[14px] border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
