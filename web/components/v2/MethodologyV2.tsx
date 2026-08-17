@@ -252,8 +252,8 @@ function CostModel() {
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
                 locale,
-                "The range shows the middle half of observed estimates from the last 24 hours, so brief unusually cheap or expensive quotes do not dominate the result.",
-                "Диапазон показывает среднюю половину наблюдаемых оценок за последние 24 часа, чтобы кратковременные необычно дешёвые или дорогие котировки не искажали результат.",
+                "The range shows the middle half of twelve saved observations — every second hour of the last 24 — so brief unusually cheap or expensive quotes do not dominate the result.",
+                "Диапазон показывает среднюю половину двенадцати сохранённых наблюдений — каждый второй час за последние 24, — чтобы кратковременные необычно дешёвые или дорогие котировки не искажали результат.",
               )}
             </p>
           </div>
@@ -277,8 +277,8 @@ function DataBasis() {
         title={tr(locale, "Data behind the estimate", "Данные в основе оценки")}
         sub={tr(
           locale,
-          "Current quotes are read when you run a calculation. Market history is saved hourly; the 24h cost range is built from those observations.",
-          "Текущие котировки запрашиваются при запуске расчёта. История рынка сохраняется каждый час; диапазон за 24ч строится по этим наблюдениям.",
+          "Every number comes from saved market snapshots, not from a live request when you press Run. The collector records each protocol hourly; a calculation reads twelve of those hours — every second hour across the last 24 — and the cost range is the middle half of them.",
+          "Все числа берутся из сохранённых снимков рынка, а не из живого запроса в момент нажатия «Рассчитать». Сборщик записывает каждый протокол раз в час; расчёт читает двенадцать таких часов — каждый второй за последние 24, — а диапазон стоимости это их средняя половина.",
         )}
       />
       <div className="overflow-hidden rounded-[20px] border border-border bg-surface-1">
@@ -295,7 +295,7 @@ function DataBasis() {
               {tr(locale, "Used directly when routes are ranked.", "Используются напрямую при ранжировании маршрутов.")}
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 md:mt-[26px]">
-              {item(tr(locale, "Current quotes", "Текущие котировки"))}
+              {item(tr(locale, "Saved hourly quotes", "Сохранённые котировки за час"))}
               {item(tr(locale, "Open interest & 24h trading volume", "OI и торговый объём за 24ч"))}
               {item(tr(locale, "Spread & impact", "Спред и влияние"))}
               {item(tr(locale, "Typical 24h cost range", "Диапазон стоимости за 24ч"))}

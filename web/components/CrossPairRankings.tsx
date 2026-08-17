@@ -19,6 +19,8 @@ type CrossResponse = {
   holdHours: number; minVolumeUsd: number; grouped: boolean;
   costBasis?: "24h-median" | "latest-snapshot";
   bands: { key: CrossBandKey; pairs: CrossPair[] }[];
+  /** Every eligible pair, cheapest first -- the source for the All tab. */
+  pairs?: CrossPair[];
 };
 
 export function CrossPairRankings({
@@ -80,12 +82,14 @@ export function CrossPairRankings({
       entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
       exitOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
     };
-  }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, 10);
+    // No cap here: the API already limits each OI band to ten, and the "All"
+    // list is meant to be complete so the table can page through it.
+  }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
 
   const pairs = useMemo<PairRanking[]>(() => {
     const bands = response?.bands ?? [];
     const source = oiFilter === "all" || !response?.grouped
-      ? bands.flatMap((band) => band.pairs)
+      ? response?.pairs ?? bands.flatMap((band) => band.pairs)
       : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
     return mapPairs(source);
   }, [response, tradfiOnly, oiFilter]);
@@ -101,6 +105,7 @@ export function CrossPairRankings({
     costBasis: response.costBasis ?? "latest-snapshot",
     grouped: response.grouped,
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
+    pairs: response.pairs ? mapPairs(response.pairs) : undefined,
   };
   const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug as "variational" | "txflow");
   return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug as "variational" | "txflow"} hedgeSlug={hedgeSlug as "variational" | "txflow"} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;

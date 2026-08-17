@@ -204,6 +204,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // Every eligible pair, cheapest first. The OI tabs stay capped at ten -- a
+    // curated shortlist is the point of a guide -- but a pair outside that ten
+    // used to be unreachable, so a specific ticker could not be looked up at
+    // all. The "All" tab pages through this list instead.
+    const allPairs = [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round);
+
     const grouped = candidates.length >= MIN_PAIRS_FOR_BANDS;
     const bands = grouped
       ? [
@@ -235,6 +241,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         tradfiOnly,
         grouped,
         bands,
+        pairs: allPairs,
       },
       // Five minutes, not one. The underlying snapshots only change hourly, so a
       // shorter window buys no freshness and costs a full scan of the 24h book

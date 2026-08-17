@@ -74,6 +74,8 @@ export type CrossRankings = {
   minVolumeUsd: number;
   grouped: boolean;
   bands: CrossBand[];
+  /** Every eligible pair, cheapest first -- what the "All" tab pages through. */
+  pairs: CrossPair[];
   /** Why pairs were excluded, so an empty result explains itself. */
   drops: Record<string, number>;
   /** Home-venue tickers with no counterpart on the hedge venue, for diagnosis
@@ -420,6 +422,7 @@ export async function computeCrossRankings(
     grouped: true,
     costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
     bands,
+    pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
   };
 }
 

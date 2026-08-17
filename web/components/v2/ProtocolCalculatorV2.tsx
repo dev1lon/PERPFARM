@@ -53,6 +53,9 @@ export interface RankingResponse {
   costBasis?: "24h-median" | "live-book" | "latest-snapshot";
   grouped: boolean;
   bands: Band[];
+  /** Every eligible pair, cheapest first. The OI tabs show a curated ten each;
+   *  this is what the "All" tab pages through and the ticker search looks in. */
+  pairs?: PairRanking[];
 }
 
 /** Names the protocols whose live feed is down, so the warning can be specific. */
@@ -132,11 +135,12 @@ function snapshotTip(locale: Locale): string {
   );
 }
 
+/** Whose fee this is, since only one of the two protocols charges one. */
 function feeTip(locale: Locale): string {
   return tr(
     locale,
-    "Priced at the fee a new account pays after the 5% referral discount. Above VIP 0 the fees are lower.",
-    "Считается по комиссии нового аккаунта со скидкой 5% за регистрацию по рефералу. Выше VIP 0 комиссии ниже.",
+    "This is TxFlow's fee — Variational charges no trading fee, so a Variational-only route shows $0.00. Priced at what a new TxFlow account pays after the 5% referral discount (0.015% maker / 0.045% taker at VIP 0); above VIP 0 it is lower.",
+    "Это комиссия TxFlow — у Variational торговой комиссии нет, поэтому маршрут только внутри Variational показывает $0.00. Считается по комиссии нового аккаунта TxFlow со скидкой 5% за реферал (0.015% maker / 0.045% taker на VIP 0); выше VIP 0 она ниже.",
   );
 }
 
@@ -379,10 +383,11 @@ export function ProtocolCalculatorV2({
   const grouped = data?.grouped ?? false;
   const bandPairs = (key: BandKey) => bands.find((b) => b.key === key)?.pairs ?? [];
   const flatPairs = bands.flatMap((b) => b.pairs);
-  // Table: the selected OI band (or all), cheapest-first, top 10.
-  const tablePairs = [...(oiFilter === "all" || !grouped ? flatPairs : bandPairs(oiFilter))]
-    .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)
-    .slice(0, 10);
+  // "All" means every eligible pair (paged ten at a time inside the table); an
+  // OI tab keeps its curated ten. Older responses carry no `pairs`, so the
+  // union of the bands stands in.
+  const tablePairs = [...(oiFilter === "all" || !grouped ? data?.pairs ?? flatPairs : bandPairs(oiFilter))]
+    .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
   const [best, bestRule] = selectRecommendedPair(bands, venueSlug);
 
   return (
@@ -616,11 +621,33 @@ export function RouteResults({
   const filterRowRef = useRef<HTMLDivElement>(null);
   const anchorTop = useRef<number | null>(null);
   const [showAllMobile, setShowAllMobile] = useState(false);
+  /** Ticker search. Useful mainly on the All tab, where every eligible pair is
+   *  reachable; on an OI tab it narrows that tab's curated ten. */
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
   const changeFilter = (k: BandKey) => {
     anchorTop.current = filterRowRef.current?.getBoundingClientRect().top ?? null;
     setExpanded(null); // a row expanded in another band must not stay open here
     setShowAllMobile(false);
+    setPage(0);
     setOiFilter(k);
+  };
+
+  const PAGE_SIZE = 10;
+  const needle = query.trim().toUpperCase();
+  const matches = needle === "" ? top : top.filter((pair) => pair.pair.toUpperCase().includes(needle));
+  const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  // A filter or a search can shorten the list under the current page.
+  const safePage = Math.min(page, pageCount - 1);
+  const visible = matches.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const goToPage = (next: number) => {
+    setExpanded(null);
+    setPage(Math.max(0, Math.min(next, pageCount - 1)));
+  };
+  const search = (value: string) => {
+    setExpanded(null);
+    setPage(0);
+    setQuery(value);
   };
   useLayoutEffect(() => {
     if (anchorTop.current === null) return;
@@ -755,10 +782,28 @@ export function RouteResults({
       <div className="pt-11">
         <div className="flex flex-col items-start gap-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col items-start gap-2">
-            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, `${top.length} cheapest pairs`, `${top.length} самых дешёвых пар`)}</h2>
+            <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
+              {needle !== ""
+                ? tr(locale, `${matches.length} matching pairs`, `${matches.length} найденных пар`)
+                : oiFilter === "all"
+                  ? tr(locale, `${matches.length} eligible pairs`, `${matches.length} подходящих пар`)
+                  : tr(locale, `${matches.length} cheapest pairs`, `${matches.length} самых дешёвых пар`)}
+            </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
-          {grouped && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <label className="flex h-[34px] items-center gap-2 rounded-[10px] border border-border bg-bg px-3">
+              <span aria-hidden className="font-mono-num text-[12px] text-text-dim">⌕</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => search(event.target.value)}
+                placeholder={tr(locale, "Find ticker", "Поиск тикера")}
+                aria-label={tr(locale, "Find a pair by ticker", "Найти пару по тикеру")}
+                className="w-[104px] bg-transparent text-[12px] font-medium text-text-primary placeholder:text-text-dim focus:outline-none"
+              />
+            </label>
+            {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
                 {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
                   <button
@@ -772,6 +817,7 @@ export function RouteResults({
                 ))}
               </div>
             )}
+          </div>
         </div>
 
         <div className="lg:overflow-x-auto">
@@ -788,11 +834,13 @@ export function RouteResults({
               <div className="translate-x-2 text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
               <div />
             </div>
-            {top.map((p, i) => {
+            {visible.map((p, index) => {
+              // Numbering continues across pages: page 2 starts at 11, not 1.
+              const i = safePage * PAGE_SIZE + index;
               const o = p.entryOrders && p.exitOrders ? { entry: p.entryOrders, exit: p.exitOrders } : orders(p.firstLimitSide);
               const open = expanded === p.pair;
               return (
-                <div key={p.pair} className={`overflow-hidden rounded-[14px] border border-border bg-bg ${i >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
+                <div key={p.pair} className={`overflow-hidden rounded-[14px] border border-border bg-bg ${index >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : p.pair)}
@@ -925,7 +973,7 @@ export function RouteResults({
                 </div>
               );
             })}
-            {top.length > 5 && (
+            {visible.length > 5 && (
               <button
                 type="button"
                 onClick={() => {
@@ -934,8 +982,46 @@ export function RouteResults({
                 }}
                 className="pf-transition flex h-12 w-full items-center justify-center rounded-xl border border-border text-[14px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 lg:hidden"
               >
-                {showAllMobile ? tr(locale, "Show fewer", "Показать меньше") : tr(locale, `Show all ${top.length}`, `Показать все ${top.length}`)}
+                {showAllMobile ? tr(locale, "Show fewer", "Показать меньше") : tr(locale, `Show all ${visible.length}`, `Показать все ${visible.length}`)}
               </button>
+            )}
+
+            {matches.length === 0 && (
+              <div className="rounded-[14px] border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
+                {tr(
+                  locale,
+                  `No eligible pair matches "${query.trim()}". It may be listed but below the liquidity floor for this size.`,
+                  `Ни одна подходящая пара не совпала с «${query.trim()}». Возможно, она есть на площадке, но не проходит порог ликвидности для этого размера.`,
+                )}
+              </div>
+            )}
+
+            {pageCount > 1 && (
+              <div className="flex items-center justify-between gap-3 pt-1.5">
+                <button
+                  type="button"
+                  onClick={() => goToPage(safePage - 1)}
+                  disabled={safePage === 0}
+                  className="pf-transition rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {tr(locale, "← Previous", "← Назад")}
+                </button>
+                <div className="font-mono-num text-[12px] text-text-muted">
+                  {tr(
+                    locale,
+                    `Page ${safePage + 1} of ${pageCount} · ${matches.length} pairs`,
+                    `Страница ${safePage + 1} из ${pageCount} · ${matches.length} пар`,
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => goToPage(safePage + 1)}
+                  disabled={safePage >= pageCount - 1}
+                  className="pf-transition rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {tr(locale, "Next →", "Вперёд →")}
+                </button>
+              </div>
             )}
           </div>
         </div>
