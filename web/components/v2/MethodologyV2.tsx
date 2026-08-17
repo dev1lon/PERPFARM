@@ -106,83 +106,197 @@ function Approach() {
   );
 }
 
+/**
+ * The six inputs, as full-width rows rather than a three-column card grid.
+ *
+ * The grid was the wrong container for this content. In a row of three, every
+ * card stretches to the tallest, so the moment one input needed two paragraphs
+ * (the liquidity floors) its neighbours grew with it and stood half empty; two
+ * of the six also had to span two columns, leaving a third of the row blank.
+ * Prose of uneven length wants rows, not equal-height cells.
+ *
+ * Each row keeps its title in a fixed left rail so all six titles line up, and
+ * holds its text to ~68 characters, which is a comfortable measure to read.
+ * The body is set in the PRIMARY text colour: muted is the token for captions
+ * and secondary notes, and using it for the main explanation is what made this
+ * section read as washed out.
+ */
+function InputRow({
+  index,
+  title,
+  badge,
+  children,
+}: {
+  index: string;
+  title: string;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[18px] border border-border bg-surface-1 p-6 sm:p-7">
+      <div className="grid gap-4 lg:grid-cols-[minmax(180px,232px)_1fr] lg:gap-9">
+        <div className="flex items-start gap-3">
+          <span className="font-mono-num text-[11px] leading-[1.75] text-accent">{index}</span>
+          <div className="flex flex-col items-start gap-2">
+            <h3 className="text-[17px] font-semibold leading-[1.35] text-text-primary">{title}</h3>
+            {badge}
+          </div>
+        </div>
+        <div className="flex flex-col gap-3.5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function InputCards() {
   const locale = useLocale();
-  const card = "flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6";
-  const num = (n: string) => <div className="font-mono-num text-[11px] text-accent">{n}</div>;
-  const chip = (t: string) => <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-mono-num text-[11px] text-text-primary">{t}</span>;
+  const body = "max-w-[68ch] text-[15px] leading-[1.7] text-text-primary";
+  const note = "max-w-[68ch] text-[13px] leading-[1.65] text-text-muted";
+  const chip = (t: string) => (
+    <span key={t} className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono-num text-[11px] text-text-primary">
+      {t}
+    </span>
+  );
+  const order = (label: string, tone: "long" | "short") => (
+    <span
+      key={label}
+      className={`rounded-[9px] border px-3 py-2 font-mono-num text-[11px] ${
+        tone === "long"
+          ? "border-positive/20 bg-positive/[0.06] text-positive"
+          : "border-negative/20 bg-negative/[0.06] text-negative"
+      }`}
+    >
+      {label}
+    </span>
+  );
+
   return (
     <section className="pt-13">
-      <H2 title={tr(locale, "What is included in a route calculation", "Что входит в расчёт маршрута")} sub={tr(locale, "Five inputs, in the order the model applies them.", "Пять входов — в порядке, в котором их применяет модель.")} />
-      <div className="grid gap-3.5 md:grid-cols-3">
-        <div className={card}>
-          <div className="flex items-center gap-3">{num("01")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Market eligibility", "Пригодность рынка")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">
+      <H2
+        title={tr(locale, "What is included in a route calculation", "Что входит в расчёт маршрута")}
+        sub={tr(locale, "Six inputs, in the order the model applies them.", "Шесть входов — в порядке, в котором их применяет модель.")}
+      />
+      <div className="flex flex-col gap-3">
+        <InputRow index="01" title={tr(locale, "Market eligibility", "Пригодность рынка")}>
+          <p className={body}>
             {tr(
               locale,
-              "A market is listed only if it can actually be traded at the size you entered: at least $1,000 of 24-hour volume, and open interest above the floor of the protocol you are farming — $50,000 on Variational, $10,000 on TxFlow. The floors differ because the two venues' markets differ by orders of magnitude, so one number would filter everything on one and nothing on the other.",
-              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: объём за 24 часа не меньше $1 000 и открытый интерес выше порога того протокола, который вы фармите — $50 000 у Variational, $10 000 у TxFlow. Пороги разные, потому что рынки этих площадок отличаются на порядки: одно число отсеяло бы на одной всё, а на другой — ничего.",
+              "A market is listed only if it can actually be traded at the size you entered: at least $1,000 of 24-hour volume, and open interest above the floor of the protocol you are farming — $50,000 on Variational, $10,000 on TxFlow.",
+              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: объём за 24 часа не меньше $1 000 и открытый интерес выше порога того протокола, который вы фармите — $50 000 у Variational, $10 000 у TxFlow.",
             )}
-          </div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">
+          </p>
+          <p className={note}>
             {tr(
               locale,
-              "On a cross-protocol route the hedge leg only has to be a real market, so it is held to the lower $10,000 floor: the protocol you farm sets the bar, not the one you hedge on. This is why the same two protocols can list one more pair when you start from the other side — a market can clear TxFlow's floor as a farm and fail Variational's.",
-              "В кросс-маршруте к хедж-ноге требование мягче — ей достаточно быть настоящим рынком, порог $10 000. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому те же две площадки могут показать на одну пару больше, если начать с другой стороны: рынок проходит порог TxFlow как фарм и не проходит порог Variational.",
+              "The floors differ because the two venues' markets differ by orders of magnitude, so one number would filter everything on one and nothing on the other. On a cross-protocol route the hedge leg only has to be a real market, so it is held to the lower $10,000 floor — the protocol you farm sets the bar, not the one you hedge on. That is why the same two protocols can list one more pair when you start from the other side.",
+              "Пороги разные, потому что рынки этих площадок отличаются на порядки: одно число отсеяло бы на одной всё, а на другой — ничего. В кросс-маршруте к хедж-ноге требование мягче, порог $10 000: ей достаточно быть настоящим рынком. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому те же две площадки могут показать на пару больше, если начать с другой стороны.",
             )}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              tr(locale, "$1K · 24h volume", "$1K · объём 24ч"),
+              "$50K · OI Variational",
+              "$10K · OI TxFlow",
+            ].map(chip)}
           </div>
-          <div className="mt-auto flex flex-wrap gap-1.5">{chip("$1K · 24h volume")}{chip("$50K · OI Variational")}{chip("$10K · OI TxFlow")}</div>
-        </div>
-        <div className={card}>
-          <div className="flex items-center gap-3">{num("02")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Entry and exit", "Вход и выход")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade. Fees and execution costs are applied according to each protocol and order type.", "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку. Комиссии и стоимость исполнения учитываются по правилам каждого протокола и типу ордера.")}</div>
-          <div className="mt-auto grid grid-cols-2 gap-1.5">
-            <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG entry</div>
-            <div className="rounded-[9px] border border-positive/20 bg-positive/[0.06] px-3 py-2 font-mono-num text-[11px] text-positive">LONG exit</div>
-            <div className="rounded-[9px] border border-negative/20 bg-negative/[0.06] px-3 py-2 font-mono-num text-[11px] text-negative">SHORT entry</div>
-            <div className="rounded-[9px] border border-negative/20 bg-negative/[0.06] px-3 py-2 font-mono-num text-[11px] text-negative">SHORT exit</div>
+        </InputRow>
+
+        <InputRow index="02" title={tr(locale, "Entry and exit", "Вход и выход")}>
+          <p className={body}>
+            {tr(
+              locale,
+              "Each route opens and closes both hedge legs. The model prices the complete cycle, not one trade. Fees and execution costs are applied according to each protocol and order type.",
+              "Каждый маршрут открывает и закрывает обе ноги хеджа. Модель считает полный цикл, а не одну сделку. Комиссии и стоимость исполнения учитываются по правилам каждого протокола и типу ордера.",
+            )}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {order("LONG entry", "long")}
+            {order("LONG exit", "long")}
+            {order("SHORT entry", "short")}
+            {order("SHORT exit", "short")}
           </div>
-        </div>
-        <div className={card}>
-          <div className="flex items-center gap-3">{num("03")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Spread and quote impact", "Спред и quote impact")}</div></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Published fees can be zero while execution still costs. PerpFarm adds half-spread and quote impact at your size, using the 24h median with a typical range.", "Опубликованные комиссии могут быть нулевыми, а исполнение всё равно стоит. PerpFarm добавляет полспреда и quote impact на ваш размер — по медиане за 24ч с типичным диапазоном.")}</div>
-          <div className="mt-auto flex items-center justify-between rounded-[10px] bg-surface-2 px-3.5 py-3">
+        </InputRow>
+
+        <InputRow index="03" title={tr(locale, "Spread and quote impact", "Спред и quote impact")}>
+          <p className={body}>
+            {tr(
+              locale,
+              "Published fees can be zero while execution still costs. PerpFarm adds half-spread and quote impact at your size, using the 24h median with a typical range.",
+              "Опубликованные комиссии могут быть нулевыми, а исполнение всё равно стоит. PerpFarm добавляет полспреда и quote impact на ваш размер — по медиане за 24ч с типичным диапазоном.",
+            )}
+          </p>
+          <div className="flex max-w-[420px] items-center justify-between gap-4 rounded-[10px] bg-surface-2 px-3.5 py-3">
             <span className="text-[12px] text-text-muted">{tr(locale, "Published fee", "Комиссия")}</span>
             <span className="font-mono-num text-[13px] text-text-dim">$0.00</span>
             <span className="text-[12px] text-text-muted">{tr(locale, "Real cost", "Реальная")}</span>
             <span className="font-mono-num text-[13px] text-text-primary">$6.20</span>
           </div>
-        </div>
-        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6">
-          <div className="flex items-center gap-3">{num("04")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Funding", "Фандинг")}</div><span className="ml-auto rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] text-warning">{tr(locale, "ESTIMATE", "ОЦЕНКА")}</span></div>
-          <div className="text-[14px] leading-[1.65] text-text-muted">{tr(locale, "Funding is shown separately from execution cost. For cross-protocol routes, we average the two funding rates over the latest 24h and estimate the difference for a fixed 12-hour hold. A + value is an expected credit; a − value is an expected payment. Equal-size legs on one protocol net to $0. Funding can change while the hedge is open, so it never changes the route ranking.", "Фандинг показан отдельно от стоимости исполнения. Для кросс-маршрута мы усредняем ставки двух площадок за последние 24ч и оцениваем разницу для фиксированного удержания 12 часов. Значение со знаком + — ожидаемый доход, со знаком − — ожидаемый расход. Ноги равного размера на одной площадке нетятся в $0. Фандинг может меняться во время удержания, поэтому не влияет на ранжирование маршрута.")}</div>
-        </div>
-        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
-          <div className="flex items-center gap-3">{num("05")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "What the Low / Medium / High badge means", "Что означает плашка Low / Medium / High")}</div></div>
-          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">
+        </InputRow>
+
+        <InputRow
+          index="04"
+          title={tr(locale, "Funding", "Фандинг")}
+          badge={
+            <span className="rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-mono-num text-[10px] text-warning">
+              {tr(locale, "ESTIMATE", "ОЦЕНКА")}
+            </span>
+          }
+        >
+          <p className={body}>
             {tr(
               locale,
-              "The badge grades the ORDER BOOK only: half the spread you cross plus quote impact at your size. It deliberately leaves out the protocol's fee, because that fee is the same for every pair on that protocol — it tells you about the venue, not about the pair you are choosing between. Low is up to 1.5 bps of book cost, Medium up to 4 bps, High above that. The same scale applies on every protocol and to cross-protocol routes.",
-              "Плашка оценивает только СТАКАН: половину пересекаемого спреда плюс quote impact на ваш размер. Комиссия протокола в неё намеренно не входит — она одинакова для всех пар этой площадки и говорит о площадке, а не о паре, которую вы выбираете. Low — до 1.5 bps стоимости стакана, Medium — до 4 bps, High — выше. Шкала одна для всех протоколов и для кросс-маршрутов.",
+              "Funding is shown separately from execution cost. For cross-protocol routes, we average the two funding rates over the latest 24h and estimate the difference for a fixed 12-hour hold. A + value is an expected credit; a − value is an expected payment. Equal-size legs on one protocol net to $0.",
+              "Фандинг показан отдельно от стоимости исполнения. Для кросс-маршрута мы усредняем ставки двух площадок за последние 24ч и оцениваем разницу для фиксированного удержания 12 часов. Значение со знаком + — ожидаемый доход, со знаком − — ожидаемый расход. Ноги равного размера на одной площадке нетятся в $0.",
             )}
-          </div>
-          <div className="max-w-[640px] text-[13px] leading-[1.65] text-text-dim">
+          </p>
+          <p className={note}>
             {tr(
               locale,
-              "This is an execution-cost grade, not a risk score: it says nothing about liquidation, volatility or protocol safety. A pair can be badged Low and still be expensive overall if the protocol's fee is high — the full cost is always in the breakdown.",
-              "Это оценка стоимости исполнения, а не риска: она ничего не говорит о ликвидации, волатильности или надёжности протокола. Пара может иметь плашку Low и всё равно быть дорогой в сумме, если у протокола высокая комиссия — полная стоимость всегда в разборе.",
+              "Funding can change while the hedge is open, so it never changes the route ranking.",
+              "Фандинг может меняться во время удержания, поэтому не влияет на ранжирование маршрута.",
             )}
-          </div>
-        </div>
-        <div className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6 md:col-span-2">
-          <div className="flex items-center gap-3">{num("06")}<div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Protocol reward mechanics", "Механики наград протокола")}</div></div>
-          <div className="max-w-[640px] text-[14px] leading-[1.65] text-text-muted">{tr(locale, "The protocol rules that affect farming efficiency are shown alongside the route analysis.", "Правила протокола, влияющие на эффективность фарма, показываются вместе с анализом маршрута.")}</div>
+          </p>
+        </InputRow>
+
+        <InputRow index="05" title={tr(locale, "What the Low / Medium / High badge means", "Что означает плашка Low / Medium / High")}>
+          <p className={body}>
+            {tr(
+              locale,
+              "The badge grades the ORDER BOOK only: half the spread you cross plus quote impact at your size. It deliberately leaves out the protocol's fee, because that fee is the same for every pair on that protocol — it tells you about the venue, not about the pair you are choosing between. Low is up to 1.5 bps of book cost, Medium up to 4 bps, High above that.",
+              "Плашка оценивает только СТАКАН: половину пересекаемого спреда плюс quote impact на ваш размер. Комиссия протокола в неё намеренно не входит — она одинакова для всех пар этой площадки и говорит о площадке, а не о паре, которую вы выбираете. Low — до 1.5 bps стоимости стакана, Medium — до 4 bps, High — выше.",
+            )}
+          </p>
+          <p className={note}>
+            {tr(
+              locale,
+              "The same scale applies on every protocol and to cross-protocol routes. This is an execution-cost grade, not a risk score: it says nothing about liquidation, volatility or protocol safety. A pair can be badged Low and still be expensive overall if the protocol's fee is high — the full cost is always in the breakdown.",
+              "Шкала одна для всех протоколов и для кросс-маршрутов. Это оценка стоимости исполнения, а не риска: она ничего не говорит о ликвидации, волатильности или надёжности протокола. Пара может иметь плашку Low и всё равно быть дорогой в сумме, если у протокола высокая комиссия — полная стоимость всегда в разборе.",
+            )}
+          </p>
+        </InputRow>
+
+        <InputRow index="06" title={tr(locale, "Protocol reward mechanics", "Механики наград протокола")}>
+          <p className={body}>
+            {tr(
+              locale,
+              "The protocol rules that affect farming efficiency are shown alongside the route analysis.",
+              "Правила протокола, влияющие на эффективность фарма, показываются вместе с анализом маршрута.",
+            )}
+          </p>
           <div className="flex flex-wrap gap-1.5">
-            {["holding time", "open interest", "eligible volume", "maker liquidity", "activity"].map((m) => (
-              <span key={m} className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[12px] text-text-primary">{m}</span>
+            {[
+              tr(locale, "holding time", "время удержания"),
+              tr(locale, "open interest", "открытый интерес"),
+              tr(locale, "eligible volume", "зачётный объём"),
+              tr(locale, "maker liquidity", "мейкер-ликвидность"),
+              tr(locale, "activity", "активность"),
+            ].map((label) => (
+              <span key={label} className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-[12px] text-text-primary">
+                {label}
+              </span>
             ))}
           </div>
-        </div>
+        </InputRow>
       </div>
     </section>
   );
