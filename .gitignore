@@ -21,3 +21,6 @@ Thumbs.db
 
 # Playwright MCP scratch output (snapshots, console logs)
 .playwright-mcp/
+
+# Browser screenshots land in the repo root when the MCP takes them.
+/*.png
