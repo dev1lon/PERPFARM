@@ -238,6 +238,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // never asserted, and answered the same way for every protocol.
         sources: [{ venue: protocolName(slug) ?? slug, live: snapshotsAreFresh(newestBookTs) }],
         costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
+        // The schedule actually applied, so the UI can name it without knowing
+        // which protocols exist.
+        feeSchedule: [{ venue: protocolName(slug) ?? slug, makerBps: fees.makerBps, takerBps: fees.takerBps }],
         tradfiOnly,
         grouped,
         bands,

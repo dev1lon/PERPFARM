@@ -116,7 +116,7 @@ function Approach() {
  * Prose of uneven length wants rows, not equal-height cells.
  *
  * Each row keeps its title in a fixed left rail so all six titles line up, and
- * holds its text to ~68 characters, which is a comfortable measure to read.
+ * holds its text to a ~75-character measure, which is comfortable to read.
  * The body is set in the PRIMARY text colour: muted is the token for captions
  * and secondary notes, and using it for the main explanation is what made this
  * section read as washed out.
@@ -156,11 +156,6 @@ function InputCards() {
   // roughly 75.
   const body = "max-w-[600px] text-[15px] leading-[1.7] text-text-primary";
   const note = "max-w-[600px] text-[13px] leading-[1.65] text-text-muted";
-  const chip = (t: string) => (
-    <span key={t} className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono-num text-[11px] text-text-primary">
-      {t}
-    </span>
-  );
   const order = (label: string, tone: "long" | "short") => (
     <span
       key={label}
@@ -185,24 +180,24 @@ function InputCards() {
           <p className={body}>
             {tr(
               locale,
-              "A market is listed only if it can actually be traded at the size you entered: at least $1,000 of 24-hour volume, and open interest above the floor of the protocol you are farming — $50,000 on Variational, $10,000 on TxFlow.",
-              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: объём за 24 часа не меньше $1 000 и открытый интерес выше порога того протокола, который вы фармите — $50 000 у Variational, $10 000 у TxFlow.",
+              "A market is listed only if it can actually be traded at the size you entered. It has to show real turnover over the last 24 hours, and its open interest has to clear the floor set for that protocol.",
+              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: за последние 24 часа на нём был настоящий оборот, а открытый интерес выше порога, заданного для этого протокола.",
+            )}
+          </p>
+          <p className={body}>
+            {tr(
+              locale,
+              "The floors are per protocol, because venues differ in size by orders of magnitude — one number would filter out everything on a small venue and nothing on a large one. Each protocol's own thresholds are shown on its page, next to the pair count.",
+              "Пороги задаются отдельно для каждого протокола: площадки различаются по размеру на порядки, и одно общее число отсеяло бы на маленькой всё, а на крупной — ничего. Конкретные пороги протокола указаны на его странице, рядом со счётчиком пар.",
             )}
           </p>
           <p className={note}>
             {tr(
               locale,
-              "The floors differ because the two venues' markets differ by orders of magnitude, so one number would filter everything on one and nothing on the other. On a cross-protocol route the hedge leg only has to be a real market, so it is held to the lower $10,000 floor — the protocol you farm sets the bar, not the one you hedge on. That is why the same two protocols can list one more pair when you start from the other side.",
-              "Пороги разные, потому что рынки этих площадок отличаются на порядки: одно число отсеяло бы на одной всё, а на другой — ничего. В кросс-маршруте к хедж-ноге требование мягче, порог $10 000: ей достаточно быть настоящим рынком. Планку задаёт протокол, который вы фармите, а не тот, на котором хеджируете. Поэтому те же две площадки могут показать на пару больше, если начать с другой стороны.",
+              "On a cross-protocol route the two legs are held to different bars: the protocol you FARM applies its own floor, while the hedge leg only has to be a real market. The venue you farm sets the standard, not the one you hedge on — which is why the same two protocols can list a slightly different number of pairs depending on which one you start from.",
+              "В кросс-маршруте к ногам разные требования: протокол, который вы ФАРМИТЕ, применяет свой порог, а хедж-ноге достаточно быть настоящим рынком. Планку задаёт площадка, которую вы фармите, а не та, на которой хеджируете, — поэтому те же два протокола могут показать разное число пар в зависимости от того, с какого вы начали.",
             )}
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              tr(locale, "$1K · 24h volume", "$1K · объём 24ч"),
-              "$50K · OI Variational",
-              "$10K · OI TxFlow",
-            ].map(chip)}
-          </div>
         </InputRow>
 
         <InputRow index="02" title={tr(locale, "Entry and exit", "Вход и выход")}>

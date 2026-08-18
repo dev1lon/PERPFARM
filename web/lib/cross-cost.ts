@@ -80,6 +80,8 @@ export type CrossRankings = {
   bands: CrossBand[];
   /** Every eligible pair, cheapest first -- what the "All" tab pages through. */
   pairs: CrossPair[];
+  /** The fee schedule actually applied per venue, so the UI never hard-codes one. */
+  feeSchedule: Array<{ venue: string; makerBps: number; takerBps: number }>;
   /** Why pairs were excluded, so an empty result explains itself. */
   drops: Record<string, number>;
   /** Home-venue tickers with no counterpart on the hedge venue, for diagnosis
@@ -225,6 +227,16 @@ function bandFrom(key: Exclude<CrossBand["key"], "all">, candidates: Array<Cross
   const ois = candidates.map((c) => c.oiKey);
   const pairs = [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).slice(0, limit).map(round);
   return { key, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs };
+}
+
+/** A venue's fee schedule as this run priced it: a stored row wins, else the
+ *  published one. Fees are venue-wide, so any of its markets carries them. */
+function scheduleOf(slug: string, rows: Map<string, VenueMarketRow>) {
+  const row = rows.values().next().value;
+  const published = publishedFees(slug);
+  const makerBps = asNumber(row?.maker_bps ?? null) ?? published?.makerBps ?? null;
+  const takerBps = asNumber(row?.taker_bps ?? null) ?? published?.takerBps ?? null;
+  return makerBps === null || takerBps === null ? null : { venue: slug, makerBps, takerBps };
 }
 
 export async function computeCrossRankings(
@@ -429,6 +441,9 @@ export async function computeCrossRankings(
     costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
     bands,
     pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
+    feeSchedule: [scheduleOf(slugA, A), scheduleOf(slugB, B)].filter(
+      (entry): entry is { venue: string; makerBps: number; takerBps: number } => entry !== null,
+    ),
   };
 }
 

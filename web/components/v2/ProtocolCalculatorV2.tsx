@@ -58,6 +58,8 @@ export interface RankingResponse {
   pairs?: PairRanking[];
   /** Cross-protocol only: the hedge leg's own, lower OI floor. */
   hedgeMinOpenInterestUsd?: number;
+  /** The fee schedule the API actually applied, per venue on the route. */
+  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number }>;
 }
 
 /**
@@ -155,13 +157,37 @@ function snapshotTip(locale: Locale): string {
   );
 }
 
-/** Whose fee this is, since only one of the two protocols charges one. */
-function feeTip(locale: Locale): string {
-  return tr(
+/**
+ * Whose fee this is, built from the schedule the API applied.
+ *
+ * It used to name TxFlow in the text. That is fine while two protocols exist
+ * and wrong the moment a third lists: per-protocol facts belong in data, not in
+ * a sentence inside a shared component.
+ */
+function feeTip(locale: Locale, data: RankingResponse): string {
+  const schedule = data.feeSchedule ?? [];
+  const charging = schedule.filter((entry) => entry.makerBps > 0 || entry.takerBps > 0);
+  const free = schedule.filter((entry) => entry.makerBps === 0 && entry.takerBps === 0);
+  const bps = (value: number) => `${Number(value.toFixed(2))} bps`;
+  const charged = charging
+    .map((entry) => `${protocolName(entry.venue) ?? entry.venue} ${bps(entry.makerBps)} maker / ${bps(entry.takerBps)} taker`)
+    .join("; ");
+  const freeNames = free.map((entry) => protocolName(entry.venue) ?? entry.venue).join(", ");
+
+  if (charging.length === 0) {
+    return tr(
+      locale,
+      "No protocol on this route charges a trading fee, so the whole cost is the order book.",
+      "Ни один протокол на этом маршруте не берёт торговую комиссию, поэтому вся стоимость — это стакан.",
+    );
+  }
+  const base = tr(
     locale,
-    "This is TxFlow's fee — Variational charges no trading fee, so a Variational-only route shows $0.00. Priced at what a new TxFlow account pays after the 5% referral discount (0.015% maker / 0.045% taker at VIP 0); above VIP 0 it is lower.",
-    "Это комиссия TxFlow — у Variational торговой комиссии нет, поэтому маршрут только внутри Variational показывает $0.00. Считается по комиссии нового аккаунта TxFlow со скидкой 5% за реферал (0.015% maker / 0.045% taker на VIP 0); выше VIP 0 она ниже.",
+    `Trading fee on this route: ${charged}. Priced at what a new account pays after the referral discount; higher tiers pay less.`,
+    `Торговая комиссия на этом маршруте: ${charged}. Считается по ставке нового аккаунта со скидкой за реферал; на старших тирах она ниже.`,
   );
+  if (free.length === 0) return base;
+  return `${base} ${tr(locale, `${freeNames} charges none.`, `${freeNames} комиссию не берёт.`)}`;
 }
 
 /**
@@ -800,7 +826,7 @@ export function RouteResults({
               <CostTile
                 label={tr(locale, "Fees", "Комиссии")}
                 value={best.feeCostUsd ?? 0}
-                tip={(best.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined}
+                tip={(best.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined}
               />
             </div>
             <div className="mt-5 rounded-xl px-3.5 py-3 text-[13px] leading-[1.6] text-text-muted" style={{ background: "color-mix(in srgb, var(--text-primary) 4%, transparent)" }}>
@@ -1024,7 +1050,7 @@ export function RouteResults({
                               p.fundingUsd ?? 0,
                               undefined,
                             ],
-                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale) : undefined],
+                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined],
                           ] as [string, number | null, string | undefined][]
                         ).map(([k, v, tip]) => (
                           <CostTile key={k} label={k} value={v} tip={tip} signed={k.startsWith(tr(locale, "Funding", "Фандинг"))} />

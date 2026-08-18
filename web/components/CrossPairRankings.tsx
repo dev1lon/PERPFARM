@@ -18,6 +18,7 @@ type CrossResponse = {
   asOf: string; accountVolumeUsd: number; fillNotionalUsd: number; totalCycleVolumeUsd: number;
   holdHours: number; minVolumeUsd: number; grouped: boolean;
   minOpenInterestUsd?: number; hedgeMinOpenInterestUsd?: number;
+  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number }>;
   costBasis?: "24h-median" | "latest-snapshot";
   bands: { key: CrossBandKey; pairs: CrossPair[] }[];
   /** Every eligible pair, cheapest first -- the source for the All tab. */
@@ -105,6 +106,7 @@ export function CrossPairRankings({
     // The farmed protocol's floor; the hedge's own (lower) floor is stated beside it.
     minOpenInterestUsd: response.minOpenInterestUsd ?? 0,
     hedgeMinOpenInterestUsd: response.hedgeMinOpenInterestUsd,
+    feeSchedule: response.feeSchedule,
     competition: { active: false, name: "" },
     // Same vocabulary as the other calculators: the API says what the number is.
     costBasis: response.costBasis ?? "latest-snapshot",
