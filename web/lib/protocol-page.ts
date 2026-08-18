@@ -23,7 +23,10 @@ export type Priority = { label: string; kicker: string; title: string; body: str
 export type PracticalTip = { n: string; title: string; body: string };
 
 export type HedgePartnerCard = {
-  slug: ProtocolSlug;
+  /** Any listed protocol, not only the two with a live data path: this card is
+   *  the MANUAL leg a farmer places by hand, so it can point at a venue the
+   *  calculator has no adapter for. */
+  slug: string;
   body: string;
   tags: Array<[string, "ok" | "warn" | "neutral"]>;
 };
@@ -84,6 +87,25 @@ export type ProtocolPageConfig = {
   hedge: { intro: string; partner: HedgePartnerCard };
   activity: ActivityConfig;
   points: PointsConfig;
+};
+
+/**
+ * TxFlow's "Trade & Unlock" campaign.
+ *
+ * Read off the venue's own campaign page and refreshed by hand. Deliberately
+ * NOT computed: the prize pool unlocks on the COMBINED volume of every
+ * participant and each share is settled on net fees paid, so any figure we
+ * derived for one farmer would be a guess dressed as arithmetic. What the page
+ * states is the fact that a pool exists and how far the field has got -- the
+ * farmer decides what that is worth.
+ */
+const TXFLOW_CAMPAIGN = {
+  startUtc: Date.UTC(2026, 7, 14, 0, 0, 0),
+  endUtc: Date.UTC(2026, 7, 20, 23, 59, 0),
+  totalVolumeUsd: 88_844_546,
+  unlockedPoolUsd: 2_000,
+  maxPoolUsd: 8_000,
+  readAtUtc: "2026-08-18 15:27 UTC",
 };
 
 const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
@@ -293,8 +315,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
           title: tr(locale, "Trade with LIMIT orders", "Торгуйте лимитными ордерами"),
           body: tr(
             locale,
-            "A LIMIT order pays the maker fee, which is cheaper. Note this is not the same as Variational's advice to provide liquidity passively — here it is simply the cheaper order type.",
-            "Лимитный ордер исполняется по maker fee, а это дешевле. Это не то же самое, что совет по Variational про пассивное предоставление ликвидности — здесь речь просто о более дешёвом типе ордера.",
+            "A LIMIT order pays the maker fee, which is cheaper.",
+            "Лимитный ордер исполняется по maker fee, а это дешевле.",
           ),
         },
         {
@@ -325,20 +347,47 @@ function txflow(locale: Locale): ProtocolPageConfig {
         "General guidance for TxFlow, independent of the calculation below.",
         "Общие рекомендации по TxFlow, независимо от расчёта ниже.",
       ),
+      // The MANUAL second leg, deliberately not the computed one: the card
+      // above already names the cheapest route the worker found. QFEX is a
+      // suggestion for the leg a farmer places by hand.
+      //
+      // Verified on qfex.com: "the first 24/7 exchange only for US equities,
+      // commodities and FX" -- the same RWA ground TxFlow trades. Their own
+      // docs say nothing about points or retroactive credit, so that part is
+      // worded as an expectation, not as their claim.
       partner: {
-        slug: "variational",
+        slug: "qfex",
         body: tr(
           locale,
-          "A TradFi-perps counterparty to compare before crossing venues.",
-          "Контрагент по TradFi-perps для сравнения перед кросс-площадочным маршрутом.",
+          "RWA perps on the same ground as TxFlow — US equities, commodities and FX, around the clock. Early stage with no announced points, so activity here may be counted later.",
+          "RWA-перпы на том же поле, что и TxFlow — акции США, сырьё и FX, круглосуточно. Ранняя стадия, поинты не анонсированы, поэтому активность может быть зачтена позже.",
         ),
         tags: [
-          [tr(locale, "Compare first", "Сначала сравнить"), "warn"],
-          ["TradFi perps", "neutral"],
+          [tr(locale, "Retro activity", "Ретро-активность"), "ok"],
+          [tr(locale, "Manual leg", "Ручная нога"), "neutral"],
         ],
       },
     },
-    activity: { kind: "none" },
+    activity: {
+      kind: "campaign",
+      name: "Trade & Unlock",
+      startUtc: TXFLOW_CAMPAIGN.startUtc,
+      endUtc: TXFLOW_CAMPAIGN.endUtc,
+      meta: `$${(TXFLOW_CAMPAIGN.unlockedPoolUsd / 1000).toFixed(0)}K ${tr(locale, "of", "из")} $${(TXFLOW_CAMPAIGN.maxPoolUsd / 1000).toFixed(0)}K ${tr(locale, "unlocked", "разблокировано")} · ${tr(locale, "read", "снято")} ${TXFLOW_CAMPAIGN.readAtUtc}`,
+      body: tr(
+        locale,
+        `A USDC prize pool that unlocks as the combined volume of all participants grows: $50M unlocks $1,000, $80M unlocks $2,000, and it runs to $8,000 at $200M. Participants so far have traded $${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M. Your share is settled on the fees you actually pay, capped at 20% of the pool. Volume that generates no trading fee does not count. Farming through the campaign is cheaper than farming outside it, because part of what you spend on fees comes back from the pool — how much depends on the field, so PerpFarm does not put a number on it.`,
+        `Призовой пул в USDC, который открывается по мере роста общего объёма всех участников: $50M открывают $1,000, $80M — $2,000, и так до $8,000 на $200M. Участники уже наторговали $${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M. Ваша доля считается по фактически уплаченным комиссиям, но не больше 20% пула. Объём, не создающий комиссию, не засчитывается. Фарм внутри кампании дешевле, чем вне её, потому что часть уплаченных комиссий возвращается из пула — насколько именно, зависит от остальных участников, поэтому цифру мы не выдумываем.`,
+      ),
+      eligibleLabel: tr(locale, "Combined volume", "Общий объём"),
+      eligibleValue: `$${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M`,
+      rulesUrl: "https://app.txflow.com/campaign/trade-and-unlock-2",
+      endedNote: tr(
+        locale,
+        "This campaign has ended. Check TxFlow for the next one.",
+        "Эта кампания завершилась. Следующую смотрите у TxFlow.",
+      ),
+    },
     points: { kind: "none" },
   };
 }

@@ -323,7 +323,7 @@ function TierSCard({ p }: { p: HomeProtocol }) {
       {value ? (
         <div className="font-mono-num text-[15px] text-text-primary">{value}</div>
       ) : (
-        <div className="text-[13px] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div>
+        <div className="text-[13px] text-text-dim">{tr(locale, "No points", "Поинтов нет")}</div>
       )}
     </div>
   );

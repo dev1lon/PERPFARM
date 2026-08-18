@@ -34,9 +34,9 @@ export interface HomeProtocol {
 /** Tier S — the large two-up cards with the metric grid. */
 export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
-  { slug: "tradexyz", name: "TradeXYZ", season: "Season 2", status: "records" },
-  { slug: "txflow", name: "TxFlow", status: "retro" },
-  { slug: "truenorth", name: "TrueNorth", status: "retro-activity" },
+  { slug: "tradexyz", name: "TradeXYZ", status: "records" },
+  { slug: "txflow", name: "TxFlow", season: "Season 0", status: "retro" },
+  { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
 ];
 
 /** Early stage — medium cards with a status badge, no metric grid. */

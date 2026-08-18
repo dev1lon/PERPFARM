@@ -7,6 +7,14 @@
  * a row exists; this table is the documented fallback so a route is never
  * priced as if trading were free.
  *
+ * ADDING A PROTOCOL: this table is the reference the whole site prices from.
+ * One cost model serves every protocol and only the DATA differs, so a new
+ * venue needs its own row here -- its own maker/taker numbers, and its own
+ * source note saying where they were read from and whether a referral discount
+ * is included. The fee tooltip in the calculator is built from whatever is in
+ * here, so it names the right protocol on its own; nothing in the UI has to be
+ * edited. A venue with no row is treated as unknown, never as free.
+ *
  * Sources:
  *  - Variational: 0% maker / 0% taker on Omni (docs.variational.io/omni).
  *  - TxFlow: VIP 0 is 0.0150% maker / 0.0450% taker; signing up through a
