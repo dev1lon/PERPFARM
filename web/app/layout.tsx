@@ -4,6 +4,10 @@ import { LocaleProvider, LOCALE_INIT_SCRIPT } from "@/components/LocaleProvider"
 import { SiteFooter } from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 import "./globals.css";
+// Dev-only annotation toolbar: click an element on the page, leave a note, and
+// the agent receives it with the selector and file behind it. The NODE_ENV
+// guard keeps it out of the production bundle entirely.
+import { Agentation } from "agentation";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -44,6 +48,7 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </LocaleProvider>
+        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   );
