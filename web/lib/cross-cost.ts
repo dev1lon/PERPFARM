@@ -285,25 +285,30 @@ export function spreadRiskOf(share: number | null): SpreadRisk {
  *  badge is a far better outcome than a 502 on the whole calculator. The same
  *  applies the first hours after the table appears, when it holds too little
  *  history to rate anything: the badge reads "unknown" and says so. */
-async function loadMarkSeries(slug: string): Promise<MarkSeries> {
+async function loadMarkSeries(slug: string, pairs: string[]): Promise<MarkSeries> {
+  if (pairs.length === 0) return new Map();
   try {
-    return await queryMarkSeries(slug);
+    return await queryMarkSeries(slug, pairs);
   } catch (error) {
     console.error("[cross-cost] mark history unavailable, spread risk will read unknown --", error);
     return new Map();
   }
 }
 
-async function queryMarkSeries(slug: string): Promise<MarkSeries> {
+async function queryMarkSeries(slug: string, pairs: string[]): Promise<MarkSeries> {
+  // Only the pairs actually listed on BOTH venues. Without this the query
+  // returned every market's whole week -- for Variational alone that is 539
+  // markets x 168 readings, most of them for pairs no route can use.
   const { rows } = await getPool().query<{ pair: string; ts: string; mark: string | number }>(
     `SELECT m.symbol_canonical AS pair, s.ts, s.mark
      FROM mark_snapshots s
      JOIN markets m ON m.id = s.market_id
      JOIN venues v ON v.id = m.venue_id
      WHERE v.slug = $1 AND m.is_active = true
+       AND m.symbol_canonical = ANY($3)
        AND s.ts >= now() - make_interval(days => $2)
      ORDER BY m.symbol_canonical, s.ts`,
-    [slug, SPREAD_WINDOW_DAYS],
+    [slug, SPREAD_WINDOW_DAYS, pairs],
   );
   const series: MarkSeries = new Map();
   for (const row of rows) {
@@ -360,12 +365,10 @@ export async function computeCrossRankings(
   accountVolumeUsd: number,
   tradfiOnly = false,
 ): Promise<CrossRankings> {
-  const [rows, histA, histB, marksA, marksB] = await Promise.all([
+  const [rows, histA, histB] = await Promise.all([
     loadVenueMarkets([slugA, slugB]),
     loadCostHistory(slugA, accountVolumeUsd / 2),
     loadCostHistory(slugB, accountVolumeUsd / 2),
-    loadMarkSeries(slugA),
-    loadMarkSeries(slugB),
   ]);
   let observations = 0;
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
@@ -375,6 +378,14 @@ export async function computeCrossRankings(
   for (const r of rows) byVenue.get(r.slug)?.set(r.pair, r);
   const A = byVenue.get(slugA)!;
   const B = byVenue.get(slugB)!;
+
+  // Marks are fetched only for the intersection, and only once it is known --
+  // a hedge needs both legs, so a pair on one venue alone can never be rated.
+  const sharedPairs = [...A.keys()].filter((pair) => B.has(pair));
+  const [marksA, marksB] = await Promise.all([
+    loadMarkSeries(slugA, sharedPairs),
+    loadMarkSeries(slugB, sharedPairs),
+  ]);
 
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];

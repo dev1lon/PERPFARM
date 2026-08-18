@@ -32,5 +32,10 @@ export function publicMessage(error: unknown, fallback: string): string {
   if (error instanceof UserFacingError) return error.message;
   // Keep the detail, just not on the visitor's screen. Vercel captures this.
   console.error("[api]", fallback, "--", error instanceof Error ? error.stack ?? error.message : error);
-  return fallback;
+  // A Postgres SQLSTATE is a five-character class code, not a secret: "53300"
+  // is too many connections, "57014" a cancelled query, "42P01" a missing
+  // table. Naming it turns a blind 502 into a diagnosis without exposing the
+  // query, the host or the schema.
+  const code = (error as { code?: unknown })?.code;
+  return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code) ? `${fallback} (db ${code})` : fallback;
 }
