@@ -12,7 +12,7 @@ type CrossPair = {
   fundingUsd: number | null; cycleCostUsd: number;
   costRangeLowUsd: number; costRangeHighUsd: number;
   spreadRisk?: "low" | "medium" | "high" | "unknown";
-  spreadDriftBps?: number | null;
+  spreadBreakoutShare?: number | null;
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
@@ -78,7 +78,7 @@ export function CrossPairRankings({
       spreadCostUsd: pair.spreadCostUsd,
       slippageCostUsd: pair.slippageCostUsd,
       spreadRisk: pair.spreadRisk,
-      spreadDriftBps: pair.spreadDriftBps,
+      spreadBreakoutShare: pair.spreadBreakoutShare,
       fundingUsd: pair.fundingUsd,
       feeCostUsd: pair.feeCostUsd,
       longVenue: pair.longVenue,

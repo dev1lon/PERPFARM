@@ -24,7 +24,14 @@ from sqlalchemy import Engine, inspect, select
 from perpfarm.adapters.base import MarketUnavailable, OrderbookTop, VenueAdapter
 from perpfarm.adapters.registry import FIXTURE_SLUGS, build_adapter
 from perpfarm.jobs.hedge_recommendations import run_hedge_recommendations
-from perpfarm.schema import book_snapshots, funding_snapshots, markets, venues, volume_snapshots
+from perpfarm.schema import (
+    book_snapshots,
+    funding_snapshots,
+    mark_snapshots,
+    markets,
+    venues,
+    volume_snapshots,
+)
 
 
 @dataclass
@@ -52,6 +59,21 @@ def _serialize_quote_curve(book: OrderbookTop) -> dict[str, object] | None:
     }
 
 
+def _mark_price(book: OrderbookTop) -> float | None:
+    """The venue's own price for this instrument, for the drift measure.
+
+    Prefers the quote curve's reference price -- that is the venue's mark. A
+    book without a curve falls back to the mid, which answers the same question
+    to within a spread, and a spread is far smaller than the gaps this measures.
+    """
+
+    if book.quote_curve is not None and book.quote_curve.reference_price > 0:
+        return float(book.quote_curve.reference_price)
+    if book.best_bid > 0 and book.best_ask > 0:
+        return (float(book.best_bid) + float(book.best_ask)) / 2
+    return None
+
+
 def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSummary:
     ts = datetime.now(timezone.utc)
     summary = SnapshotSyncSummary()
@@ -62,6 +84,9 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
     has_native_quote_curve = any(
         column["name"] == "quote_curve_json" for column in inspect(engine).get_columns("book_snapshots")
     )
+    # Same deploy-window rule as the column above: the migration runs by hand,
+    # so the job has to keep writing everything else until the table appears.
+    has_mark_snapshots = inspect(engine).has_table("mark_snapshots")
 
     with engine.connect() as read_conn:
         rows = read_conn.execute(
@@ -128,6 +153,9 @@ def run_sync_snapshots(engine: Engine, *, fixtures_dir: Path) -> SnapshotSyncSum
                         funding_rate_annualized=funding.funding_rate_annualized,
                     )
                 )
+                mark = _mark_price(book)
+                if has_mark_snapshots and mark is not None:
+                    conn.execute(mark_snapshots.insert().values(market_id=market_id, ts=ts, mark=mark))
                 conn.execute(
                     volume_snapshots.insert().values(
                         market_id=market_id,

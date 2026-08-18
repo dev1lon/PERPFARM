@@ -36,6 +36,34 @@ PRUNABLE_TABLES = ("book_snapshots", "funding_snapshots")
 #: window. Deleting it like the others would empty the charts.
 DOWNSAMPLED_TABLE = "volume_snapshots"
 
+#: Marks are one number per market per hour, so they can be kept far longer
+#: than the book snapshots they came from.
+#:
+#: Hourly for a week, because that is what the drift measure reads: 168
+#: readings put a rating well inside the precision it needs, and a whole week
+#: covers every weekday and the weekend, which matters if a venue prices a
+#: stock perp differently while its underlying market is shut.
+#:
+#: Then one a day out to a month, which is no use for measuring intraday
+#: wander but enough to see whether a pair is drifting worse than it was.
+MARK_HOURLY_DAYS = 7
+MARK_DAILY_DAYS = 30
+
+_MARK_DOWNSAMPLE_SQL = """
+WITH stale AS (
+  SELECT id, market_id, (ts AT TIME ZONE 'UTC')::date AS day, ts
+  FROM mark_snapshots
+  WHERE ts < now() - make_interval(days => :hourly_days)
+    AND ts >= now() - make_interval(days => :daily_days)
+),
+keep AS (
+  SELECT DISTINCT ON (market_id, day) id FROM stale ORDER BY market_id, day, ts DESC
+)
+DELETE FROM mark_snapshots m
+USING stale
+WHERE m.id = stale.id AND m.id NOT IN (SELECT id FROM keep)
+"""
+
 # Keep exactly the rows the readers would have picked, so no chart moves:
 #  - the latest row of the day (what the activity chart takes, then filters), and
 #  - the latest row with a non-null OI (what OI-composition takes, filtering first).
@@ -89,5 +117,20 @@ def run_prune_snapshots(engine: Engine, *, retention_hours: int = RETENTION_HOUR
             summary.deleted[DOWNSAMPLED_TABLE] = result.rowcount or 0
     except Exception as exc:  # noqa: BLE001
         summary.errors.append(f"{DOWNSAMPLED_TABLE}: {exc}")
+
+    # Marks: hourly for a week, one a day out to a month, gone after that.
+    try:
+        with engine.begin() as conn:
+            thinned = conn.execute(
+                text(_MARK_DOWNSAMPLE_SQL),
+                {"hourly_days": MARK_HOURLY_DAYS, "daily_days": MARK_DAILY_DAYS},
+            )
+            expired = conn.execute(
+                text("DELETE FROM mark_snapshots WHERE ts < now() - make_interval(days => :days)"),
+                {"days": MARK_DAILY_DAYS},
+            )
+            summary.deleted["mark_snapshots"] = (thinned.rowcount or 0) + (expired.rowcount or 0)
+    except Exception as exc:  # noqa: BLE001 -- the table may not exist yet mid-deploy
+        summary.errors.append(f"mark_snapshots: {exc}")
 
     return summary

@@ -60,8 +60,9 @@ export type CrossPair = {
   /** The 24h p25-p75 band around the median cost. */
   costRangeLowUsd: number;
   costRangeHighUsd: number;
-  /** How much the two venues' prices drift apart, and its rating. */
-  spreadDriftBps: number | null;
+  /** Share of the last week's readings where the price gap left its usual
+   *  place, and the rating that follows from it. */
+  spreadBreakoutShare: number | null;
   spreadRisk: SpreadRisk;
 };
 
@@ -211,63 +212,113 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
 
 
 /**
- * How far the two venues' prices wander apart while a hedge is open.
+ * How often the two venues' prices come apart while a hedge is open.
  *
  * A cross-protocol hedge is long on one venue and short on the other, so it is
- * only neutral while the two marks agree. They never agree exactly, and what
- * costs money is not the gap itself -- you meet it on the way in AND on the way
- * out -- but how much the gap MOVES in between. So this measures the spread of
- * the gap over the window, not its level.
+ * neutral only while the two agree on price. What costs money is not the gap
+ * itself -- you meet it going in AND coming out, so a steady gap cancels -- but
+ * the gap LEAVING its usual place while you hold.
  *
- * It is deliberately absent for a same-protocol route: both legs sit on one
- * book at one mark, so there is no gap to move.
+ * So the reading is a frequency, not an average: out of all the hours we have,
+ * in how many did the gap sit further than a threshold from its own normal
+ * level. That is the question a user actually asks ("how likely is this to come
+ * apart on me"), and it survives a distribution that no average describes -- a
+ * pair calm for 27 days and violent for 3 reads calm under a median, under a
+ * mean, and even under a p75.
  *
- * The window is however much history the readers keep (36 hours of snapshots),
- * so this says "recently", not "historically" -- stated as such in the UI.
+ * Absent for a same-protocol route: both legs sit on one book at one price.
  */
 export type SpreadRisk = "low" | "medium" | "high" | "unknown";
 
-/**
- * Where the gap stops being ordinary.
- *
- * Calibrated on the live Variational x TxFlow set (55 pairs, 2026-08-18): the
- * drift runs 7 bps at the calmest to 178 at the worst, with a median of 32 and
- * a p75 of 58. The first cut at 10/30 bps painted 29 of 55 red, and a rating
- * that calls half the board dangerous grades nothing.
- *
- * These are absolute, not percentiles of the day's population -- a pair must
- * not change colour because other pairs moved. 0.5% is also the gap an
- * experienced funding farmer already treats as wide, so "high" agrees with a
- * judgement made outside this codebase.
- */
-const SPREAD_RISK_LOW_BPS = 15; // gap wanders under 0.15%
-const SPREAD_RISK_MEDIUM_BPS = 50; // under 0.5%
-/** Fewer aligned ticks than this cannot describe a spread at all. */
-const MIN_TICKS_FOR_RISK = 4;
+/** A reading counts as "come apart" past this distance from the pair's own
+ *  normal gap. 0.5% is the gap experienced funding farmers already treat as
+ *  wide, and on a $10k leg it is ~$50 -- more than a route costs to execute. */
+const SPREAD_BREAKOUT_BPS = 50;
+/** Share of readings beyond that distance. */
+const SPREAD_RISK_LOW_SHARE = 0.05;
+const SPREAD_RISK_MEDIUM_SHARE = 0.15;
+/** Fewer readings than this cannot support a frequency at all. */
+const MIN_TICKS_FOR_RISK = 12;
 
-export function basisDriftBps(historyA: CostSample[], historyB: CostSample[]): number | null {
+export type MarkSeries = Map<string, Array<{ ts: string; mark: number }>>;
+
+/** Gaps between two venues' prices, in bps, at ticks BOTH of them recorded. */
+export function alignedGapsBps(
+  seriesA: Array<{ ts: string; mark: number }> | undefined,
+  seriesB: Array<{ ts: string; mark: number }> | undefined,
+): number[] {
+  if (!seriesA || !seriesB) return [];
+  const byTs = new Map(seriesB.map((point) => [point.ts, point.mark]));
   const gaps: number[] = [];
-  for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
-    const a = historyA[i]?.markPrice ?? null;
-    const b = historyB[i]?.markPrice ?? null;
-    if (a === null || b === null || a <= 0 || b <= 0) continue;
-    const mid = (a + b) / 2;
-    gaps.push(((a - b) / mid) * 10_000);
+  for (const point of seriesA) {
+    const other = byTs.get(point.ts);
+    // Same timestamp on both sides or nothing: the whole measure is a small
+    // difference, so comparing prices taken minutes apart would report the
+    // market's own movement as venue disagreement.
+    if (other === undefined || other <= 0 || point.mark <= 0) continue;
+    const mid = (point.mark + other) / 2;
+    gaps.push(((point.mark - other) / mid) * 10_000);
   }
-  if (gaps.length < MIN_TICKS_FOR_RISK) return null;
-  // Peak-to-trough of the middle of the window: one bad tick should not define
-  // the risk, and the extremes of a 12-point sample are exactly that.
-  const sorted = [...gaps].sort((left, right) => left - right);
-  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.round((sorted.length - 1) * q))]!;
-  return Math.abs(at(0.9) - at(0.1));
+  return gaps;
 }
 
-export function spreadRiskOf(driftBps: number | null): SpreadRisk {
-  if (driftBps === null) return "unknown";
-  if (driftBps <= SPREAD_RISK_LOW_BPS) return "low";
-  if (driftBps <= SPREAD_RISK_MEDIUM_BPS) return "medium";
+/** Share of readings where the gap left its usual place, or null if too few. */
+export function breakoutShare(gaps: number[]): number | null {
+  if (gaps.length < MIN_TICKS_FOR_RISK) return null;
+  const sorted = [...gaps].sort((left, right) => left - right);
+  const normal = sorted[Math.floor(sorted.length / 2)]!;
+  const breakouts = gaps.filter((gap) => Math.abs(gap - normal) > SPREAD_BREAKOUT_BPS).length;
+  return breakouts / gaps.length;
+}
+
+export function spreadRiskOf(share: number | null): SpreadRisk {
+  if (share === null) return "unknown";
+  if (share <= SPREAD_RISK_LOW_SHARE) return "low";
+  if (share <= SPREAD_RISK_MEDIUM_SHARE) return "medium";
   return "high";
 }
+
+/** A week of stored marks per pair for one venue.
+ *
+ *  Never throws. Migrations are applied by hand on this project, so between a
+ *  deploy and that command the table does not exist yet -- and a missing risk
+ *  badge is a far better outcome than a 502 on the whole calculator. The same
+ *  applies the first hours after the table appears, when it holds too little
+ *  history to rate anything: the badge reads "unknown" and says so. */
+async function loadMarkSeries(slug: string): Promise<MarkSeries> {
+  try {
+    return await queryMarkSeries(slug);
+  } catch (error) {
+    console.error("[cross-cost] mark history unavailable, spread risk will read unknown --", error);
+    return new Map();
+  }
+}
+
+async function queryMarkSeries(slug: string): Promise<MarkSeries> {
+  const { rows } = await getPool().query<{ pair: string; ts: string; mark: string | number }>(
+    `SELECT m.symbol_canonical AS pair, s.ts, s.mark
+     FROM mark_snapshots s
+     JOIN markets m ON m.id = s.market_id
+     JOIN venues v ON v.id = m.venue_id
+     WHERE v.slug = $1 AND m.is_active = true
+       AND s.ts >= now() - make_interval(days => $2)
+     ORDER BY m.symbol_canonical, s.ts`,
+    [slug, SPREAD_WINDOW_DAYS],
+  );
+  const series: MarkSeries = new Map();
+  for (const row of rows) {
+    const mark = asNumber(row.mark);
+    if (mark === null) continue;
+    const ts = typeof row.ts === "string" ? row.ts : new Date(row.ts).toISOString();
+    const existing = series.get(row.pair);
+    if (existing) existing.push({ ts, mark });
+    else series.set(row.pair, [{ ts, mark }]);
+  }
+  return series;
+}
+
+/** The window the badge reads. A week is what the worker keeps hourly. */
+const SPREAD_WINDOW_DAYS = 7;
 
 function round(p: CrossPair): CrossPair {
   return {
@@ -281,7 +332,7 @@ function round(p: CrossPair): CrossPair {
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
     costRangeLowUsd: Number(p.costRangeLowUsd.toFixed(2)),
     costRangeHighUsd: Number(p.costRangeHighUsd.toFixed(2)),
-    spreadDriftBps: p.spreadDriftBps === null ? null : Number(p.spreadDriftBps.toFixed(2)),
+    spreadBreakoutShare: p.spreadBreakoutShare === null ? null : Number(p.spreadBreakoutShare.toFixed(4)),
   };
 }
 
@@ -309,10 +360,12 @@ export async function computeCrossRankings(
   accountVolumeUsd: number,
   tradfiOnly = false,
 ): Promise<CrossRankings> {
-  const [rows, histA, histB] = await Promise.all([
+  const [rows, histA, histB, marksA, marksB] = await Promise.all([
     loadVenueMarkets([slugA, slugB]),
     loadCostHistory(slugA, accountVolumeUsd / 2),
     loadCostHistory(slugB, accountVolumeUsd / 2),
+    loadMarkSeries(slugA),
+    loadMarkSeries(slugB),
   ]);
   let observations = 0;
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
@@ -457,12 +510,12 @@ export async function computeCrossRankings(
     const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
-    const spreadDriftBps = basisDriftBps(historyA, historyB);
+    const spreadBreakoutShare = breakoutShare(alignedGapsBps(marksA.get(sym), marksB.get(sym)));
 
     candidates.push({
       pair: sym,
-      spreadDriftBps,
-      spreadRisk: spreadRiskOf(spreadDriftBps),
+      spreadBreakoutShare,
+      spreadRisk: spreadRiskOf(spreadBreakoutShare),
       makerVenue,
       takerVenue,
       spreadCostUsd,

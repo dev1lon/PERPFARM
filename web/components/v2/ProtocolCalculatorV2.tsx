@@ -33,7 +33,8 @@ export interface PairRanking {
   slippageCostUsd: number;
   /** Cross-protocol routes only; absent on a same-protocol route. */
   spreadRisk?: SpreadRisk;
-  spreadDriftBps?: number | null;
+  /** Share of the last week where the venues' price gap left its usual place. */
+  spreadBreakoutShare?: number | null;
   fundingUsd?: number | null;
   feeCostUsd?: number;
   entryOrders?: string;
@@ -153,25 +154,29 @@ function spreadRiskLabel(locale: Locale, risk: SpreadRisk): string {
         : tr(locale, "Spread risk unknown", "Риск расхождения неизвестен");
 }
 
-function spreadRiskTip(locale: Locale, driftBps?: number | null): string {
-  const measured = driftBps === null || driftBps === undefined
+function spreadRiskTip(locale: Locale, share?: number | null): string {
+  const measured = share === null || share === undefined
     ? ""
-    : tr(locale, ` Measured drift: ${driftBps} bps.`, ` Измеренный разброс: ${driftBps} bps.`);
+    : tr(
+        locale,
+        ` Measured: the gap left its usual place in ${Math.round(share * 100)}% of readings.`,
+        ` Замер: разрыв уходил с обычного места в ${Math.round(share * 100)}% наблюдений.`,
+      );
   return (
     tr(
       locale,
-      "The two protocols price the same asset slightly differently, and that gap moves. A hedge is only neutral while it holds, so a wide-moving gap can cost more than the execution itself. Measured from the saved snapshots of the last 36 hours, both venues read at the same tick.",
-      "Два протокола оценивают один и тот же актив немного по-разному, и этот разрыв гуляет. Хедж нейтрален только пока разрыв держится, поэтому сильно гуляющий разрыв может стоить дороже самого исполнения. Считается по сохранённым снимкам за последние 36 часов, обе площадки взяты в один и тот же момент.",
+      "The two protocols price the same asset slightly differently, and that gap moves. A hedge is neutral only while it holds, so a gap that keeps leaving its usual place can cost more than the execution itself. Counted over the last 7 days of saved prices, both venues read at the same tick.",
+      "Два протокола оценивают один и тот же актив немного по-разному, и этот разрыв гуляет. Хедж нейтрален только пока разрыв держится, поэтому разрыв, который постоянно уходит с обычного места, может стоить дороже самого исполнения. Считается по сохранённым ценам за последние 7 дней, обе площадки взяты в один и тот же момент.",
     ) + measured
   );
 }
 
-function SpreadRiskBadge({ risk, driftBps }: { risk: SpreadRisk; driftBps?: number | null }) {
+function SpreadRiskBadge({ risk, share }: { risk: SpreadRisk; share?: number | null }) {
   const locale = useLocale();
   if (risk === "unknown") return null;
   return (
     <span
-      title={spreadRiskTip(locale, driftBps)}
+      title={spreadRiskTip(locale, share)}
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
     >
       <span className={`h-[5px] w-[5px] rounded-full ${SPREAD_RISK_DOT[risk]}`} />
@@ -792,7 +797,7 @@ export function RouteResults({
       <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
         <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-6 py-4">
             <div className="shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
-            {best.spreadRisk ? <SpreadRiskBadge risk={best.spreadRisk} driftBps={best.spreadDriftBps} /> : null}
+            {best.spreadRisk ? <SpreadRiskBadge risk={best.spreadRisk} share={best.spreadBreakoutShare} /> : null}
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:hidden">
               <span className="h-[5px] w-[5px] rounded-full bg-positive" />
               TradFi
@@ -1031,7 +1036,7 @@ export function RouteResults({
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
-                        {p.spreadRisk ? <SpreadRiskBadge risk={p.spreadRisk} driftBps={p.spreadDriftBps} /> : null}
+                        {p.spreadRisk ? <SpreadRiskBadge risk={p.spreadRisk} share={p.spreadBreakoutShare} /> : null}
                         {showEligible && p.competitionEligible && (
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />

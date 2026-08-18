@@ -1,46 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { basisDriftBps, spreadRiskOf } from "./cross-cost";
-import type { CostSample } from "./cost-history";
+import { alignedGapsBps, breakoutShare, spreadRiskOf } from "./cross-cost";
 
-const tick = (markPrice: number | null): CostSample => ({ legBps: 1, spreadBps: 2, impactBps: 0, markPrice });
+const at = (hour: number) => `2026-08-18T${String(hour).padStart(2, "0")}:00:00.000Z`;
+const series = (marks: number[]) => marks.map((mark, i) => ({ ts: at(i), mark }));
 
-describe("basisDriftBps", () => {
-  it("is near zero when the two venues track each other", () => {
-    const a = [100, 101, 102, 103, 104, 105].map(tick);
-    const b = [100.01, 101.01, 102.01, 103.01, 104.01, 105.01].map(tick);
+describe("alignedGapsBps", () => {
+  it("compares only readings taken at the same tick", () => {
+    // Prices taken minutes apart would report the market's own move as venue
+    // disagreement, so an unmatched timestamp is dropped rather than paired up.
+    const a = [{ ts: at(1), mark: 100 }, { ts: at(2), mark: 101 }];
+    const b = [{ ts: at(2), mark: 101.01 }, { ts: at(3), mark: 102 }];
 
-    expect(basisDriftBps(a, b)).toBeLessThan(1);
+    expect(alignedGapsBps(a, b)).toHaveLength(1);
   });
 
-  it("measures how far the gap MOVES, not how wide it is", () => {
-    // A constant 50 bps offset is met on the way in and out, so it nets out.
-    const a = [100, 101, 102, 103, 104, 105].map(tick);
-    const b = a.map((_, i) => tick([100, 101, 102, 103, 104, 105][i]! * 1.005));
+  it("measures the gap in bps of the midpoint", () => {
+    const gaps = alignedGapsBps([{ ts: at(1), mark: 100.05 }], [{ ts: at(1), mark: 99.95 }]);
 
-    expect(basisDriftBps(a, b)).toBeLessThan(1);
+    expect(gaps[0]).toBeCloseTo(10, 1); // 0.1 on ~100 is 10 bps
   });
 
-  it("rises when the gap wanders", () => {
-    const a = [100, 100, 100, 100, 100, 100].map(tick);
-    const b = [100, 100.5, 99.6, 100.8, 99.4, 100.2].map(tick);
+  it("returns nothing when a series is missing", () => {
+    expect(alignedGapsBps(undefined, series([100]))).toEqual([]);
+  });
+});
 
-    expect(basisDriftBps(a, b)).toBeGreaterThan(50);
+describe("breakoutShare", () => {
+  const steady = (n: number, gap: number) => Array.from({ length: n }, () => gap);
+
+  it("is zero when the gap holds its place, however wide that place is", () => {
+    // A constant 200 bps offset is met going in and coming out: it cancels.
+    expect(breakoutShare(steady(24, 200))).toBe(0);
   });
 
-  it("refuses to rate a window too short to describe", () => {
-    expect(basisDriftBps([tick(100), tick(100)], [tick(100), tick(100)])).toBeNull();
-    // Older rows carry no mark at all.
-    expect(basisDriftBps([tick(null), tick(null), tick(null), tick(null)], [tick(100), tick(100), tick(100), tick(100)])).toBeNull();
+  it("counts only readings that left the pair's own normal gap", () => {
+    const gaps = [...steady(18, 10), ...steady(6, 400)];
+
+    expect(breakoutShare(gaps)).toBeCloseTo(6 / 24, 3);
+  });
+
+  it("refuses a verdict on too few readings", () => {
+    expect(breakoutShare(steady(5, 10))).toBeNull();
   });
 });
 
 describe("spreadRiskOf", () => {
-  it("grades the drift, and says so honestly when it cannot", () => {
-    expect(spreadRiskOf(2)).toBe("low");
-    expect(spreadRiskOf(15)).toBe("low");
-    expect(spreadRiskOf(32)).toBe("medium"); // the live median
-    expect(spreadRiskOf(50)).toBe("medium");
-    expect(spreadRiskOf(120)).toBe("high");
+  it("grades the frequency, and says unknown rather than guessing", () => {
+    expect(spreadRiskOf(0)).toBe("low");
+    expect(spreadRiskOf(0.05)).toBe("low");
+    expect(spreadRiskOf(0.1)).toBe("medium");
+    expect(spreadRiskOf(0.15)).toBe("medium");
+    expect(spreadRiskOf(0.4)).toBe("high");
     expect(spreadRiskOf(null)).toBe("unknown");
   });
 });

@@ -105,6 +105,29 @@ volume_snapshots = Table(
     UniqueConstraint("market_id", "ts", name="uq_volume_market_ts"),
 )
 
+# One number per market per hour: the venue's own price for the instrument.
+#
+# Split out of book_snapshots because those carry a full quote curve each and
+# are therefore pruned after 36 hours. The gap between two venues' prices --
+# what a cross-protocol hedge actually risks -- needs a far longer window to
+# describe, and a single price is cheap enough to keep for weeks.
+#
+# Deliberately per MARKET, not per venue pair: a pair's gap is the difference
+# of two of these rows, so N venues cost N series instead of N x (N-1) / 2.
+mark_snapshots = Table(
+    "mark_snapshots",
+    metadata,
+    Column("id", BigInteger, primary_key=True),
+    Column("market_id", Integer, ForeignKey("markets.id"), nullable=False),
+    Column("ts", TIMESTAMP(timezone=True), nullable=False),
+    # The venue's reference/mark price where it publishes one, else the book
+    # mid. Both answer "what does this venue think this is worth right now",
+    # and they differ by well under the gaps this table exists to measure.
+    Column("mark", Numeric, nullable=False),
+    UniqueConstraint("market_id", "ts", name="uq_mark_market_ts"),
+)
+Index("idx_mark_market_ts", mark_snapshots.c.market_id, mark_snapshots.c.ts.desc())
+
 # Legacy table retained in metadata because migration 0005 was applied in
 # production. The web app now reads Polymarket directly and no worker writes it.
 variational_fdv_market_snapshots = Table(
