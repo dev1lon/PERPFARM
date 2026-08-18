@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { impactAtNotional, percentileSample, quoteFromSamples, sampleFromSnapshot, type CostSample } from "./cost-history";
 
-const sample = (legBps: number): CostSample => ({ legBps, spreadBps: legBps, impactBps: 0 });
+const sample = (legBps: number): CostSample => ({ legBps, spreadBps: legBps, impactBps: 0, markPrice: null });
 
 /**
  * The calculator is a REFERENCE: every protocol prices a route the same way and

@@ -5,7 +5,6 @@ import {
   FUNDING_HOLD_HOURS,
   MIN_VOLUME_USD,
   displayedOpenInterestUsd,
-  executionTier,
   minOpenInterestUsd,
   oiBandFor,
   snapshotsAreFresh,
@@ -71,8 +70,6 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
   },
 };
 
-type CostTier = "low" | "medium" | "high";
-
 type PairRanking = {
   pair: string;
   openInterestUsd: number;
@@ -89,8 +86,6 @@ type PairRanking = {
   feeCostUsd: number;
   /** Equal long and short on the SAME venue: funding cancels out. */
   fundingUsd: number;
-  /** Classifies estimated execution cost only -- not liquidation or volatility. */
-  costTier: CostTier;
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
@@ -187,10 +182,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           slippageCostUsd: (2 * fillNotionalUsd * quote.median.impactBps) / 10_000,
           feeCostUsd,
           fundingUsd: 0,
-          // One tier definition for every protocol: book cost as bps of account
-          // volume, fees excluded -- a fee is a property of the venue, not of
-          // the pair being graded.
-          costTier: executionTier(cycleCostUsd, feeCostUsd, accountVolumeUsd),
+          // No spread risk on a same-protocol route: both legs sit on one book
+          // at one mark, so there is no gap between venues to drift.
         };
       })
       .filter((value): value is PairRanking => value !== null);

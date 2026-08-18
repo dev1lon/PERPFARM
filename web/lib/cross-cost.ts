@@ -60,6 +60,9 @@ export type CrossPair = {
   /** The 24h p25-p75 band around the median cost. */
   costRangeLowUsd: number;
   costRangeHighUsd: number;
+  /** How much the two venues' prices drift apart, and its rating. */
+  spreadDriftBps: number | null;
+  spreadRisk: SpreadRisk;
 };
 
 export type CrossBand = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: CrossPair[] };
@@ -206,6 +209,57 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
   return rows;
 }
 
+
+/**
+ * How far the two venues' prices wander apart while a hedge is open.
+ *
+ * A cross-protocol hedge is long on one venue and short on the other, so it is
+ * only neutral while the two marks agree. They never agree exactly, and what
+ * costs money is not the gap itself -- you meet it on the way in AND on the way
+ * out -- but how much the gap MOVES in between. So this measures the spread of
+ * the gap over the window, not its level.
+ *
+ * It is deliberately absent for a same-protocol route: both legs sit on one
+ * book at one mark, so there is no gap to move.
+ *
+ * The window is however much history the readers keep (36 hours of snapshots),
+ * so this says "recently", not "historically" -- stated as such in the UI.
+ */
+export type SpreadRisk = "low" | "medium" | "high" | "unknown";
+
+/** Below this the gap moves less than a basis point or two; above the second,
+ *  it can swing by more than a typical route costs to execute. Provisional
+ *  cutoffs -- the raw bps figure ships alongside so they can be calibrated on
+ *  real spreads rather than guessed at twice. */
+const SPREAD_RISK_LOW_BPS = 10;
+const SPREAD_RISK_MEDIUM_BPS = 30;
+/** Fewer aligned ticks than this cannot describe a spread at all. */
+const MIN_TICKS_FOR_RISK = 4;
+
+export function basisDriftBps(historyA: CostSample[], historyB: CostSample[]): number | null {
+  const gaps: number[] = [];
+  for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
+    const a = historyA[i]?.markPrice ?? null;
+    const b = historyB[i]?.markPrice ?? null;
+    if (a === null || b === null || a <= 0 || b <= 0) continue;
+    const mid = (a + b) / 2;
+    gaps.push(((a - b) / mid) * 10_000);
+  }
+  if (gaps.length < MIN_TICKS_FOR_RISK) return null;
+  // Peak-to-trough of the middle of the window: one bad tick should not define
+  // the risk, and the extremes of a 12-point sample are exactly that.
+  const sorted = [...gaps].sort((left, right) => left - right);
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.round((sorted.length - 1) * q))]!;
+  return Math.abs(at(0.9) - at(0.1));
+}
+
+export function spreadRiskOf(driftBps: number | null): SpreadRisk {
+  if (driftBps === null) return "unknown";
+  if (driftBps <= SPREAD_RISK_LOW_BPS) return "low";
+  if (driftBps <= SPREAD_RISK_MEDIUM_BPS) return "medium";
+  return "high";
+}
+
 function round(p: CrossPair): CrossPair {
   return {
     ...p,
@@ -218,6 +272,7 @@ function round(p: CrossPair): CrossPair {
     cycleCostUsd: Number(p.cycleCostUsd.toFixed(2)),
     costRangeLowUsd: Number(p.costRangeLowUsd.toFixed(2)),
     costRangeHighUsd: Number(p.costRangeHighUsd.toFixed(2)),
+    spreadDriftBps: p.spreadDriftBps === null ? null : Number(p.spreadDriftBps.toFixed(2)),
   };
 }
 
@@ -365,8 +420,8 @@ export async function computeCrossRankings(
       };
     };
     const latest: RouteSample = restOnA <= restOnB
-      ? routeOf(costA, costB, { legBps: costB.taker - costB.takerFee, spreadBps: costB.spreadBps * 2, impactBps: costB.impactBps })
-      : routeOf(costB, costA, { legBps: costA.taker - costA.takerFee, spreadBps: costA.spreadBps * 2, impactBps: costA.impactBps });
+      ? routeOf(costA, costB, { legBps: costB.taker - costB.takerFee, spreadBps: costB.spreadBps * 2, impactBps: costB.impactBps, markPrice: null })
+      : routeOf(costB, costA, { legBps: costA.taker - costA.takerFee, spreadBps: costA.spreadBps * 2, impactBps: costA.impactBps, markPrice: null });
 
     const historyA = histA.get(sym) ?? [];
     const historyB = histB.get(sym) ?? [];
@@ -393,8 +448,12 @@ export async function computeCrossRankings(
     const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
+    const spreadDriftBps = basisDriftBps(historyA, historyB);
+
     candidates.push({
       pair: sym,
+      spreadDriftBps,
+      spreadRisk: spreadRiskOf(spreadDriftBps),
       makerVenue,
       takerVenue,
       spreadCostUsd,

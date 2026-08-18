@@ -16,7 +16,7 @@
  * median" the other had no way to produce.
  */
 import { getPool } from "@/lib/db";
-import { quoteCurveImpactBps, quoteCurveMarketSide } from "@/lib/quote-curve";
+import { quoteCurveImpactBps, quoteCurveMarkPrice, quoteCurveMarketSide } from "@/lib/quote-curve";
 
 /**
  * How much of the 24h window to actually pull.
@@ -30,7 +30,15 @@ const HISTORY_MAX_SNAPSHOTS = 24;
 const HISTORY_SAMPLE_STRIDE = 2;
 const HISTORY_WINDOW_HOURS = 24;
 
-export type CostSample = { legBps: number; spreadBps: number; impactBps: number };
+export type CostSample = {
+  legBps: number;
+  spreadBps: number;
+  impactBps: number;
+  /** The venue's mark at this tick. Two venues' marks at the same tick give the
+   *  gap a cross-protocol hedge has to live with. Null on older rows that
+   *  predate stored quote curves. */
+  markPrice: number | null;
+};
 
 export type ImpactSnapshot = {
   spread_bps?: string | number | null;
@@ -75,7 +83,7 @@ export function sampleFromSnapshot(snapshot: ImpactSnapshot, fillNotionalUsd: nu
     [100_000, asNumber(snapshot.impact_bps_100k)],
   ]);
   if (spreadBps === null || impactBps === null) return null;
-  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps };
+  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps, markPrice: quoteCurveMarkPrice(snapshot.quote_curve_json) };
 }
 
 /** Linear-interpolated percentile over `legBps`, carrying its components. */
@@ -92,6 +100,8 @@ export function percentileSample(samples: CostSample[], percentile: number): Cos
     legBps: lower.legBps + (upper.legBps - lower.legBps) * fraction,
     spreadBps: lower.spreadBps + (upper.spreadBps - lower.spreadBps) * fraction,
     impactBps: lower.impactBps + (upper.impactBps - lower.impactBps) * fraction,
+    // The mark belongs to a real observation, so it is taken rather than blended.
+    markPrice: lower.markPrice,
   };
 }
 

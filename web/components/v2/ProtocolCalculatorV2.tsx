@@ -10,7 +10,17 @@ import { protocolName } from "@/lib/venue-status";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
-type CostTier = "low" | "medium" | "high";
+/**
+ * How far the two venues' prices drift apart while the hedge is open.
+ *
+ * This replaced an execution-cost badge. That badge graded a number the user
+ * was already reading in dollars two columns away, so it carried no
+ * information. The gap between venues is the opposite: it is invisible on the
+ * page, it is the risk the hedge actually carries, and it belongs to a
+ * cross-protocol route only -- one book cannot drift from itself.
+ */
+export type SpreadRisk = "low" | "medium" | "high" | "unknown";
+
 export interface PairRanking {
   pair: string;
   openInterestUsd: number;
@@ -21,7 +31,9 @@ export interface PairRanking {
   costRangeHighUsd: number;
   spreadCostUsd: number;
   slippageCostUsd: number;
-  costTier: CostTier;
+  /** Cross-protocol routes only; absent on a same-protocol route. */
+  spreadRisk?: SpreadRisk;
+  spreadDriftBps?: number | null;
   fundingUsd?: number | null;
   feeCostUsd?: number;
   entryOrders?: string;
@@ -120,25 +132,50 @@ function orders(firstLimitSide: "long" | "short") {
 const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
 
 
-const COST_TIER_TONE: Record<CostTier, string> = {
+const SPREAD_RISK_TONE: Record<Exclude<SpreadRisk, "unknown">, string> = {
   low: "border-positive/30 bg-positive/10 text-positive",
   medium: "border-warning/30 bg-warning/10 text-warning",
   high: "border-negative/30 bg-negative/10 text-negative",
 };
-const COST_TIER_DOT: Record<CostTier, string> = { low: "bg-positive", medium: "bg-warning", high: "bg-negative" };
-function costTierLabel(locale: Locale, tier: CostTier): string {
-  return tier === "low"
-    ? tr(locale, "Low execution cost", "Низкая стоимость исполнения")
-    : tier === "medium"
-      ? tr(locale, "Medium execution cost", "Средняя стоимость исполнения")
-      : tr(locale, "High execution cost", "Высокая стоимость исполнения");
+const SPREAD_RISK_DOT: Record<Exclude<SpreadRisk, "unknown">, string> = {
+  low: "bg-positive",
+  medium: "bg-warning",
+  high: "bg-negative",
+};
+
+function spreadRiskLabel(locale: Locale, risk: SpreadRisk): string {
+  return risk === "low"
+    ? tr(locale, "Low spread risk", "Низкий риск расхождения")
+    : risk === "medium"
+      ? tr(locale, "Medium spread risk", "Средний риск расхождения")
+      : risk === "high"
+        ? tr(locale, "High spread risk", "Высокий риск расхождения")
+        : tr(locale, "Spread risk unknown", "Риск расхождения неизвестен");
 }
-function CostTierBadge({ costTier }: { costTier: CostTier }) {
-  const locale = useLocale();
+
+function spreadRiskTip(locale: Locale, driftBps?: number | null): string {
+  const measured = driftBps === null || driftBps === undefined
+    ? ""
+    : tr(locale, ` Measured drift: ${driftBps} bps.`, ` Измеренный разброс: ${driftBps} bps.`);
   return (
-    <span title={tr(locale, "Grades the order book only: half-spread plus quote impact at your size, excluding the protocol fee (which is the same for every pair here). Low up to 1.5 bps, Medium up to 4 bps. Not a liquidation-risk score.", "Оценивает только стакан: полспреда плюс quote impact на ваш размер, без комиссии протокола (она одинакова для всех пар). Low — до 1.5 bps, Medium — до 4 bps. Это не оценка риска ликвидации.")} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${COST_TIER_TONE[costTier]}`}>
-      <span className={`h-[5px] w-[5px] rounded-full ${COST_TIER_DOT[costTier]}`} />
-      {costTierLabel(locale, costTier)}
+    tr(
+      locale,
+      "The two protocols price the same asset slightly differently, and that gap moves. A hedge is only neutral while it holds, so a wide-moving gap can cost more than the execution itself. Measured from the saved snapshots of the last 36 hours, both venues read at the same tick.",
+      "Два протокола оценивают один и тот же актив немного по-разному, и этот разрыв гуляет. Хедж нейтрален только пока разрыв держится, поэтому сильно гуляющий разрыв может стоить дороже самого исполнения. Считается по сохранённым снимкам за последние 36 часов, обе площадки взяты в один и тот же момент.",
+    ) + measured
+  );
+}
+
+function SpreadRiskBadge({ risk, driftBps }: { risk: SpreadRisk; driftBps?: number | null }) {
+  const locale = useLocale();
+  if (risk === "unknown") return null;
+  return (
+    <span
+      title={spreadRiskTip(locale, driftBps)}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
+    >
+      <span className={`h-[5px] w-[5px] rounded-full ${SPREAD_RISK_DOT[risk]}`} />
+      {spreadRiskLabel(locale, risk)}
     </span>
   );
 }
@@ -755,7 +792,7 @@ export function RouteResults({
       <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
         <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-6 py-4">
             <div className="shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
-            <CostTierBadge costTier={best.costTier} />
+            {best.spreadRisk ? <SpreadRiskBadge risk={best.spreadRisk} driftBps={best.spreadDriftBps} /> : null}
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:hidden">
               <span className="h-[5px] w-[5px] rounded-full bg-positive" />
               TradFi
@@ -940,7 +977,7 @@ export function RouteResults({
                       <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
-                        <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         {p.competitionEligible && (
                           <span
                             title={tr(locale, "TradFi market — cheaper to execute and pays more points", "TradFi рынок — дешевле в исполнении и даёт больше поинтов")}
@@ -973,7 +1010,7 @@ export function RouteResults({
                       <div className="flex items-center gap-2">
                         <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
-                        <span title={costTierLabel(locale, p.costTier)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${COST_TIER_DOT[p.costTier]}`} />
+                        {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         {p.competitionEligible && (
                           <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">TradFi</span>
                         )}
@@ -994,7 +1031,7 @@ export function RouteResults({
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
-                        <CostTierBadge costTier={p.costTier} />
+                        {p.spreadRisk ? <SpreadRiskBadge risk={p.spreadRisk} driftBps={p.spreadDriftBps} /> : null}
                         {showEligible && p.competitionEligible && (
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />

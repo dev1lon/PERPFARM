@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
-import { executionTier } from "@/lib/route-model";
 import { isTradfiMarket } from "@/lib/tradfi";
 
 type CrossPair = {
@@ -12,6 +11,8 @@ type CrossPair = {
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number | null; cycleCostUsd: number;
   costRangeLowUsd: number; costRangeHighUsd: number;
+  spreadRisk?: "low" | "medium" | "high" | "unknown";
+  spreadDriftBps?: number | null;
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
@@ -76,7 +77,8 @@ export function CrossPairRankings({
       costRangeHighUsd: pair.costRangeHighUsd,
       spreadCostUsd: pair.spreadCostUsd,
       slippageCostUsd: pair.slippageCostUsd,
-      costTier: executionTier(pair.cycleCostUsd, pair.feeCostUsd, accountVolumeUsd),
+      spreadRisk: pair.spreadRisk,
+      spreadDriftBps: pair.spreadDriftBps,
       fundingUsd: pair.fundingUsd,
       feeCostUsd: pair.feeCostUsd,
       longVenue: pair.longVenue,

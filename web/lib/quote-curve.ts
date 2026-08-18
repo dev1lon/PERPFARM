@@ -141,6 +141,13 @@ export function quoteCurveImpactBps(
     : (impacts.buyImpactBps + impacts.sellImpactBps) / 2;
 }
 
+/** The venue's own reference (mark) price in a stored curve, when it has one.
+ *  Comparing it across two venues at the same tick is what measures how far
+ *  their prices have drifted apart -- the risk a hedge carries between legs. */
+export function quoteCurveMarkPrice(value: unknown): number | null {
+  return parseCurve(value)?.referencePrice ?? null;
+}
+
 /**
  * On a same-venue hedge, the first passive order determines the direction of
  * the two MARKET fills that remain. This exposes that live choice while still
