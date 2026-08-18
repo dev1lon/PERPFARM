@@ -371,7 +371,11 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
             <span className="text-[10px] uppercase tracking-[0.12em] text-text-dim">
               {tr(locale, "Ends in", "Осталось")}
             </span>
-            <span className="font-mono-num text-[20px] font-semibold leading-none text-text-primary">
+            {/* The server renders one second and the browser another, so this
+                text can never match on the first paint. Flagged rather than
+                worked around: the value is a live clock, and it is correct the
+                moment it mounts. */}
+            <span suppressHydrationWarning className="font-mono-num text-[20px] font-semibold leading-none text-text-primary">
               {countdown(now, activity.endUtc)}
             </span>
           </div>
