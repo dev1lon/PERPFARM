@@ -275,15 +275,15 @@ function InputCards() {
           <p className={body}>
             {tr(
               locale,
-              "It is measured from saved snapshots with both venues read at the same moment. Every hour we take the gap between their prices, then measure how much that gap WANDERS — the span between its low and high readings, not how wide it is. A constant offset is met on the way in and again on the way out, so it nets out; only movement costs. Up to 0.15% is low, up to 0.5% medium, wider is high.",
-              "Считается по сохранённым снимкам, причём обе площадки берутся в один и тот же момент. Каждый час мы смотрим разрыв между их ценами, а затем измеряем, насколько этот разрыв ГУЛЯЕТ — размах между низкими и высокими значениями, а не саму его величину. Постоянный сдвиг встречается и на входе, и на выходе, поэтому он схлопывается; денег стоит только движение. До 0.15% — низкий риск, до 0.5% — средний, шире — высокий.",
+              "It is measured from saved prices with both venues read at the same moment. Every hour we take the gap between them, work out that pair's own normal gap, and count HOW OFTEN the gap sat further than 0.5% away from it. A constant offset is met on the way in and again on the way out, so it nets out; only leaving the usual place costs money. Out of the last week's readings: up to 5% of them is low risk, up to 15% medium, more is high.",
+              "Считается по сохранённым ценам, причём обе площадки берутся в один и тот же момент. Каждый час мы смотрим разрыв между ними, определяем обычный для этой пары уровень и считаем, КАК ЧАСТО разрыв оказывался дальше 0.5% от него. Постоянный сдвиг встречается и на входе, и на выходе, поэтому схлопывается; денег стоит только уход с обычного места. Из наблюдений за последнюю неделю: до 5% — низкий риск, до 15% — средний, больше — высокий.",
             )}
           </p>
           <p className={note}>
             {tr(
               locale,
-              "The cutoffs were set from the live pair set rather than picked by feel, and the window is however much snapshot history is kept — so this describes recent behaviour, not a long-run average. A pair with too few readings is marked unknown instead of guessed at. It rates the price gap between venues and nothing else: not liquidation, not volatility, not protocol safety.",
-              "Границы выставлены по живому набору пар, а не на глаз, а окно ограничено тем, сколько хранится истории снимков, — поэтому оценка говорит о недавнем поведении, а не о долгосрочном среднем. Пара со слишком малым числом наблюдений помечается как неизвестная, а не оценивается наугад. Плашка оценивает только разрыв цен между площадками: не ликвидацию, не волатильность и не надёжность протокола.",
+              "The window is seven days of hourly prices: enough readings to place a pair confidently, and a whole week so a market that behaves differently while its underlying is shut is not judged on a single stretch. A pair with too few readings is marked unknown instead of guessed at. It rates the price gap between venues and nothing else: not liquidation, not volatility, not protocol safety.",
+              "Окно — семь дней почасовых цен: наблюдений хватает, чтобы уверенно отнести пару к уровню, а целая неделя нужна, чтобы рынок, который вне сессии базового актива ведёт себя иначе, не оценивался по одному куску. Пара со слишком малым числом наблюдений помечается как неизвестная, а не оценивается наугад. Плашка оценивает только разрыв цен между площадками: не ликвидацию, не волатильность и не надёжность протокола.",
             )}
           </p>
         </InputRow>
