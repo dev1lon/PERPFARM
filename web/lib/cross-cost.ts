@@ -227,12 +227,21 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
  */
 export type SpreadRisk = "low" | "medium" | "high" | "unknown";
 
-/** Below this the gap moves less than a basis point or two; above the second,
- *  it can swing by more than a typical route costs to execute. Provisional
- *  cutoffs -- the raw bps figure ships alongside so they can be calibrated on
- *  real spreads rather than guessed at twice. */
-const SPREAD_RISK_LOW_BPS = 10;
-const SPREAD_RISK_MEDIUM_BPS = 30;
+/**
+ * Where the gap stops being ordinary.
+ *
+ * Calibrated on the live Variational x TxFlow set (55 pairs, 2026-08-18): the
+ * drift runs 7 bps at the calmest to 178 at the worst, with a median of 32 and
+ * a p75 of 58. The first cut at 10/30 bps painted 29 of 55 red, and a rating
+ * that calls half the board dangerous grades nothing.
+ *
+ * These are absolute, not percentiles of the day's population -- a pair must
+ * not change colour because other pairs moved. 0.5% is also the gap an
+ * experienced funding farmer already treats as wide, so "high" agrees with a
+ * judgement made outside this codebase.
+ */
+const SPREAD_RISK_LOW_BPS = 15; // gap wanders under 0.15%
+const SPREAD_RISK_MEDIUM_BPS = 50; // under 0.5%
 /** Fewer aligned ticks than this cannot describe a spread at all. */
 const MIN_TICKS_FOR_RISK = 4;
 

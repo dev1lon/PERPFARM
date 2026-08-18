@@ -37,8 +37,9 @@ describe("basisDriftBps", () => {
 describe("spreadRiskOf", () => {
   it("grades the drift, and says so honestly when it cannot", () => {
     expect(spreadRiskOf(2)).toBe("low");
-    expect(spreadRiskOf(10)).toBe("low");
-    expect(spreadRiskOf(25)).toBe("medium");
+    expect(spreadRiskOf(15)).toBe("low");
+    expect(spreadRiskOf(32)).toBe("medium"); // the live median
+    expect(spreadRiskOf(50)).toBe("medium");
     expect(spreadRiskOf(120)).toBe("high");
     expect(spreadRiskOf(null)).toBe("unknown");
   });
