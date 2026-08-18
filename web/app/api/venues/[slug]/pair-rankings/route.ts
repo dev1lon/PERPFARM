@@ -162,9 +162,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const cycleCostUsd = costOf(quote.median.legBps);
         const feeCostUsd = (2 * fillNotionalUsd * feeBps) / 10_000;
         observations = Math.max(observations, quote.observations);
-        // The NEWEST snapshot dates the table: one market that skipped a run (a
-        // TradFi book with no resting orders outside its session) must not
-        // backdate every other market with it.
+        // The NEWEST snapshot dates the table: one market that skipped a run
+        // must not backdate every other market with it. A TradFi perp trades
+        // 24/7, but its quotes can thin out or vanish while the underlying
+        // market is shut, so those are the rows that skip.
         if (newestBookTs === null || market.bookTs > newestBookTs) newestBookTs = market.bookTs;
 
         return {

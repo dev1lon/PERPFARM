@@ -189,8 +189,8 @@ function SpreadRiskBadge({ risk, driftBps }: { risk: SpreadRisk; driftBps?: numb
 function snapshotTip(locale: Locale): string {
   return tr(
     locale,
-    "Measured from hourly order-book snapshots, not from a quote taken at this second. On thin markets — and on any market outside its trading session — the spread at the moment you actually trade can be wider than this estimate.",
-    "Считается по часовым снимкам стакана, а не по котировке на эту секунду. На тонких рынках — и на любом рынке вне его торговой сессии — спред в момент реальной сделки может оказаться шире этой оценки.",
+    "Measured from hourly order-book snapshots, not from a quote taken at this second. On thin markets — and on stock or commodity perps while the underlying market is shut — the spread at the moment you actually trade can be wider than this estimate.",
+    "Считается по часовым снимкам стакана, а не по котировке на эту секунду. На тонких рынках — и на перпах акций или сырья, пока базовый рынок закрыт, — спред в момент реальной сделки может оказаться шире этой оценки.",
   );
 }
 

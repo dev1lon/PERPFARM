@@ -11,10 +11,19 @@ from dataclasses import dataclass
 
 
 class MarketUnavailable(Exception):
-    """A listed market is temporarily not quotable -- e.g. an FX/metals market
-    that closes on weekends returns a null orderbook / funding estimate. This
-    is expected and transient (not a bug and not "unwired"), so snapshot jobs
-    should SKIP it rather than record a hard error that fails the whole run."""
+    """A listed market is temporarily not quotable.
+
+    Note what this is NOT: these are perpetuals, and they do not close. A
+    TradFi perp trades 24/7 like a crypto one -- Variational's own docs say
+    "TradFi perps largely mirror crypto perps (e.g., cross margin, 24/7
+    trading)". What changes outside the underlying's session is the pricing
+    behind it: the venue smooths its index while the real market is shut, and
+    the market makers who hedge on that real market widen or withdraw. So the
+    quote can be missing even though the market is open.
+
+    Expected and transient either way (not a bug and not "unwired"), so
+    snapshot jobs should SKIP it rather than record a hard error that fails the
+    whole run."""
 
 
 @dataclass(frozen=True)
