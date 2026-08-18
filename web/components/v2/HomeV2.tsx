@@ -69,6 +69,10 @@ function statusLabel(locale: Locale, status: PointsStatus): string {
       return tr(locale, "Points teased", "Поинты анонсированы");
     case "retro":
       return tr(locale, "Retro points", "Ретро-поинты");
+    case "records":
+      return tr(locale, "Activity records", "Учитывает активность");
+    case "retro-activity":
+      return tr(locale, "Retro activity", "Ретро-активность");
     case "mainnet":
       return tr(locale, "Mainnet", "Mainnet");
     case "ended":
@@ -334,10 +338,9 @@ function TierSCard({ p }: { p: HomeProtocol }) {
           </div>
           {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale))}
           {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale))}
-          {cell(tr(locale, "Next drop", "След. дроп"), p.nextDrop)}
         </div>
       </Link>
     </div>
