@@ -40,7 +40,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
         cycleCostUsd: partnerSlug && best ? Number(best.cycle_cost_usd) : null,
         snapshotAt: partnerSlug && best ? best.ts : null,
       },
-      { headers: { "Cache-Control": "no-store" } },
+      // The worker rewrites this once an hour, so serving it from the edge for
+      // an hour costs no freshness and spares the database a query per visit.
+      // `no-store` here meant every page load waited on a round trip.
+      { headers: { "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=3600" } },
     );
   } catch (error) {
     return NextResponse.json({ error: publicMessage(error, "Could not load cheapest hedge") }, { status: 502 });

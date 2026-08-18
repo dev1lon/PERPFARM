@@ -268,8 +268,8 @@ function InputCards() {
           <p className={body}>
             {tr(
               locale,
-              "The badge sits on the route instead of a cost grade, because the cost is already on the page in dollars while this gap is invisible. It appears on cross-protocol routes only — when both legs sit on one venue's book at one price, there is nothing to drift apart.",
-              "Плашка стоит на маршруте вместо оценки стоимости: стоимость и так видна на странице в долларах, а этот разрыв не виден никак. Показывается только на кросс-маршрутах — если обе ноги стоят на одном стакане по одной цене, расходиться нечему.",
+              "It appears on cross-protocol routes only — when both legs sit on one venue's book at one price, there is nothing to drift apart.",
+              "Плашка показывается только на кросс-маршрутах: если обе ноги стоят на одном стакане по одной цене, расходиться нечему.",
             )}
           </p>
           <p className={body}>

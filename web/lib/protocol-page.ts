@@ -46,6 +46,13 @@ export type ActivityConfig =
       rulesUrl: string;
       /** Shown once the window has closed. */
       endedNote: string;
+      /** A pool that unlocks in steps as combined volume grows, drawn as the
+       *  venue draws it. Absent for campaigns with a fixed pool. */
+      progress?: {
+        valueUsd: number;
+        valueLabel: string;
+        tiers: Array<{ atUsd: number; poolUsd: number }>;
+      };
     }
   | { kind: "none" };
 
@@ -106,6 +113,13 @@ const TXFLOW_CAMPAIGN = {
   unlockedPoolUsd: 2_000,
   maxPoolUsd: 8_000,
   readAtUtc: "2026-08-18 15:27 UTC",
+  tiers: [
+    { atUsd: 50_000_000, poolUsd: 1_000 },
+    { atUsd: 80_000_000, poolUsd: 2_000 },
+    { atUsd: 100_000_000, poolUsd: 3_000 },
+    { atUsd: 150_000_000, poolUsd: 5_000 },
+    { atUsd: 200_000_000, poolUsd: 8_000 },
+  ],
 };
 
 const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
@@ -364,24 +378,29 @@ function txflow(locale: Locale): ProtocolPageConfig {
         ),
         tags: [
           [tr(locale, "Retro activity", "Ретро-активность"), "ok"],
-          [tr(locale, "Manual leg", "Ручная нога"), "neutral"],
+          [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
         ],
       },
     },
     activity: {
       kind: "campaign",
-      name: "Trade & Unlock",
+      name: "Trade & Unlock · $8,000 USDC",
       startUtc: TXFLOW_CAMPAIGN.startUtc,
       endUtc: TXFLOW_CAMPAIGN.endUtc,
       meta: `$${(TXFLOW_CAMPAIGN.unlockedPoolUsd / 1000).toFixed(0)}K ${tr(locale, "of", "из")} $${(TXFLOW_CAMPAIGN.maxPoolUsd / 1000).toFixed(0)}K ${tr(locale, "unlocked", "разблокировано")} · ${tr(locale, "read", "снято")} ${TXFLOW_CAMPAIGN.readAtUtc}`,
       body: tr(
         locale,
-        `A USDC prize pool that unlocks as the combined volume of all participants grows: $50M unlocks $1,000, $80M unlocks $2,000, and it runs to $8,000 at $200M. Participants so far have traded $${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M. Your share is settled on the fees you actually pay, capped at 20% of the pool. Volume that generates no trading fee does not count. Farming through the campaign is cheaper than farming outside it, because part of what you spend on fees comes back from the pool — how much depends on the field, so PerpFarm does not put a number on it.`,
-        `Призовой пул в USDC, который открывается по мере роста общего объёма всех участников: $50M открывают $1,000, $80M — $2,000, и так до $8,000 на $200M. Участники уже наторговали $${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M. Ваша доля считается по фактически уплаченным комиссиям, но не больше 20% пула. Объём, не создающий комиссию, не засчитывается. Фарм внутри кампании дешевле, чем вне её, потому что часть уплаченных комиссий возвращается из пула — насколько именно, зависит от остальных участников, поэтому цифру мы не выдумываем.`,
+        "The pool unlocks as everyone's combined volume grows, and each share is settled on the fees you actually pay, capped at 20% of the pool. Volume that pays no fee does not count. Farming inside the campaign is cheaper than outside it, because part of your fees comes back — how much depends on the field, so PerpFarm puts no number on it.",
+        "Пул открывается по мере роста общего объёма всех участников, а доля считается по фактически уплаченным комиссиям, но не больше 20% пула. Объём без комиссии не засчитывается. Фарм внутри кампании дешевле, чем вне её: часть комиссий возвращается — насколько, зависит от остальных участников, поэтому цифру мы не выдумываем.",
       ),
       eligibleLabel: tr(locale, "Combined volume", "Общий объём"),
       eligibleValue: `$${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M`,
       rulesUrl: "https://app.txflow.com/campaign/trade-and-unlock-2",
+      progress: {
+        valueUsd: TXFLOW_CAMPAIGN.totalVolumeUsd,
+        valueLabel: `$${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M`,
+        tiers: TXFLOW_CAMPAIGN.tiers,
+      },
       endedNote: tr(
         locale,
         "This campaign has ended. Check TxFlow for the next one.",

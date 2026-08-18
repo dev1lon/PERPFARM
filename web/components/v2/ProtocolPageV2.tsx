@@ -296,6 +296,51 @@ function HedgeRecommendations({ config }: { config: ProtocolPageConfig }) {
   );
 }
 
+/**
+ * The unlock ladder: how far the whole field has traded, and which prize step
+ * that has reached. Drawn the way the venue draws it, because a farmer checks
+ * this against the campaign page and the two should agree at a glance.
+ */
+function UnlockLadder({
+  progress,
+}: {
+  progress: { valueUsd: number; valueLabel: string; tiers: Array<{ atUsd: number; poolUsd: number }> };
+}) {
+  const locale = useLocale();
+  const top = progress.tiers[progress.tiers.length - 1]?.atUsd ?? 1;
+  const filled = Math.min(100, (progress.valueUsd / top) * 100);
+  const usd = (value: number) =>
+    value >= 1_000_000 ? `$${Math.round(value / 1_000_000)}M` : `$${(value / 1_000).toFixed(0)}K`;
+  return (
+    <div className="flex flex-col gap-2 rounded-[12px] bg-surface-2 px-3.5 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">
+          {tr(locale, "Combined volume", "Общий объём")}
+        </span>
+        <span className="font-mono-num text-[13px] text-text-primary">{progress.valueLabel}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg">
+        <div className="h-full rounded-full bg-positive" style={{ width: `${filled}%` }} />
+      </div>
+      <div className="flex justify-between gap-2">
+        {progress.tiers.map((tier) => {
+          const reached = progress.valueUsd >= tier.atUsd;
+          return (
+            <div key={tier.atUsd} className="flex flex-col items-center gap-0.5">
+              <span className={`font-mono-num text-[11px] ${reached ? "text-text-primary" : "text-text-dim"}`}>
+                {usd(tier.atUsd)}
+              </span>
+              <span className={`font-mono-num text-[12px] font-semibold ${reached ? "text-positive" : "text-text-dim"}`}>
+                ${tier.poolUsd.toLocaleString("en-US")}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number }) {
   const locale = useLocale();
   const title = tr(locale, "Protocol activity", "Активность протокола");
@@ -304,24 +349,30 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
   if (activity.kind === "campaign" && live) {
     return (
       <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
-        <div className="text-[17px] font-semibold text-text-primary">{title}</div>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1.5">
-            <div className="text-[17px] font-semibold text-text-primary">{activity.name}</div>
-            <div className="font-mono-num text-[12px] text-text-muted">{activity.meta}</div>
-          </div>
+        {/* The badge belongs to the SECTION, not to the campaign name: it says
+            "this protocol has something running", which is the same claim the
+            empty state makes below and on every other protocol. */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[17px] font-semibold text-text-primary">{title}</div>
           <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
             {tr(locale, "Active", "Активно")}
           </span>
         </div>
-        <div className="text-[14px] leading-[1.62] text-text-muted">{activity.body}</div>
-        <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-text-muted">
-          <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">{activity.eligibleLabel}</span>
-          <span className="text-text-primary">{activity.eligibleValue}</span>
+
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1.5">
+          <div className="text-[17px] font-semibold text-text-primary">{activity.name}</div>
+          <div className="font-mono-num text-[13px] text-text-primary">
+            {tr(locale, "ends in", "осталось")} {countdown(now, activity.endUtc)}
+          </div>
         </div>
+        <div className="font-mono-num text-[12px] text-text-muted">{activity.meta}</div>
+
+        {activity.progress ? <UnlockLadder progress={activity.progress} /> : null}
+
+        <div className="text-[14px] leading-[1.62] text-text-muted">{activity.body}</div>
         <a href={activity.rulesUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold text-accent hover:text-accent-hover">
-          {tr(locale, "Competition rules ↗", "Правила конкурса ↗")}
+          {tr(locale, "Campaign page ↗", "Страница кампании ↗")}
         </a>
       </div>
     );
@@ -410,9 +461,9 @@ function ActivityAndDistribution({ config }: { config: ProtocolPageConfig }) {
   }, []);
   return (
     <div className="mt-11">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={`grid gap-4 ${config.points.kind === "none" ? "" : "lg:grid-cols-2"}`}>
         <ActivityCard activity={config.activity} now={now} />
-        <PointsCard points={config.points} now={now} />
+        {config.points.kind === "none" ? null : <PointsCard points={config.points} now={now} />}
       </div>
     </div>
   );
