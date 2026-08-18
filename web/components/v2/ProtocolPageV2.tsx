@@ -78,6 +78,19 @@ function Hero({ config }: { config: ProtocolPageConfig }) {
           <div className="flex flex-col gap-2">
             <h1 className="text-[32px] font-bold tracking-[-0.022em] text-text-primary">{config.name}</h1>
             <div className="flex items-center gap-3.5">
+              <a
+                href={config.tradeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="pf-transition inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1 text-[13px] font-semibold text-accent hover:border-accent/70 hover:bg-accent/15"
+              >
+                {tr(locale, "Trade", "Торговать")} ↗
+                {config.tradePerk ? (
+                  <span className="font-mono-num text-[11px] text-accent/80">
+                    {tr(locale, config.tradePerk.en, config.tradePerk.ru)}
+                  </span>
+                ) : null}
+              </a>
               <a href={config.twitterUrl} target="_blank" rel="noreferrer" className="pf-transition text-[13px] text-text-muted hover:text-text-primary">Twitter ↗</a>
               <a href={config.docsUrl} target="_blank" rel="noreferrer" className="pf-transition text-[13px] text-text-muted hover:text-text-primary">Docs ↗</a>
             </div>
@@ -266,8 +279,8 @@ function HedgeRecommendations({ config }: { config: ProtocolPageConfig }) {
           }
           tags={
             routeStatus === "ready"
-              ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]]
-              : [[tr(locale, "Two accounts needed", "Нужно 2 аккаунта"), "neutral"]]
+              ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
+              : [[tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
           }
         />
         <HedgeCard

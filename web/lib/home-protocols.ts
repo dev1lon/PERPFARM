@@ -36,6 +36,7 @@ export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
   { slug: "tradexyz", name: "TradeXYZ", season: "Season 2", status: "records" },
   { slug: "txflow", name: "TxFlow", status: "retro" },
+  { slug: "truenorth", name: "TrueNorth", status: "retro-activity" },
 ];
 
 /** Early stage — medium cards with a status badge, no metric grid. */
@@ -43,7 +44,6 @@ export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", status: "live" },
   { slug: "polymarket", name: "Polymarket", status: "retro-activity" },
   { slug: "qfex", name: "QFEX", status: "retro-activity" },
-  { slug: "truenorth", name: "TrueNorth", status: "retro-activity" },
 ];
 
 /** Radar — compact tiles, name only. */

@@ -82,7 +82,9 @@ function statusLabel(locale: Locale, status: PointsStatus): string {
 
 function StatusBadge({ status }: { status: PointsStatus }) {
   const locale = useLocale();
-  const positive = status === "live";
+  // "retro" is green too: activity is already being counted, which is the
+  // same signal to a farmer as a running programme.
+  const positive = status === "live" || status === "retro";
   const neutral = status === "ended";
   const tone = positive
     ? "border-positive/30 bg-positive/10 text-positive"
@@ -315,7 +317,14 @@ function TierSCard({ p }: { p: HomeProtocol }) {
         {label}
         {tip ? <InfoTip text={tip} /> : null}
       </div>
-      <div className="font-mono-num text-[15px] text-text-primary">{value ?? "—"}</div>
+      {/* A bare dash reads as missing data. These two cells are only empty
+          because the protocol has no points programme yet, which is itself the
+          answer, so say it. */}
+      {value ? (
+        <div className="font-mono-num text-[15px] text-text-primary">{value}</div>
+      ) : (
+        <div className="text-[13px] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div>
+      )}
     </div>
   );
   // Hover-detection lives on the static wrapper; only the inner card lifts, so

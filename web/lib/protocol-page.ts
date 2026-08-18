@@ -67,6 +67,11 @@ export type ProtocolPageConfig = {
   name: string;
   twitterUrl: string;
   docsUrl: string;
+  /** Where to actually trade the protocol. Referral links, so the discount they
+   *  carry is the one the calculator already prices in. */
+  tradeUrl: string;
+  /** Shown beside the trade link when the referral carries a fee discount. */
+  tradePerk?: { en: string; ru: string };
   heroMetrics: HeroMetric[];
   guidance: {
     kicker: string;
@@ -88,6 +93,7 @@ function variational(locale: Locale): ProtocolPageConfig {
   return {
     slug: "variational",
     name: "Variational",
+    tradeUrl: "https://omni.variational.io/?ref=OMNI6VEMG0I8",
     twitterUrl: "https://x.com/variational_io",
     docsUrl: "https://docs.variational.io/omni",
     heroMetrics: [
@@ -229,6 +235,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
   return {
     slug: "txflow",
     name: "TxFlow",
+    tradeUrl: "https://app.txflow.com/r/TXDEVILON",
+    tradePerk: { en: "5% fee discount", ru: "−5% к комиссии" },
     twitterUrl: "https://x.com/TxFlow_L1",
     docsUrl: "https://docs.txflow.com",
     heroMetrics: [
@@ -243,8 +251,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
       kicker: tr(locale, "How TxFlow awards points", "Как TxFlow начисляет поинты"),
       intro: tr(
         locale,
-        "No points programme is announced yet, so this is PerpFarm's read: depth drives the real route cost, and your fee tier comes next.",
-        "Программа поинтов пока не анонсирована, так что это наше прочтение: реальную стоимость маршрута определяет глубина, следом идёт ваш fee tier.",
+        "No points programme is announced yet, so this is PerpFarm's opinion.",
+        "Программа поинтов пока не анонсирована, так что это наше мнение.",
       ),
       priorities: [
         {
@@ -273,25 +281,29 @@ function txflow(locale: Locale): ProtocolPageConfig {
       tips: [
         {
           n: "01",
-          title: tr(locale, "Use resting LIMIT orders", "Используйте пассивные LIMIT-ордера"),
-          body: tr(locale, "Resting orders provide liquidity and pay maker fees.", "Пассивные ордера дают ликвидность и исполняются по maker fee."),
+          title: tr(locale, "Sign up through a referral", "Регистрируйтесь по рефералу"),
+          body: tr(
+            locale,
+            "A referral link takes 5% off the trading fee, and on TxFlow the fee is most of what a route costs.",
+            "Реферальная ссылка даёт 5% скидки на комиссию, а на TxFlow комиссия — большая часть стоимости маршрута.",
+          ),
         },
         {
           n: "02",
-          title: tr(locale, "Check stock-market sessions", "Проверяйте сессии фондового рынка"),
+          title: tr(locale, "Trade with LIMIT orders", "Торгуйте лимитными ордерами"),
           body: tr(
             locale,
-            "TradFi perps can become reduce-only outside the relevant market session.",
-            "Вне нужной рыночной сессии TradFi-perps могут перейти в reduce-only.",
+            "A LIMIT order pays the maker fee, which is cheaper. Note this is not the same as Variational's advice to provide liquidity passively — here it is simply the cheaper order type.",
+            "Лимитный ордер исполняется по maker fee, а это дешевле. Это не то же самое, что совет по Variational про пассивное предоставление ликвидности — здесь речь просто о более дешёвом типе ордера.",
           ),
         },
         {
           n: "03",
-          title: tr(locale, "Hedge two accounts evenly", "Хеджируйте два аккаунта симметрично"),
+          title: tr(locale, "Join the running competitions", "Участвуйте в активных соревнованиях"),
           body: tr(
             locale,
-            "Match long and short legs to keep the route delta-neutral.",
-            "Сопоставляйте long и short ноги, чтобы маршрут оставался дельта-нейтральным.",
+            "TxFlow runs volume campaigns with USDC prize pools; joining one makes the same volume worth more.",
+            "TxFlow проводит объёмные кампании с призовыми пулами в USDC — участие делает тот же объём выгоднее.",
           ),
         },
         {
