@@ -108,7 +108,7 @@ export type ProtocolPageConfig = {
  */
 const TXFLOW_CAMPAIGN = {
   startUtc: Date.UTC(2026, 7, 14, 0, 0, 0),
-  endUtc: Date.UTC(2026, 7, 20, 23, 59, 0),
+  endUtc: Date.UTC(2026, 7, 21, 0, 0, 0),
   totalVolumeUsd: 88_844_546,
   unlockedPoolUsd: 2_000,
   maxPoolUsd: 8_000,
@@ -342,15 +342,6 @@ function txflow(locale: Locale): ProtocolPageConfig {
             "TxFlow проводит объёмные кампании с призовыми пулами в USDC — участие делает тот же объём выгоднее.",
           ),
         },
-        {
-          n: "04",
-          title: tr(locale, "Use the referral discount", "Используйте реферальную скидку"),
-          body: tr(
-            locale,
-            "A referral gives a 5% fee discount for the trader's first $25M of volume.",
-            "Реферал даёт трейдеру 5% скидки на комиссии для первых $25M объёма.",
-          ),
-        },
       ],
       docsUrl: "https://docs.txflow.com/perp/trading-fees",
       docsLabel: tr(locale, "Reward tiers and full program rules in the docs ↗", "Reward-тиры и полные правила программы в документации ↗"),
@@ -387,7 +378,7 @@ function txflow(locale: Locale): ProtocolPageConfig {
       name: "Trade & Unlock · $8,000 USDC",
       startUtc: TXFLOW_CAMPAIGN.startUtc,
       endUtc: TXFLOW_CAMPAIGN.endUtc,
-      meta: `$${(TXFLOW_CAMPAIGN.unlockedPoolUsd / 1000).toFixed(0)}K ${tr(locale, "of", "из")} $${(TXFLOW_CAMPAIGN.maxPoolUsd / 1000).toFixed(0)}K ${tr(locale, "unlocked", "разблокировано")} · ${tr(locale, "read", "снято")} ${TXFLOW_CAMPAIGN.readAtUtc}`,
+      meta: `$${(TXFLOW_CAMPAIGN.unlockedPoolUsd / 1000).toFixed(0)}K ${tr(locale, "of", "из")} $${(TXFLOW_CAMPAIGN.maxPoolUsd / 1000).toFixed(0)}K ${tr(locale, "unlocked", "разблокировано")} · ${tr(locale, "updated", "обновлено")} ${TXFLOW_CAMPAIGN.readAtUtc}`,
       body: tr(
         locale,
         "The pool unlocks as everyone's combined volume grows, and each share is settled on the fees you actually pay, capped at 20% of the pool. Volume that pays no fee does not count. Farming inside the campaign is cheaper than outside it, because part of your fees comes back — how much depends on the field, so PerpFarm puts no number on it.",

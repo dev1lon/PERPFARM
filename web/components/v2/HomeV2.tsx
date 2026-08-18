@@ -323,7 +323,7 @@ function TierSCard({ p }: { p: HomeProtocol }) {
       {value ? (
         <div className="font-mono-num text-[15px] text-text-primary">{value}</div>
       ) : (
-        <div className="text-[13px] text-text-dim">{tr(locale, "No points", "Поинтов нет")}</div>
+        <div className="text-[13px] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div>
       )}
     </div>
   );
@@ -340,9 +340,9 @@ function TierSCard({ p }: { p: HomeProtocol }) {
             <ProtocolMark slug={p.slug} name={p.name} size={38} radius={11} />
             <div className="flex flex-col gap-1">
               <div className="text-[17px] font-semibold text-text-primary">{p.name}</div>
-              {p.season ? (
-                <div className="font-mono-num text-[12px] text-text-muted">{p.season}</div>
-              ) : null}
+              <div className="font-mono-num text-[12px] text-text-muted">
+                {p.season ?? " "}
+              </div>
             </div>
           </div>
           {p.status ? <StatusBadge status={p.status} /> : null}
