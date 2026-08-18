@@ -311,6 +311,10 @@ function TierLabel({ children }: { children: React.ReactNode }) {
 
 function TierSCard({ p }: { p: HomeProtocol }) {
   const locale = useLocale();
+  const emptyLabel =
+    p.status === "retro"
+      ? tr(locale, "No points yet", "Поинтов пока нет")
+      : tr(locale, "No points", "Поинтов нет");
   const cell = (label: string, value?: string, tip?: string) => (
     <div className="flex flex-col gap-1.5 rounded-xl bg-surface-2 p-3">
       <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
@@ -323,7 +327,7 @@ function TierSCard({ p }: { p: HomeProtocol }) {
       {value ? (
         <div className="font-mono-num text-[15px] text-text-primary">{value}</div>
       ) : (
-        <div className="text-[13px] text-text-dim">{tr(locale, "No points yet", "Поинтов пока нет")}</div>
+        <div className="text-[13px] text-text-dim">{emptyLabel}</div>
       )}
     </div>
   );
