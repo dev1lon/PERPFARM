@@ -257,19 +257,33 @@ function InputCards() {
           </p>
         </InputRow>
 
-        <InputRow index="05" title={tr(locale, "What the Low / Medium / High badge means", "Что означает плашка Low / Medium / High")}>
+        <InputRow index="05" title={tr(locale, "What the spread-risk badge means", "Что означает плашка риска расхождения")}>
           <p className={body}>
             {tr(
               locale,
-              "The badge grades the ORDER BOOK only: half the spread you cross plus quote impact at your size. It deliberately leaves out the protocol's fee, because that fee is the same for every pair on that protocol — it tells you about the venue, not about the pair you are choosing between. Low is up to 1.5 bps of book cost, Medium up to 4 bps, High above that.",
-              "Плашка оценивает только СТАКАН: половину пересекаемого спреда плюс quote impact на ваш размер. Комиссия протокола в неё намеренно не входит — она одинакова для всех пар этой площадки и говорит о площадке, а не о паре, которую вы выбираете. Low — до 1.5 bps стоимости стакана, Medium — до 4 bps, High — выше.",
+              "Two protocols price the same asset slightly differently, and that difference moves. A hedge is neutral only while it holds: the long leg is marked on one venue and the short leg on the other, so if the gap changes between opening and closing, the legs stop cancelling and the difference becomes real money.",
+              "Два протокола оценивают один и тот же актив немного по-разному, и эта разница гуляет. Хедж нейтрален только пока она держится: длинная нога считается по цене одной площадки, короткая — по цене другой. Если разрыв изменится между входом и выходом, ноги перестанут гасить друг друга, а разница превратится в реальные деньги.",
+            )}
+          </p>
+          <p className={body}>
+            {tr(
+              locale,
+              "The badge sits on the route instead of a cost grade, because the cost is already on the page in dollars while this gap is invisible. It appears on cross-protocol routes only — when both legs sit on one venue's book at one price, there is nothing to drift apart.",
+              "Плашка стоит на маршруте вместо оценки стоимости: стоимость и так видна на странице в долларах, а этот разрыв не виден никак. Показывается только на кросс-маршрутах — если обе ноги стоят на одном стакане по одной цене, расходиться нечему.",
+            )}
+          </p>
+          <p className={body}>
+            {tr(
+              locale,
+              "It is measured from saved snapshots with both venues read at the same moment. Every hour we take the gap between their prices, then measure how much that gap WANDERS — the span between its low and high readings, not how wide it is. A constant offset is met on the way in and again on the way out, so it nets out; only movement costs. Up to 0.15% is low, up to 0.5% medium, wider is high.",
+              "Считается по сохранённым снимкам, причём обе площадки берутся в один и тот же момент. Каждый час мы смотрим разрыв между их ценами, а затем измеряем, насколько этот разрыв ГУЛЯЕТ — размах между низкими и высокими значениями, а не саму его величину. Постоянный сдвиг встречается и на входе, и на выходе, поэтому он схлопывается; денег стоит только движение. До 0.15% — низкий риск, до 0.5% — средний, шире — высокий.",
             )}
           </p>
           <p className={note}>
             {tr(
               locale,
-              "The same scale applies on every protocol and to cross-protocol routes. This is an execution-cost grade, not a risk score: it says nothing about liquidation, volatility or protocol safety. A pair can be badged Low and still be expensive overall if the protocol's fee is high — the full cost is always in the breakdown.",
-              "Шкала одна для всех протоколов и для кросс-маршрутов. Это оценка стоимости исполнения, а не риска: она ничего не говорит о ликвидации, волатильности или надёжности протокола. Пара может иметь плашку Low и всё равно быть дорогой в сумме, если у протокола высокая комиссия — полная стоимость всегда в разборе.",
+              "The cutoffs were set from the live pair set rather than picked by feel, and the window is however much snapshot history is kept — so this describes recent behaviour, not a long-run average. A pair with too few readings is marked unknown instead of guessed at. It rates the price gap between venues and nothing else: not liquidation, not volatility, not protocol safety.",
+              "Границы выставлены по живому набору пар, а не на глаз, а окно ограничено тем, сколько хранится истории снимков, — поэтому оценка говорит о недавнем поведении, а не о долгосрочном среднем. Пара со слишком малым числом наблюдений помечается как неизвестная, а не оценивается наугад. Плашка оценивает только разрыв цен между площадками: не ликвидацию, не волатильность и не надёжность протокола.",
             )}
           </p>
         </InputRow>
