@@ -360,13 +360,22 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
           </span>
         </div>
 
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1.5">
-          <div className="text-[17px] font-semibold text-text-primary">{activity.name}</div>
-          <div className="font-mono-num text-[13px] text-text-primary">
-            {tr(locale, "ends in", "осталось")} {countdown(now, activity.endUtc)}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
+          <div className="flex flex-col gap-1">
+            <div className="text-[17px] font-semibold text-text-primary">{activity.name}</div>
+            <div className="font-mono-num text-[12px] text-text-muted">{activity.meta}</div>
+          </div>
+          {/* The deadline is the one number here that moves, so it gets a panel
+              of its own rather than a line of small print. */}
+          <div className="flex flex-none flex-col items-end gap-1 rounded-[12px] border border-border bg-surface-2 px-4 py-2.5">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-text-dim">
+              {tr(locale, "Ends in", "Осталось")}
+            </span>
+            <span className="font-mono-num text-[20px] font-semibold leading-none text-text-primary">
+              {countdown(now, activity.endUtc)}
+            </span>
           </div>
         </div>
-        <div className="font-mono-num text-[12px] text-text-muted">{activity.meta}</div>
 
         {activity.progress ? <UnlockLadder progress={activity.progress} /> : null}
 
