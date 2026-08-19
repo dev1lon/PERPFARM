@@ -46,7 +46,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
     return NextResponse.json(
-      { asOf: new Date().toISOString(), ...result },
+      // `asOf` is the newest SNAPSHOT behind the answer, not the moment the
+      // request was served -- stamping it with "now" is what let a day-old
+      // book look current.
+      { ...result, asOf: result.asOf ?? new Date().toISOString() },
       // Five minutes: this reads TWO venues' 24h history, so it is the most
       // expensive query on the site and the snapshots behind it move hourly.
       { headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=300" } },

@@ -13,6 +13,7 @@ import { impactAtNotional, loadCostHistory, type CostSample } from "@/lib/cost-h
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
+  snapshotsAreFresh,
   HOURS_PER_YEAR,
   MIN_VOLUME_USD,
   OI_BANDS,
@@ -26,6 +27,7 @@ import { publishedFees } from "@/lib/venue-fees";
 type VenueMarketRow = {
   slug: string;
   pair: string;
+  book_ts: string;
   spread_bps: string | number | null;
   impact_bps_10k: string | number | null;
   impact_bps_50k: string | number | null;
@@ -93,6 +95,10 @@ export type CrossRankings = {
   unmatched: string[];
   /** What the headline number is, same vocabulary as the other calculators. */
   costBasis: "24h-median" | "latest-snapshot";
+  /** Per-venue freshness, so a stalled collector is announced here exactly as
+   *  it is on a single-protocol page instead of passing yesterday off as now. */
+  sources: Array<{ venue: string; live: boolean }>;
+  asOf: string | null;
 };
 
 function asNumber(value: unknown): number | null {
@@ -140,12 +146,19 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
   const { rows } = await getPool().query<VenueMarketRow>(
     `WITH v AS (SELECT id, slug FROM venues WHERE slug = ANY($1)),
      book AS (
+       -- Bounded, like every other reader. DISTINCT ON with ORDER BY ts DESC
+       -- alone returns the newest row that EXISTS, however old that is: while
+       -- the hourly collector was down for a day, this endpoint kept pricing
+       -- routes off yesterday's book while the same-venue page correctly
+       -- reported no data. The timestamp is carried out so the answer can say
+       -- how fresh it is.
        SELECT DISTINCT ON (b.market_id)
-         b.market_id, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+         b.market_id, b.ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
          to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        JOIN v ON v.id = m.venue_id
+       WHERE b.ts >= now() - interval '24 hours'
        ORDER BY b.market_id, b.ts DESC
      ),
      vol AS (
@@ -195,7 +208,7 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        WHERE effective_from <= CURRENT_DATE AND venue_id IN (SELECT id FROM v)
        ORDER BY venue_id, effective_from DESC, created_at DESC
      )
-     SELECT v.slug, m.symbol_canonical AS pair,
+     SELECT v.slug, m.symbol_canonical AS pair, book.ts AS book_ts,
             book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps, fee.maker_bps
      FROM markets m
@@ -381,6 +394,15 @@ export async function computeCrossRankings(
 
   // Marks are fetched only for the intersection, and only once it is known --
   // a hedge needs both legs, so a pair on one venue alone can never be rated.
+  // Newest book each venue actually supplied, for the freshness line.
+  const newestOf = (venue: Map<string, VenueMarketRow>) =>
+    [...venue.values()].reduce<string | null>(
+      (newest, row) => (newest === null || row.book_ts > newest ? row.book_ts : newest),
+      null,
+    );
+  const newestA = newestOf(A);
+  const newestB = newestOf(B);
+
   const sharedPairs = [...A.keys()].filter((pair) => B.has(pair));
   const [marksA, marksB] = await Promise.all([
     loadMarkSeries(slugA, sharedPairs),
@@ -571,6 +593,11 @@ export async function computeCrossRankings(
     hedgeMinOpenInterestUsd: OI_BANDS.low,
     grouped: true,
     costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
+    sources: [
+      { venue: slugA, live: snapshotsAreFresh(newestA) },
+      { venue: slugB, live: snapshotsAreFresh(newestB) },
+    ],
+    asOf: [newestA, newestB].filter((ts): ts is string => ts !== null).sort().at(-1) ?? null,
     bands,
     pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
     feeSchedule: [scheduleOf(slugA, A), scheduleOf(slugB, B)].filter(

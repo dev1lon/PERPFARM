@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
 import { isTradfiMarket } from "@/lib/tradfi";
+import { protocolName } from "@/lib/venue-status";
 
 type CrossPair = {
   pair: string; oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
@@ -21,6 +22,7 @@ type CrossResponse = {
   minOpenInterestUsd?: number; hedgeMinOpenInterestUsd?: number;
   feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number }>;
   costBasis?: "24h-median" | "latest-snapshot";
+  sources?: Array<{ venue: string; live: boolean }>;
   bands: { key: CrossBandKey; pairs: CrossPair[] }[];
   /** Every eligible pair, cheapest first -- the source for the All tab. */
   pairs?: CrossPair[];
@@ -112,6 +114,8 @@ export function CrossPairRankings({
     competition: { active: false, name: "" },
     // Same vocabulary as the other calculators: the API says what the number is.
     costBasis: response.costBasis ?? "latest-snapshot",
+    // Names the protocol whose collector stalled, same banner as elsewhere.
+    sources: response.sources?.map((entry) => ({ venue: protocolName(entry.venue) ?? entry.venue, live: entry.live })),
     grouped: response.grouped,
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
     pairs: response.pairs ? mapPairs(response.pairs) : undefined,
