@@ -187,6 +187,13 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         summary = run_sync_snapshots(engine, fixtures_dir=fixtures_dir)
         click.echo(
             f"sync-snapshots: {summary.written} written, {summary.skipped} skipped"
+            # Only printed when a retry actually happened, so a normal hour's
+            # log line stays exactly as it was.
+            + (
+                f", {summary.recovered} recovered after {summary.retry_rounds} retry round(s)"
+                if summary.retry_rounds
+                else ""
+            )
         )
         # Housekeeping AFTER the write, so a failure here can never cost us the
         # snapshots this run just collected. Non-fatal for the same reason.

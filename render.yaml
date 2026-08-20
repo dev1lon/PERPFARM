@@ -26,6 +26,11 @@ services:
   #    so new listings enter the DB and get collected the same hour;
   #  - fee-watch runs once a week (Monday, 06:xx UTC) to diff fee pages.
   # Both are non-fatal: a hiccup in either never blocks snapshot writes.
+  #
+  # A run is normally over in a couple of minutes, but a venue that was down
+  # when the hour struck is retried inside the same run (5 min apart, 5 times),
+  # so an unlucky hour can keep this job alive for ~30 minutes. That is by
+  # design and still finishes before the next one starts.
   - type: cron
     name: perpfarm-sync-snapshots
     runtime: python
