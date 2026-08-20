@@ -34,7 +34,13 @@ describe("protocol page reference", () => {
     expect(config.heroMetrics.map((m) => m.label)).toEqual(["Season", "Farm estimate", "OTC point price"]);
     expect(config.guidance.priorities.map((p) => p.label)).toEqual(["Priority 1", "Priority 2"]);
     expect(config.guidance.priorities.filter((p) => p.primary)).toHaveLength(1);
-    expect(config.guidance.tips.map((t) => t.n)).toEqual(["01", "02", "03", "04"]);
+    // Numbered in order from 01, however many a protocol has to say. The count
+    // is content -- TxFlow dropped to three when its guidance was rewritten --
+    // but a gap or a repeat in the numbering is drift.
+    expect(config.guidance.tips.length).toBeGreaterThanOrEqual(3);
+    expect(config.guidance.tips.map((t) => t.n)).toEqual(
+      config.guidance.tips.map((_, index) => String(index + 1).padStart(2, "0")),
+    );
     expect(config.guidance.docsUrl).toMatch(/^https:\/\//);
     expect(config.hedge.partner.slug).not.toBe(slug);
     expect(config.hedge.partner.tags.length).toBeGreaterThan(0);
@@ -53,11 +59,24 @@ describe("protocol page reference", () => {
   it("says 'nothing here yet' the same way in every section", () => {
     // One voice for every empty state. The points panel used to shout
     // `NO POINTS YET` in 22px uppercase mono next to a quiet 14px sentence.
+    //
+    // Checked as "every empty state goes through EmptyNote, and EmptyNote is
+    // the only thing that styles one". Banning the shouty class from the whole
+    // page file instead was too blunt: the same small-caps label legitimately
+    // titles the campaign countdown panel, which is not an empty state.
     for (const file of ["ProtocolPageV2.tsx", "FdvMarketsV2.tsx"]) {
       const source = read(file);
-      expect(source).toContain("EmptyNote");
-      expect(source).not.toMatch(/uppercase tracking-\[0\.12em\] text-text-dim/);
+      expect(source).toContain("<EmptyNote");
+      // No hand-rolled "nothing here" copy sitting outside the shared component.
+      const emptyPhrases = source.match(/(No .{0,24} yet|Поинтов пока нет)/g) ?? [];
+      for (const phrase of emptyPhrases) {
+        expect(source).toMatch(new RegExp(`<EmptyNote[^>]*>[^<]*${phrase}`));
+      }
     }
+    // Comments stripped first: EmptyNote's own docstring quotes the shouted
+    // style it replaced, and the prose describing a fixed bug is not the bug.
+    const emptyNote = read("EmptyNote.tsx").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    expect(emptyNote).not.toMatch(/uppercase|tracking-\[0\.12em\]|font-mono/);
   });
 
   it("keeps the open-interest composition chart out of the reference", () => {
