@@ -30,12 +30,18 @@ export class UserFacingError extends Error {
  */
 export function publicMessage(error: unknown, fallback: string): string {
   if (error instanceof UserFacingError) return error.message;
-  // Keep the detail, just not on the visitor's screen. Vercel captures this.
-  console.error("[api]", fallback, "--", error instanceof Error ? error.stack ?? error.message : error);
-  // A Postgres SQLSTATE is a five-character class code, not a secret: "53300"
-  // is too many connections, "57014" a cancelled query, "42P01" a missing
-  // table. Naming it turns a blind 502 into a diagnosis without exposing the
-  // query, the host or the schema.
+  // Everything technical stays here and never reaches the screen: the stack,
+  // the driver message, and the Postgres SQLSTATE, which is what a diagnosis
+  // is actually made from. A visitor gets a sentence about what failed and
+  // nothing else -- an error code on a page is noise to them whatever it
+  // would tell us.
   const code = (error as { code?: unknown })?.code;
-  return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code) ? `${fallback} (db ${code})` : fallback;
+  console.error(
+    "[api]",
+    fallback,
+    typeof code === "string" ? `sqlstate=${code}` : "",
+    "--",
+    error instanceof Error ? error.stack ?? error.message : error,
+  );
+  return fallback;
 }

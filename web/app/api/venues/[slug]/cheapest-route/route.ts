@@ -40,10 +40,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
         cycleCostUsd: partnerSlug && best ? Number(best.cycle_cost_usd) : null,
         snapshotAt: partnerSlug && best ? best.ts : null,
       },
-      // The worker rewrites this once an hour, so serving it from the edge for
-      // an hour costs no freshness and spares the database a query per visit.
-      // `no-store` here meant every page load waited on a round trip.
-      { headers: { "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=3600" } },
+      // Five minutes, the same window every other route endpoint uses. It was
+      // `no-store`, so each page load waited on a round trip.
+      { headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=300" } },
     );
   } catch (error) {
     return NextResponse.json({ error: publicMessage(error, "Could not load cheapest hedge") }, { status: 502 });

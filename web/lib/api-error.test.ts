@@ -38,6 +38,19 @@ describe("publicMessage", () => {
     expect(shown).not.toMatch(/supabase|book_snapshots/);
   });
 
+  it("puts nothing technical on the screen, whatever the driver attaches", () => {
+    // A visitor gets a sentence, never a code: an SQLSTATE is for our logs.
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = Object.assign(new Error("password authentication failed"), { code: "28P01" });
+
+    const shown = publicMessage(failure, "Could not load market data");
+
+    expect(shown).toBe("Could not load market data");
+    expect(shown).not.toMatch(/28P01|sqlstate|password/i);
+    // The diagnosis is still recoverable from the server log.
+    expect(String(logged.mock.calls[0])).toContain("28P01");
+  });
+
   it("handles a thrown non-Error without crashing the route", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
