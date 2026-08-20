@@ -146,19 +146,17 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
   const { rows } = await getPool().query<VenueMarketRow>(
     `WITH v AS (SELECT id, slug FROM venues WHERE slug = ANY($1)),
      book AS (
-       -- Bounded, like every other reader. DISTINCT ON with ORDER BY ts DESC
-       -- alone returns the newest row that EXISTS, however old that is: while
-       -- the hourly collector was down for a day, this endpoint kept pricing
-       -- routes off yesterday's book while the same-venue page correctly
-       -- reported no data. The timestamp is carried out so the answer can say
-       -- how fresh it is.
+       -- Deliberately UNBOUNDED: the newest row each market has, however old.
+       -- A stalled collector must not blank the page -- an old number the user
+       -- can see and judge beats an empty screen. The age is not hidden: the
+       -- timestamp travels with the row and the answer reports per-venue
+       -- freshness, which raises the "may be out of date" banner.
        SELECT DISTINCT ON (b.market_id)
          b.market_id, b.ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
          to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json
        FROM book_snapshots b
        JOIN markets m ON m.id = b.market_id
        JOIN v ON v.id = m.venue_id
-       WHERE b.ts >= now() - interval '24 hours'
        ORDER BY b.market_id, b.ts DESC
      ),
      vol AS (
