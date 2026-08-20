@@ -1,3 +1,4 @@
+import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
@@ -240,10 +241,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         bands,
         pairs: allPairs,
       },
-      // Five minutes, not one. The underlying snapshots only change hourly, so a
-      // shorter window buys no freshness and costs a full scan of the 24h book
-      // history per visitor -- the single largest source of database egress.
-      { headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=300" } },
+      { headers: { "Cache-Control": snapshotCacheControl({ browser: true }) } },
     );
   } catch (error) {
     return NextResponse.json(

@@ -1,3 +1,4 @@
+import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
@@ -40,9 +41,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
         cycleCostUsd: partnerSlug && best ? Number(best.cycle_cost_usd) : null,
         snapshotAt: partnerSlug && best ? best.ts : null,
       },
-      // Five minutes, the same window every other route endpoint uses. It was
-      // `no-store`, so each page load waited on a round trip.
-      { headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=300" } },
+      { headers: { "Cache-Control": snapshotCacheControl() } },
     );
   } catch (error) {
     return NextResponse.json({ error: publicMessage(error, "Could not load cheapest hedge") }, { status: 502 });

@@ -1,3 +1,4 @@
+import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         latest: series[series.length - 1] ?? null,
         series,
       },
-      { headers: { "Cache-Control": "public, max-age=0, s-maxage=900, stale-while-revalidate=900" } },
+      { headers: { "Cache-Control": snapshotCacheControl() } },
     );
   } catch (error) {
     return NextResponse.json(
