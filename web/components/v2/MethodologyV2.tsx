@@ -465,6 +465,34 @@ function DataBasis() {
         </div>
       </div>
 
+      {/* Spread risk is explained here and nowhere else. It used to live in a
+          hover tooltip on the badge itself, which is the wrong place for four
+          sentences: it is a property of the route, not a footnote on a word. */}
+      <div className="mt-4 rounded-[16px] border border-border bg-surface-1 p-6 sm:p-7">
+        <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Spread risk", "Риск расхождения")}</h3>
+        <p className="pt-2 text-[14px] leading-[1.62] text-text-muted">
+          {tr(
+            locale,
+            "Two protocols price the same asset slightly differently, and that gap moves. A hedge is neutral only while the gap holds, so one that keeps leaving its usual place can cost more than the execution itself. This applies to cross-protocol routes only — both legs of a same-protocol route sit on one book at one price, so there is no gap to drift.",
+            "Два протокола оценивают один и тот же актив немного по-разному, и этот разрыв гуляет. Хедж нейтрален только пока разрыв держится, поэтому разрыв, который постоянно уходит с обычного места, может стоить дороже самого исполнения. Это касается только кросс-протокольных маршрутов — обе ноги маршрута внутри одного протокола стоят в одном стакане по одной цене, и расходиться там нечему.",
+          )}
+        </p>
+        <p className="pt-2.5 text-[14px] leading-[1.62] text-text-muted">
+          {tr(
+            locale,
+            "It is measured, not estimated: we take the last 7 days of saved prices, read both venues at the same tick, and count how often their gap sat more than 50 bps away from its own median. Under 5% of readings is low, under 15% is medium, above that is high.",
+            "Это измеряется, а не оценивается: берём сохранённые цены за последние 7 дней, читаем обе площадки в один и тот же момент и считаем, как часто их разрыв уходил больше чем на 50 б.п. от собственной медианы. Меньше 5% наблюдений — низкий, меньше 15% — средний, больше — высокий.",
+          )}
+        </p>
+        <p className="pt-2.5 text-[14px] leading-[1.62] text-text-muted">
+          {tr(
+            locale,
+            "A rating is a description, not a filter: routes are ranked by cost, and the badge tells you what you are taking on. The rating can change from day to day, because the measurement window moves with it.",
+            "Рейтинг — это описание, а не фильтр: маршруты ранжируются по стоимости, а плашка говорит, что вы берёте на себя. Рейтинг может меняться день ото дня, потому что окно измерения едет вместе с ним.",
+          )}
+        </p>
+      </div>
+
       <div className="mt-4 flex gap-4 rounded-[16px] border border-warning/20 bg-surface-1 px-5 py-4">
         <span className="w-[3px] flex-none rounded-full bg-warning" />
         <p className="text-[14px] leading-[1.62] text-text-muted">

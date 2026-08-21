@@ -11,6 +11,8 @@ type FdvMarket = {
   threshold: string;
   probability: number;
   volume: number;
+  /** 24h move, in the same units as `probability`. */
+  dayChange: number | null;
 };
 
 type FdvMarketResponse = {
@@ -18,6 +20,25 @@ type FdvMarketResponse = {
   eventVolume: number | null;
   markets: FdvMarket[];
 };
+
+/**
+ * The 24h move on one threshold.
+ *
+ * Shown in the same units as the odds above it -- these ARE percentages, so a
+ * move of 11 is 44% today against 33% yesterday. A flat market gets nothing at
+ * all rather than a grey zero, which would read as a reading rather than as
+ * "nothing happened".
+ */
+function DayChange({ value }: { value: number | null }) {
+  if (value === null || value === 0) return null;
+  const up = value > 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 font-mono-num text-[11px] font-semibold ${up ? "text-positive" : "text-negative"}`}>
+      {up ? "▲" : "▼"}
+      {Math.abs(value)}
+    </span>
+  );
+}
 
 function compactUsd(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
@@ -108,7 +129,10 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
               {data.markets.map((market) => (
                 <div key={market.threshold} className="rounded-xl border border-border bg-surface-2 p-3.5">
-                  <div className="font-mono-num text-[13px] text-text-muted">{market.threshold}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-mono-num text-[13px] text-text-muted">{market.threshold}</div>
+                    <DayChange value={market.dayChange} />
+                  </div>
                   <div className="pt-2 font-mono-num text-[24px] leading-none text-text-primary">{market.probability}%</div>
                   <div className="pt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-positive">{tr(locale, "Yes", "Да")}</div>
                   <div className="pt-3 text-[11px] text-text-muted">
@@ -118,7 +142,7 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
               ))}
             </div>
             <div className="pt-4 text-[12px] text-text-dim">
-              {tr(locale, "Polymarket · refreshes hourly", "Polymarket · обновляется каждый час")}
+              {tr(locale, "Polymarket · refreshes hourly · change over 24h", "Polymarket · обновляется каждый час · изменение за 24ч")}
               {" · "}
               <span className="font-mono-num text-text-muted">
                 {formatUtcDateTime(data.asOf)}

@@ -107,19 +107,13 @@ export type ProtocolPageConfig = {
  * farmer decides what that is worth.
  */
 const TXFLOW_CAMPAIGN = {
-  startUtc: Date.UTC(2026, 7, 14, 0, 0, 0),
-  endUtc: Date.UTC(2026, 7, 21, 0, 0, 0),
-  totalVolumeUsd: 88_844_546,
-  unlockedPoolUsd: 2_000,
-  maxPoolUsd: 8_000,
-  readAtUtc: "2026-08-18 15:27 UTC",
-  tiers: [
-    { atUsd: 50_000_000, poolUsd: 1_000 },
-    { atUsd: 80_000_000, poolUsd: 2_000 },
-    { atUsd: 100_000_000, poolUsd: 3_000 },
-    { atUsd: 150_000_000, poolUsd: 5_000 },
-    { atUsd: 200_000_000, poolUsd: 8_000 },
-  ],
+  startUtc: Date.UTC(2026, 7, 21, 0, 0, 0),
+  endUtc: Date.UTC(2026, 7, 31, 0, 0, 0),
+  /** A fixed pool handed out each day, not one unlocked by the field's volume,
+   *  so this campaign carries no progress ladder. */
+  dailyPoolUsd: 100_000,
+  days: 10,
+  totalPoolUsd: 1_000_000,
 };
 
 const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
@@ -305,11 +299,11 @@ function txflow(locale: Locale): ProtocolPageConfig {
         {
           label: "Priority 2",
           kicker: tr(locale, "secondary", "вторично"),
-          title: tr(locale, "Keep activity organic", "Торгуйте органично"),
+          title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, торгуйте органично"),
           body: tr(
             locale,
-            "With no public points criteria, spot activity may also be worth considering. The pair calculator prices Perps only; it does not estimate spot execution.",
-            "Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте. Калькулятор пар считает только Perps и не оценивает исполнение на споте.",
+            "Hold a position for 2–4 hours rather than closing it straight away. TxFlow runs on its own L1, so every action a trader takes is written on chain — use take-profit and stop-loss orders and stay clear of wash trading. With no public points criteria, spot activity may also be worth considering; the pair calculator prices Perps only and does not estimate spot execution.",
+            "Держите позицию 2–4 часа, а не закрывайте сразу. TxFlow работает на собственном L1-чейне, поэтому все действия трейдера записываются в блокчейн — используйте take-profit и stop-loss и не занимайтесь wash-трейдингом. Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте; калькулятор пар считает только Perps и не оценивает исполнение на споте.",
           ),
           primary: false,
         },
@@ -340,6 +334,15 @@ function txflow(locale: Locale): ProtocolPageConfig {
             locale,
             "TxFlow runs volume campaigns with USDC prize pools; joining one makes the same volume worth more.",
             "TxFlow проводит объёмные кампании с призовыми пулами в USDC — участие делает тот же объём выгоднее.",
+          ),
+        },
+        {
+          n: "04",
+          title: tr(locale, "Trade some volume from the phone", "Наберите часть объёма с телефона"),
+          body: tr(
+            locale,
+            "TxFlow already ships a full mobile app. Putting at least part of your volume through it is a strong on-chain signal.",
+            "У TxFlow уже запущено полноценное мобильное приложение. Набрать хотя бы часть объёма через него — сильный on-chain сигнал.",
           ),
         },
       ],
@@ -375,23 +378,18 @@ function txflow(locale: Locale): ProtocolPageConfig {
     },
     activity: {
       kind: "campaign",
-      name: "Trade & Unlock · $8,000 USDC",
+      name: "Trading Competition · $1,000,000 USDC",
       startUtc: TXFLOW_CAMPAIGN.startUtc,
       endUtc: TXFLOW_CAMPAIGN.endUtc,
-      meta: `$${(TXFLOW_CAMPAIGN.unlockedPoolUsd / 1000).toFixed(0)}K ${tr(locale, "of", "из")} $${(TXFLOW_CAMPAIGN.maxPoolUsd / 1000).toFixed(0)}K ${tr(locale, "unlocked", "разблокировано")} · ${tr(locale, "updated", "обновлено")} ${TXFLOW_CAMPAIGN.readAtUtc}`,
+      meta: `$${(TXFLOW_CAMPAIGN.dailyPoolUsd / 1000).toFixed(0)}K ${tr(locale, "every day", "каждый день")} · ${TXFLOW_CAMPAIGN.days} ${tr(locale, "days", "дней")}`,
       body: tr(
         locale,
-        "The pool unlocks as everyone's combined volume grows, and each share is settled on the fees you actually pay, capped at 20% of the pool. Volume that pays no fee does not count. Farming inside the campaign is cheaper than outside it, because part of your fees comes back — how much depends on the field, so PerpFarm puts no number on it.",
-        "Пул открывается по мере роста общего объёма всех участников, а доля считается по фактически уплаченным комиссиям, но не больше 20% пула. Объём без комиссии не засчитывается. Фарм внутри кампании дешевле, чем вне её: часть комиссий возвращается — насколько, зависит от остальных участников, поэтому цифру мы не выдумываем.",
+        "TxFlow hands out $100,000 every day for 10 days — $1,000,000 in total. The pool is fixed per day rather than unlocked by the field, so each day stands on its own: what you earn depends on your share of that day's eligible activity, not on how the whole campaign ends. Farming inside the campaign is cheaper than outside it, because part of the cost comes back — how much depends on the field, so PerpFarm puts no number on it.",
+        "TxFlow раздаёт $100 000 каждый день в течение 10 дней — суммарно $1 000 000. Пул фиксирован на день, а не открывается по мере роста общего объёма, поэтому каждый день считается отдельно: выплата зависит от вашей доли в активности этого дня, а не от того, чем кончится вся кампания. Фарм внутри кампании дешевле, чем вне её: часть затрат возвращается — насколько, зависит от остальных участников, поэтому цифру мы не выдумываем.",
       ),
-      eligibleLabel: tr(locale, "Combined volume", "Общий объём"),
-      eligibleValue: `$${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M`,
-      rulesUrl: "https://app.txflow.com/campaign/trade-and-unlock-2",
-      progress: {
-        valueUsd: TXFLOW_CAMPAIGN.totalVolumeUsd,
-        valueLabel: `$${(TXFLOW_CAMPAIGN.totalVolumeUsd / 1_000_000).toFixed(1)}M`,
-        tiers: TXFLOW_CAMPAIGN.tiers,
-      },
+      eligibleLabel: tr(locale, "Daily pool", "Пул за день"),
+      eligibleValue: `$${TXFLOW_CAMPAIGN.dailyPoolUsd.toLocaleString("en-US")}`,
+      rulesUrl: "https://app.txflow.com/campaign",
       endedNote: tr(
         locale,
         "This campaign has ended. Check TxFlow for the next one.",

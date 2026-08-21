@@ -10,6 +10,12 @@ type FdvMarket = {
   threshold: string;
   probability: number;
   volume: number;
+  /**
+   * How far the odds moved in the last 24 hours, in the same units as
+   * `probability` -- so 44 with a change of 11 means it read 33 yesterday.
+   * Polymarket's own `oneDayPriceChange`; null when it does not publish one.
+   */
+  dayChange: number | null;
 };
 
 type FdvMarketResponse = {
@@ -71,8 +77,14 @@ async function getLiveMarkets(eventUrl: string): Promise<FdvMarketResponse> {
     const yesIndex = outcomes.findIndex((outcome) => outcome.toLowerCase() === "yes");
     const probability = yesIndex >= 0 ? prices[yesIndex] : null;
     const volume = asNumber(market.volume);
+    const dayChange = asNumber(market.oneDayPriceChange);
     return threshold && probability !== null && volume !== null
-      ? [{ threshold, probability: Math.round(probability * 100), volume }]
+      ? [{
+          threshold,
+          probability: Math.round(probability * 100),
+          volume,
+          dayChange: dayChange === null ? null : Math.round(dayChange * 100),
+        }]
       : [];
   }));
   if (markets.length === 0) throw new Error("Polymarket did not return any FDV markets");

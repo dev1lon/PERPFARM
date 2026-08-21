@@ -12,7 +12,7 @@
  */
 import { duneSeries, fetchDuneRows, latestDuneValue } from "@/lib/dune";
 import { TXFLOW_ACTIVITY_HISTORY } from "@/lib/txflow-activity-history";
-import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
+import { HISTORY_DAYS, type ActivityResponse } from "@/lib/activity/types";
 
 /** Full daily series. */
 const DUNE_VOLUME_HISTORY_QUERY_ID = "6679693";
