@@ -309,7 +309,7 @@ function TierLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TierSCard({ p }: { p: HomeProtocol }) {
+function ProtocolCard({ p }: { p: HomeProtocol }) {
   const locale = useLocale();
   const emptyLabel =
     p.status === "retro"
@@ -355,23 +355,6 @@ function TierSCard({ p }: { p: HomeProtocol }) {
           {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale))}
           {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale))}
         </div>
-      </Link>
-    </div>
-  );
-}
-
-function EarlyCard({ p }: { p: HomeProtocol }) {
-  return (
-    <div className="group h-full">
-      <Link
-        href={`/${p.slug}`}
-        className="flex h-full items-center justify-between rounded-[18px] border border-border bg-surface-1 px-5 py-[18px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
-      >
-        <div className="flex items-center gap-3.5">
-          <ProtocolMark slug={p.slug} name={p.name} size={34} radius={10} />
-          <div className="text-[16px] font-semibold text-text-primary">{p.name}</div>
-        </div>
-        {p.status ? <StatusBadge status={p.status} /> : null}
       </Link>
     </div>
   );
@@ -438,7 +421,7 @@ function Protocols() {
               <TierLabel>Tier S</TierLabel>
               <div className="grid gap-4 sm:grid-cols-2">
                 {tierS.map((p) => (
-                  <TierSCard key={p.slug} p={p} />
+                  <ProtocolCard key={p.slug} p={p} />
                 ))}
               </div>
             </>
@@ -447,11 +430,11 @@ function Protocols() {
           {early.length > 0 && (
             <>
               <div className="pt-[34px]">
-                <TierLabel>{tr(locale, "Early stage", "Ранняя стадия")}</TierLabel>
+                <TierLabel>Tier A</TierLabel>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {early.map((p) => (
-                  <EarlyCard key={p.slug} p={p} />
+                  <ProtocolCard key={p.slug} p={p} />
                 ))}
               </div>
             </>

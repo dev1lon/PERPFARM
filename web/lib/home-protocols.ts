@@ -31,19 +31,21 @@ export interface HomeProtocol {
   status?: PointsStatus;
 }
 
-/** Tier S — the large two-up cards with the metric grid. */
+/** Tier S — what is worth farming now. */
 export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
   { slug: "tradexyz", name: "TradeXYZ", status: "records" },
   { slug: "txflow", name: "TxFlow", season: "Season 0", status: "retro" },
   { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
+  { slug: "qfex", name: "QFEX", status: "retro-activity" },
 ];
 
-/** Early stage — medium cards with a status badge, no metric grid. */
+/** Tier A — worth farming, one rung down. Same card as Tier S: a protocol
+ *  without a points programme yet still has to say so in the same words, and a
+ *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", status: "live" },
   { slug: "polymarket", name: "Polymarket", status: "retro-activity" },
-  { slug: "qfex", name: "QFEX", status: "retro-activity" },
 ];
 
 /** Radar — compact tiles, name only. */
