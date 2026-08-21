@@ -10,41 +10,21 @@
  * the CSV survives only as a fallback for when Dune returns nothing at all (no
  * API key on a preview deploy), and is never mixed in.
  */
-import { asNumber, duneSeries, fetchDuneRows, latestDuneValue, valueFromDuneRow } from "@/lib/dune";
+import { duneSeries, fetchDuneRows, latestDuneValue } from "@/lib/dune";
 import { TXFLOW_ACTIVITY_HISTORY } from "@/lib/txflow-activity-history";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
 
 /** Full daily series. */
 const DUNE_VOLUME_HISTORY_QUERY_ID = "6679693";
 const DUNE_OI_QUERY_ID = "6678737";
-const DUNE_NEW_TRADERS_QUERY_ID = "6679496";
-/** Single-value cards, refreshed every 6h on Dune. */
+/** Single-value card, refreshed every 6h on Dune. */
 const DUNE_VOLUME_24H_QUERY_ID = "6678797";
-const DUNE_TOTAL_TRADERS_QUERY_ID = "6678847";
-
-function cumulativeNewTraderSeries(rows: Record<string, unknown>[], totalTraders: number | null): ActivityPoint[] {
-  const daily = new Map<string, number>();
-  for (const row of rows) {
-    const rawDate = valueFromDuneRow(row, ["date", "day", "blockdate", "period"]);
-    const parsed = new Date(String(rawDate));
-    const value = asNumber(valueFromDuneRow(row, ["newtradersdaily", "newtraders", "newusers", "newaddresses"]));
-    if (!Number.isNaN(parsed.valueOf()) && value !== null) daily.set(parsed.toISOString().slice(0, 10), value);
-  }
-  const ordered = [...daily].sort(([left], [right]) => left.localeCompare(right));
-  // Daily new traders sum to exactly the all-time distinct total (5,397 as of
-  // 2026-08-08), so the running curve lands on it rather than being rebased.
-  const observedTotal = ordered.reduce((sum, [, value]) => sum + value, 0);
-  let running = Math.max(0, (totalTraders ?? observedTotal) - observedTotal);
-  return ordered.map(([date, value]) => ({ date, value: (running += value) })).slice(-HISTORY_DAYS);
-}
 
 export async function loadTxflowActivity(): Promise<ActivityResponse> {
-  const [volumeHistoryRows, volume24hRows, oiRows, totalTraderRows, newTraderRows] = await Promise.all([
+  const [volumeHistoryRows, volume24hRows, oiRows] = await Promise.all([
     fetchDuneRows(DUNE_VOLUME_HISTORY_QUERY_ID),
     fetchDuneRows(DUNE_VOLUME_24H_QUERY_ID),
     fetchDuneRows(DUNE_OI_QUERY_ID),
-    fetchDuneRows(DUNE_TOTAL_TRADERS_QUERY_ID),
-    fetchDuneRows(DUNE_NEW_TRADERS_QUERY_ID),
   ]);
 
   // `volume` is the daily figure; the same query also carries a cumulative
@@ -62,13 +42,11 @@ export async function loadTxflowActivity(): Promise<ActivityResponse> {
         .map((point) => ({ date: point.date, value: point.openInterest }))
         .slice(-HISTORY_DAYS);
 
-  // Headline numbers come from the 6h cards, falling back to the newest point of
-  // the series so the figure and the chart can never contradict each other.
+  // The headline number comes from the 6h card, falling back to the newest point
+  // of the series so the figure and the chart can never contradict each other.
   const volumeLatest = latestDuneValue(volume24hRows, ["totalvolume24h", "volume24h", "totalvolume"])
     ?? volumeSeries.at(-1)?.value
     ?? null;
-  const totalTraders = latestDuneValue(totalTraderRows, ["totaltraderslatestday", "totaltraders", "uniquetraders", "uniqueusers"]);
-  const traderSeries = cumulativeNewTraderSeries(newTraderRows, totalTraders);
 
   if (volumeSeries.length === 0 && openInterestSeries.length === 0) {
     throw new Error("Could not load TxFlow activity");
@@ -79,13 +57,5 @@ export async function loadTxflowActivity(): Promise<ActivityResponse> {
     days: HISTORY_DAYS,
     volume: { series: volumeSeries, observedDays: volumeSeries.length, latest24h: volumeLatest },
     openInterest: { series: openInterestSeries, observedDays: openInterestSeries.length, latest: openInterestSeries.at(-1)?.value ?? null },
-    uniqueTraders: {
-      series: traderSeries.length > 0
-        ? traderSeries
-        : (totalTraders === null ? [] : [{ date: new Date().toISOString().slice(0, 10), value: totalTraders }]),
-      latest: totalTraders,
-      source: "dune",
-      metric: "uniqueTraders",
-    },
   };
 }

@@ -48,3 +48,25 @@ export function snapshotCacheControl({ browser = false }: { browser?: boolean } 
   const seconds = secondsUntilNextCollection();
   return `public, max-age=${browser ? seconds : 0}, s-maxage=${seconds}, stale-while-revalidate=${seconds}`;
 }
+
+/** Seconds until the next UTC day is far enough in for its first readings to
+ *  have landed. Same idea as above, one step coarser. */
+export function secondsUntilNextDay(now = new Date()): number {
+  const next = new Date(now);
+  next.setUTCHours(0, COLLECTION_LAG_MINUTES, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  const seconds = Math.round((next.getTime() - now.getTime()) / 1_000);
+  return Math.min(24 * 3_600, Math.max(MIN_SECONDS, seconds));
+}
+
+/**
+ * Cache-Control for an answer that only changes from one day to the next.
+ *
+ * For a chart whose points are whole days: nothing an hourly run adds moves it
+ * enough to be worth recomputing, so it is held until the new day's first
+ * readings exist. Everything else belongs on `snapshotCacheControl`.
+ */
+export function dailyCacheControl(): string {
+  const seconds = secondsUntilNextDay();
+  return `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${seconds}`;
+}

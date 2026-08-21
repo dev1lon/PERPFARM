@@ -2,9 +2,13 @@
  * The one shape every protocol's activity chart is served in.
  *
  * The chart component is shared, so the contract has to be too. Each protocol
- * fills it from whatever sources it actually has -- Variational from its own
- * stats feed, DefiLlama and our saved snapshots; TxFlow from its official Dune
- * dashboard -- but none of them may invent a field or drop one.
+ * fills it from whatever sources it actually has -- Variational from DefiLlama
+ * and our own saved snapshots, TxFlow from its official Dune dashboard -- but
+ * none of them may invent a field or drop one.
+ *
+ * There is no trader count here any more. It cost a live scrape of Variational's
+ * marketing page and two extra Dune queries per protocol, and it answered a
+ * question nobody farms on.
  */
 import type { ActivityPoint } from "@/lib/dune";
 
@@ -26,12 +30,5 @@ export type ActivityResponse = {
     series: ActivityPoint[];
     observedDays: number;
     latest: number | null;
-  };
-  uniqueTraders: {
-    series: ActivityPoint[];
-    latest: number | null;
-    /** Named so the chart can label a lower bound as one. */
-    source: "dune" | "official-site";
-    metric: "uniqueTraders" | "activeAddresses";
   };
 };

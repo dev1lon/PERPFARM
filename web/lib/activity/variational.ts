@@ -1,26 +1,23 @@
 /**
  * Variational's activity series.
  *
- * Four sources, in increasing order of authority: DefiLlama's open-interest
+ * Three sources, in increasing order of authority: DefiLlama's open-interest
  * history fills the days before our cron existed, a verified daily export fills
- * the rest, our own saved snapshots win wherever they exist, and the venue's
- * live stats replace today's provisional point. Historical charts show only API
- * or saved observations -- screenshots are never turned into generated data.
+ * the rest, and our own saved snapshots win wherever they exist. Historical
+ * charts show only API or saved observations -- screenshots are never turned
+ * into generated data.
+ *
+ * Today's point comes from OUR OWN hourly snapshots, not from the venue's live
+ * stats feed. It used to be fetched per page load, five minutes fresh, to move a
+ * dot on a 180-day chart by a fraction of a pixel. Reading it from the cron's
+ * own rows costs nothing, moves once an hour, and means the chart can be cached
+ * for that hour instead of being rebuilt for every visitor.
  */
 import { getPool } from "@/lib/db";
-import { asNumber, fetchDuneRows, valueFromDuneRow } from "@/lib/dune";
+import { asNumber } from "@/lib/dune";
 import { oiDisplayFactor } from "@/lib/route-model";
 import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
-
-const STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
-const OMNI_URL = "https://www.variational.io/omni";
-// Official Omni site, checked on 2026-07-17. A lower bound ("50K+"), not an
-// exact account count.
-const OFFICIAL_UNIQUE_TRADERS_FLOOR = 50_000;
-// The public "Variational: Active Addresses" query. The environment value stays
-// an override, so the chart works when only the API key is configured.
-const DEFAULT_DUNE_USERS_QUERY_ID = "5754146";
 
 function defiLlamaUrl(path: string): string {
   const apiKey = process.env.DEFILLAMA_API_KEY;
@@ -111,102 +108,11 @@ async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"):
     .slice(-HISTORY_DAYS);
 }
 
-async function getCurrentStats(): Promise<{ volume24h: number | null; openInterest: number | null }> {
-  const response = await fetch(STATS_URL, {
-    next: { revalidate: 5 * 60 },
-    signal: AbortSignal.timeout(6_000),
-    headers: {
-      Accept: "application/json",
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    },
-  });
-  if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
-  const payload: unknown = await response.json();
-  if (!isRecord(payload)) throw new Error("Variational stats returned an invalid payload");
-  return {
-    volume24h: asNumber(payload.total_volume_24h),
-    openInterest: asNumber(payload.open_interest),
-  };
-}
-
-/**
- * Omni's market API exposes no trader count, but its public page publishes the
- * aggregate. Retained as a first-party snapshot rather than manufacturing a
- * history from it.
- */
-async function getOfficialUniqueTraders(): Promise<number | null> {
-  try {
-    const response = await fetch(OMNI_URL, { next: { revalidate: 60 * 60 }, signal: AbortSignal.timeout(6_000) });
-    if (!response.ok) return null;
-    const body = await response.text();
-    const match = body.match(/(\d+(?:\.\d+)?)\s*K\s*\+?\s*(?:<[^>]+>\s*)*Unique\s+Traders/i);
-    if (!match) return null;
-    const thousands = Number(match[1]);
-    return Number.isFinite(thousands) ? Math.round(thousands * 1_000) : null;
-  } catch {
-    return null;
-  }
-}
-
 function getVerifiedBackfill(metric: "volume" | "openInterest"): ActivityPoint[] {
   return VARIATIONAL_ACTIVITY_BACKFILL
     .map((point) => ({ date: point.date, value: metric === "volume" ? point.volume : point.openInterest }))
     .filter((point): point is ActivityPoint => point.value !== null)
     .slice(-HISTORY_DAYS);
-}
-
-/**
- * Traders from Dune, when a key is configured.
- *
- * Column lookup goes through lib/dune, which prefers an EXACT column-name match
- * over a substring one. A local copy here used to accept either and let key
- * order decide, which is how a cumulative `total_*` column can be plotted as a
- * daily value -- the same bug the shared helper exists to prevent.
- */
-async function getDuneUniqueTraders(): Promise<{ points: ActivityPoint[]; metric: "uniqueTraders" | "activeAddresses" } | null> {
-  const queryId = process.env.DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID ?? DEFAULT_DUNE_USERS_QUERY_ID;
-  try {
-    const rows = await fetchDuneRows(queryId);
-    if (rows.length === 0) return null;
-    const dateNames = ["date", "day", "blockdate", "period"];
-    const hasDateColumn = rows.some((row) => valueFromDuneRow(row, dateNames) !== undefined);
-    const byDate = new Map<string, number>();
-    let metric: "uniqueTraders" | "activeAddresses" = "uniqueTraders";
-
-    for (const row of rows) {
-      const rawDate = valueFromDuneRow(row, dateNames);
-      const uniqueCount = asNumber(valueFromDuneRow(row, ["uniquetraders", "uniqueusers", "traders", "users"]));
-      const activeCount = asNumber(
-        valueFromDuneRow(row, ["activeaddresses", "activeusers", "addresscount", "currentliveaddresses", "liveaddresses"]),
-      );
-      const newAddresses = asNumber(valueFromDuneRow(row, ["newaddress", "newaddresses"]));
-      const returningAddresses = asNumber(valueFromDuneRow(row, ["returningaddress", "returningaddresses"]));
-      const combinedActive = activeCount ?? (
-        newAddresses !== null || returningAddresses !== null ? (newAddresses ?? 0) + (returningAddresses ?? 0) : null
-      );
-      const value = uniqueCount ?? combinedActive;
-      if (uniqueCount === null && combinedActive !== null) metric = "activeAddresses";
-
-      const parsedDate = rawDate instanceof Date ? rawDate : new Date(String(rawDate));
-      // The default query is a current-address snapshot rather than a daily
-      // series: one row, no date. Tag it with today so the exact live count
-      // shows instead of falling back to the published 50K+.
-      const date = hasDateColumn
-        ? (Number.isNaN(parsedDate.valueOf()) ? null : parsedDate.toISOString().slice(0, 10))
-        : rows.length === 1
-          ? new Date().toISOString().slice(0, 10)
-          : null;
-      if (date !== null && value !== null && value >= 0) byDate.set(date, value);
-    }
-
-    const points = [...byDate]
-      .map(([date, value]) => ({ date, value }))
-      .sort((left, right) => left.date.localeCompare(right.date));
-    return points.length > 0 ? { points: points.slice(-HISTORY_DAYS), metric } : null;
-  } catch {
-    return null;
-  }
 }
 
 /** Later sources win per date; each series keeps one point per day. */
@@ -221,56 +127,43 @@ function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
     .slice(-HISTORY_DAYS);
 }
 
-function withCurrentPoint(history: ActivityPoint[], value: number | null): ActivityPoint[] {
-  if (value === null) return history;
-  const today = new Date().toISOString().slice(0, 10);
-  return [...history.filter((point) => point.date !== today), { date: today, value }]
-    .sort((left, right) => left.date.localeCompare(right.date))
-    .slice(-HISTORY_DAYS);
-}
-
 export async function loadVariationalActivity(): Promise<ActivityResponse> {
-  const [defiLlamaOi, observedVolume, observedOi, live, officialTraders, duneTraders] = await Promise.allSettled([
+  const [defiLlamaOi, observedVolume, observedOi] = await Promise.allSettled([
     getDefiLlamaOpenInterest(),
     getObservedDaily("volume_24h_usd"),
     getObservedDaily("open_interest_usd"),
-    getCurrentStats(),
-    getOfficialUniqueTraders(),
-    getDuneUniqueTraders(),
   ]);
 
   const defiLlamaOiHistory = defiLlamaOi.status === "fulfilled" ? defiLlamaOi.value : [];
   const observedVolumeHistory = observedVolume.status === "fulfilled" ? observedVolume.value : [];
   const observedOiHistory = observedOi.status === "fulfilled" ? observedOi.value : [];
-  const current = live.status === "fulfilled" ? live.value : { volume24h: null, openInterest: null };
-  const uniqueTraders = officialTraders.status === "fulfilled"
-    ? officialTraders.value ?? OFFICIAL_UNIQUE_TRADERS_FLOOR
-    : OFFICIAL_UNIQUE_TRADERS_FLOOR;
-  const dune = duneTraders.status === "fulfilled" ? duneTraders.value : null;
 
-  const volumeSeries = withCurrentPoint(
-    mergeHistory(getVerifiedBackfill("volume"), observedVolumeHistory),
-    current.volume24h,
-  );
-  const openInterestSeries = withCurrentPoint(
-    mergeHistory(defiLlamaOiHistory, getVerifiedBackfill("openInterest"), observedOiHistory),
-    current.openInterest,
+  const volumeSeries = mergeHistory(getVerifiedBackfill("volume"), observedVolumeHistory);
+  const openInterestSeries = mergeHistory(
+    defiLlamaOiHistory,
+    getVerifiedBackfill("openInterest"),
+    observedOiHistory,
   );
 
   if (volumeSeries.length === 0 && openInterestSeries.length === 0) {
     throw new Error("Could not load Variational activity data");
   }
 
+  // The headline figure is the newest point of the series it heads, so the
+  // number and the chart under it can never disagree -- they used to come from
+  // different feeds, and did.
   return {
     asOf: new Date().toISOString(),
     days: HISTORY_DAYS,
-    volume: { series: volumeSeries, observedDays: observedVolumeHistory.length, latest24h: current.volume24h },
-    openInterest: { series: openInterestSeries, observedDays: observedOiHistory.length, latest: current.openInterest },
-    uniqueTraders: {
-      series: dune?.points ?? (uniqueTraders === null ? [] : [{ date: new Date().toISOString().slice(0, 10), value: uniqueTraders }]),
-      latest: dune?.points.at(-1)?.value ?? uniqueTraders,
-      source: dune ? "dune" : "official-site",
-      metric: dune?.metric ?? "uniqueTraders",
+    volume: {
+      series: volumeSeries,
+      observedDays: observedVolumeHistory.length,
+      latest24h: volumeSeries.at(-1)?.value ?? null,
+    },
+    openInterest: {
+      series: openInterestSeries,
+      observedDays: observedOiHistory.length,
+      latest: openInterestSeries.at(-1)?.value ?? null,
     },
   };
 }
