@@ -37,14 +37,14 @@ export const TIER_S: HomeProtocol[] = [
   { slug: "tradexyz", name: "TradeXYZ", status: "records" },
   { slug: "txflow", name: "TxFlow", season: "Season 0", status: "retro" },
   { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
-  { slug: "qfex", name: "QFEX", status: "retro-activity" },
+  { slug: "qfex", name: "QFEX", season: "Season 0", status: "retro" },
 ];
 
 /** Tier A — worth farming, one rung down. Same card as Tier S: a protocol
  *  without a points programme yet still has to say so in the same words, and a
  *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
-  { slug: "risex", name: "RiseX", status: "live" },
+  { slug: "risex", name: "RiseX", farmEstimate: "$1–2/pt", status: "live" },
   { slug: "polymarket", name: "Polymarket", status: "retro-activity" },
 ];
 

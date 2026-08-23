@@ -315,19 +315,22 @@ function ProtocolCard({ p }: { p: HomeProtocol }) {
     p.status === "retro"
       ? tr(locale, "No points yet", "Поинтов пока нет")
       : tr(locale, "No points", "Поинтов нет");
-  const cell = (label: string, value?: string, tip?: string) => (
+  // A protocol with a farm estimate HAS points -- an empty OTC cell there means
+  // nobody is quoting them yet, which is a different fact from "no points" and
+  // the one a farmer needs. Only a card in that exact state reads differently.
+  const otcEmptyLabel = p.farmEstimate ? tr(locale, "No OTC yet", "OTC пока нет") : emptyLabel;
+  const cell = (label: string, value: string | undefined, tip: string, empty: string) => (
     <div className="flex flex-col gap-1.5 rounded-xl bg-surface-2 p-3">
       <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
       </div>
-      {/* A bare dash reads as missing data. These two cells are only empty
-          because the protocol has no points programme yet, which is itself the
-          answer, so say it. */}
+      {/* A bare dash reads as missing data. An empty cell here is itself the
+          answer -- no points, or none quoted yet -- so say which. */}
       {value ? (
         <div className="font-mono-num text-[15px] text-text-primary">{value}</div>
       ) : (
-        <div className="text-[13px] text-text-dim">{emptyLabel}</div>
+        <div className="text-[13px] text-text-dim">{empty}</div>
       )}
     </div>
   );
@@ -352,8 +355,8 @@ function ProtocolCard({ p }: { p: HomeProtocol }) {
           {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale))}
-          {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale))}
+          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale), emptyLabel)}
+          {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale), otcEmptyLabel)}
         </div>
       </Link>
     </div>
