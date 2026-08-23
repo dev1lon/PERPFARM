@@ -7,17 +7,18 @@
  * charts show only API or saved observations -- screenshots are never turned
  * into generated data.
  *
- * Today's point comes from OUR OWN hourly snapshots, not from the venue's live
- * stats feed. It used to be fetched per page load, five minutes fresh, to move a
- * dot on a 180-day chart by a fraction of a pixel. Reading it from the cron's
- * own rows costs nothing, moves once an hour, and means the chart can be cached
- * for that hour instead of being rebuilt for every visitor.
+ * Today's point is the venue's own live figure, which is the authority on it.
+ * It used to be fetched fresh on every page load; now the endpoint around it is
+ * cached for the hour, so the venue is asked once an hour rather than once per
+ * visitor.
  */
 import { getPool } from "@/lib/db";
 import { asNumber } from "@/lib/dune";
 import { oiDisplayFactor } from "@/lib/route-model";
 import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
+
+const STATS_URL = "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats";
 
 function defiLlamaUrl(path: string): string {
   const apiKey = process.env.DEFILLAMA_API_KEY;
@@ -108,6 +109,33 @@ async function getObservedDaily(column: "volume_24h_usd" | "open_interest_usd"):
     .slice(-HISTORY_DAYS);
 }
 
+/**
+ * Today's point, from the venue's own stats feed.
+ *
+ * Our snapshots know today too, but the venue's number is the authoritative one
+ * and is what the chart showed before. Cached for an hour rather than the five
+ * minutes it once used: the endpoint around it is now held for an hour anyway,
+ * so a shorter window here would only have been fetched and thrown away.
+ */
+async function getCurrentStats(): Promise<{ volume24h: number | null; openInterest: number | null }> {
+  const response = await fetch(STATS_URL, {
+    next: { revalidate: 60 * 60 },
+    signal: AbortSignal.timeout(6_000),
+    headers: {
+      Accept: "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    },
+  });
+  if (!response.ok) throw new Error(`Variational stats returned ${response.status}`);
+  const payload: unknown = await response.json();
+  if (!isRecord(payload)) throw new Error("Variational stats returned an invalid payload");
+  return {
+    volume24h: asNumber(payload.total_volume_24h),
+    openInterest: asNumber(payload.open_interest),
+  };
+}
+
 function getVerifiedBackfill(metric: "volume" | "openInterest"): ActivityPoint[] {
   return VARIATIONAL_ACTIVITY_BACKFILL
     .map((point) => ({ date: point.date, value: metric === "volume" ? point.volume : point.openInterest }))
@@ -127,22 +155,35 @@ function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
     .slice(-HISTORY_DAYS);
 }
 
+/** Replace today with the venue's own reading; history is left as observed. */
+function withCurrentPoint(history: ActivityPoint[], value: number | null): ActivityPoint[] {
+  if (value === null) return history;
+  const today = new Date().toISOString().slice(0, 10);
+  return [...history.filter((point) => point.date !== today), { date: today, value }]
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(-HISTORY_DAYS);
+}
+
 export async function loadVariationalActivity(): Promise<ActivityResponse> {
-  const [defiLlamaOi, observedVolume, observedOi] = await Promise.allSettled([
+  const [defiLlamaOi, observedVolume, observedOi, live] = await Promise.allSettled([
     getDefiLlamaOpenInterest(),
     getObservedDaily("volume_24h_usd"),
     getObservedDaily("open_interest_usd"),
+    getCurrentStats(),
   ]);
 
   const defiLlamaOiHistory = defiLlamaOi.status === "fulfilled" ? defiLlamaOi.value : [];
   const observedVolumeHistory = observedVolume.status === "fulfilled" ? observedVolume.value : [];
   const observedOiHistory = observedOi.status === "fulfilled" ? observedOi.value : [];
+  const current = live.status === "fulfilled" ? live.value : { volume24h: null, openInterest: null };
 
-  const volumeSeries = mergeHistory(getVerifiedBackfill("volume"), observedVolumeHistory);
-  const openInterestSeries = mergeHistory(
-    defiLlamaOiHistory,
-    getVerifiedBackfill("openInterest"),
-    observedOiHistory,
+  const volumeSeries = withCurrentPoint(
+    mergeHistory(getVerifiedBackfill("volume"), observedVolumeHistory),
+    current.volume24h,
+  );
+  const openInterestSeries = withCurrentPoint(
+    mergeHistory(defiLlamaOiHistory, getVerifiedBackfill("openInterest"), observedOiHistory),
+    current.openInterest,
   );
 
   if (volumeSeries.length === 0 && openInterestSeries.length === 0) {
@@ -158,12 +199,12 @@ export async function loadVariationalActivity(): Promise<ActivityResponse> {
     volume: {
       series: volumeSeries,
       observedDays: observedVolumeHistory.length,
-      latest24h: volumeSeries.at(-1)?.value ?? null,
+      latest24h: current.volume24h ?? volumeSeries.at(-1)?.value ?? null,
     },
     openInterest: {
       series: openInterestSeries,
       observedDays: observedOiHistory.length,
-      latest: openInterestSeries.at(-1)?.value ?? null,
+      latest: current.openInterest ?? openInterestSeries.at(-1)?.value ?? null,
     },
   };
 }
