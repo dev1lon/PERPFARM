@@ -106,15 +106,41 @@ export type ProtocolPageConfig = {
  * states is the fact that a pool exists and how far the field has got -- the
  * farmer decides what that is worth.
  */
+/**
+ * TxFlow's "Daily 100K Heist", read off the campaign page on 2026-08-23.
+ *
+ * The rule that matters to a farmer here is the eligibility one, not the pool
+ * size: ONLY PERPETUAL TAKER VOLUME COUNTS. Our own hedge route deliberately
+ * rests one leg as a maker to pay the cheaper fee, and that leg earns nothing
+ * toward this campaign. Stating the pool without stating that would send people
+ * to farm it the way that does not count.
+ */
 const TXFLOW_CAMPAIGN = {
   startUtc: Date.UTC(2026, 7, 21, 0, 0, 0),
   endUtc: Date.UTC(2026, 7, 31, 0, 0, 0),
-  /** A fixed pool handed out each day, not one unlocked by the field's volume,
-   *  so this campaign carries no progress ladder. */
+  /** A fixed pool handed out each day, not one unlocked by the field's volume. */
   dailyPoolUsd: 100_000,
   days: 10,
   totalPoolUsd: 1_000_000,
+  /** Daily taker volume -> that day's reward. Highest tier reached only; they
+   *  do not stack, and nothing carries into the next day. */
+  tiers: [
+    { volumeUsd: 200_000, rewardUsd: 5 },
+    { volumeUsd: 500_000, rewardUsd: 15 },
+    { volumeUsd: 1_000_000, rewardUsd: 35 },
+    { volumeUsd: 1_500_000, rewardUsd: 60 },
+    { volumeUsd: 2_500_000, rewardUsd: 100 },
+  ],
 };
+
+/** "$200K → $5 · $500K → $15 · …", built from the ladder above. */
+function txflowTierLine(): string {
+  return TXFLOW_CAMPAIGN.tiers
+    .map((tier) => `$${tier.volumeUsd >= 1_000_000
+      ? `${tier.volumeUsd / 1_000_000}M`
+      : `${tier.volumeUsd / 1_000}K`} → $${tier.rewardUsd}`)
+    .join(" · ");
+}
 
 const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
 const VARIATIONAL_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
@@ -291,8 +317,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
           title: tr(locale, "Eligible volume", "Подходящий объём"),
           body: tr(
             locale,
-            "TxFlow has not announced points. PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
-            "TxFlow не анонсировал поинты. По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
+            "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
+            "По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
           ),
           primary: true,
         },
@@ -302,8 +328,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
           title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, торгуйте органично"),
           body: tr(
             locale,
-            "Hold a position for 2–4 hours rather than closing it straight away. TxFlow runs on its own L1, so every action a trader takes is written on chain — use take-profit and stop-loss orders and stay clear of wash trading. With no public points criteria, spot activity may also be worth considering; the pair calculator prices Perps only and does not estimate spot execution.",
-            "Держите позицию 2–4 часа, а не закрывайте сразу. TxFlow работает на собственном L1-чейне, поэтому все действия трейдера записываются в блокчейн — используйте take-profit и stop-loss и не занимайтесь wash-трейдингом. Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте; калькулятор пар считает только Perps и не оценивает исполнение на споте.",
+            "Hold a position for 2–4 hours rather than closing it straight away. TxFlow runs on its own L1, so every action a trader takes is written on chain — use TP/SL and stay clear of wash trading. With no public points criteria, spot activity may also be worth considering; the pair calculator prices Perps only and does not estimate spot execution.",
+            "Держите позицию 2–4 часа, а не закрывайте сразу. TxFlow работает на собственном L1-чейне, поэтому все действия трейдера записываются в блокчейн — используйте TP/SL и не занимайтесь wash-трейдингом. Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте; калькулятор пар считает только Perps и не оценивает исполнение на споте.",
           ),
           primary: false,
         },
@@ -378,17 +404,17 @@ function txflow(locale: Locale): ProtocolPageConfig {
     },
     activity: {
       kind: "campaign",
-      name: "Trading Competition · $1,000,000 USDC",
+      name: "Daily 100K Heist · $1,000,000 USDC",
       startUtc: TXFLOW_CAMPAIGN.startUtc,
       endUtc: TXFLOW_CAMPAIGN.endUtc,
       meta: `$${(TXFLOW_CAMPAIGN.dailyPoolUsd / 1000).toFixed(0)}K ${tr(locale, "every day", "каждый день")} · ${TXFLOW_CAMPAIGN.days} ${tr(locale, "days", "дней")}`,
       body: tr(
         locale,
-        "TxFlow hands out $100,000 every day for 10 days — $1,000,000 in total. The pool is fixed per day rather than unlocked by the field, so each day stands on its own: what you earn depends on your share of that day's eligible activity, not on how the whole campaign ends. Farming inside the campaign is cheaper than outside it, because part of the cost comes back — how much depends on the field, so PerpFarm puts no number on it.",
-        "TxFlow раздаёт $100 000 каждый день в течение 10 дней — суммарно $1 000 000. Пул фиксирован на день, а не открывается по мере роста общего объёма, поэтому каждый день считается отдельно: выплата зависит от вашей доли в активности этого дня, а не от того, чем кончится вся кампания. Фарм внутри кампании дешевле, чем вне её: часть затрат возвращается — насколько, зависит от остальных участников, поэтому цифру мы не выдумываем.",
+        `Only PERPETUAL TAKER volume counts — maker volume is excluded, and so is volume from Fee Credit redemptions or self-matched trades. A position has to be held at least a minute, and trading must be manual. That matters for the hedge below: its resting LIMIT leg is a maker leg and earns nothing here, so only the MARKET leg builds campaign volume. Your total resets at 00:00 UTC every day, and only the highest tier you reach that day pays: ${txflowTierLine()}. The $100,000 daily pool is allocated from the highest volumes down until it runs out, and whatever is left does not carry over.`,
+        `Засчитывается только ТЕЙКЕРСКИЙ объём по перпам — мейкерский не считается, как и объём, оплаченный Fee Credits, и сделки сам с собой. Позицию нужно держать хотя бы минуту, торговля должна быть ручной. Для маршрута ниже это важно: пассивная LIMIT-нога — это мейкер, она здесь не засчитывается, объём кампании набирает только MARKET-нога. Счётчик обнуляется каждый день в 00:00 UTC, и платят только за верхнюю достигнутую за день ступень: ${txflowTierLine()}. Дневной пул $100 000 раздаётся сверху вниз, от самых больших объёмов, пока не кончится; остаток на следующий день не переносится.`,
       ),
-      eligibleLabel: tr(locale, "Daily pool", "Пул за день"),
-      eligibleValue: `$${TXFLOW_CAMPAIGN.dailyPoolUsd.toLocaleString("en-US")}`,
+      eligibleLabel: tr(locale, "Counts toward it", "Что засчитывается"),
+      eligibleValue: tr(locale, "Perp taker volume", "Тейкерский объём"),
       rulesUrl: "https://app.txflow.com/campaign",
       endedNote: tr(
         locale,
