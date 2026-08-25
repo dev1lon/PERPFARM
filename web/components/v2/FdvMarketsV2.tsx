@@ -24,18 +24,20 @@ type FdvMarketResponse = {
 /**
  * The 24h move on one threshold.
  *
- * Shown in the same units as the odds above it -- these ARE percentages, so a
- * move of 11 is 44% today against 33% yesterday. A flat market gets nothing at
- * all rather than a grey zero, which would read as a reading rather than as
- * "nothing happened".
+ * Shown in the same units as the odds above it -- these ARE percentages, so
+ * +11% is 44% today against 33% yesterday. Written as a signed percentage
+ * rather than an arrow with a bare number: the sign already carries the
+ * direction, and the arrow left the reader guessing what the number was.
+ * A flat market gets nothing at all rather than a grey zero, which would read
+ * as a reading rather than as "nothing happened".
  */
 function DayChange({ value }: { value: number | null }) {
   if (value === null || value === 0) return null;
   const up = value > 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 font-mono-num text-[11px] font-semibold ${up ? "text-positive" : "text-negative"}`}>
-      {up ? "▲" : "▼"}
-      {Math.abs(value)}
+    <span className={`font-mono-num text-[11px] font-semibold ${up ? "text-positive" : "text-negative"}`}>
+      {up ? "+" : "-"}
+      {Math.abs(value)}%
     </span>
   );
 }
