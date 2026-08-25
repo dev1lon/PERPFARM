@@ -6,9 +6,10 @@
  * and our own saved snapshots, TxFlow from its official Dune dashboard -- but
  * none of them may invent a field or drop one.
  *
- * There is no trader count here any more. It cost a live scrape of Variational's
- * marketing page and two extra Dune queries per protocol, and it answered a
- * question nobody farms on.
+ * `uniqueTraders` is OPTIONAL and stays that way. TxFlow's official Dune
+ * dashboard publishes a real daily history of it; Variational only ever
+ * published today's number, which is a dot, not a chart -- so the field is
+ * absent there rather than filled with a scraped single point.
  */
 import type { ActivityPoint } from "@/lib/dune";
 
@@ -27,6 +28,12 @@ export type ActivityResponse = {
     latest24h: number | null;
   };
   openInterest: {
+    series: ActivityPoint[];
+    observedDays: number;
+    latest: number | null;
+  };
+  /** Present only where the protocol publishes a real daily history of it. */
+  uniqueTraders?: {
     series: ActivityPoint[];
     observedDays: number;
     latest: number | null;

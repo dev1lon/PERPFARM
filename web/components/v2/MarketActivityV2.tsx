@@ -3,18 +3,19 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import {
+  compactCount,
   compactUsd,
   dayLabel,
   type ActivityPoint,
-  type ActivityResponse,
 } from "@/components/VariationalMarketActivity";
+import type { ActivityResponse } from "@/lib/activity/types";
 import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
 
 type Range = 30 | 90 | 180;
-/** Volume and open interest only. A trader count cost a live scrape of the
- *  venue's marketing page plus two Dune queries per protocol, and answered a
- *  question nobody farms on. */
-type Metric = "volume" | "openInterest";
+/** Users is offered only where the protocol publishes a real daily history of
+ *  it -- TxFlow, via its official Dune dashboard. Where the response carries no
+ *  `uniqueTraders`, the tab does not exist rather than opening onto a dot. */
+type Metric = "volume" | "openInterest" | "uniqueTraders";
 
 /** Native market-activity chart. Every plotted point comes from the activity
  * API or a saved observation; unavailable historical ranges stay disabled. */
@@ -36,19 +37,26 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
     };
   }, [venueSlug]);
 
-  const isVolume = metric === "volume";
+  const users = data?.uniqueTraders;
+  // A protocol without a trader history must never be left showing that tab --
+  // the metric survives a venue switch, the data does not.
+  const activeMetric: Metric = metric === "uniqueTraders" && data && !users ? "volume" : metric;
+  const isVolume = activeMetric === "volume";
+  const isUsers = activeMetric === "uniqueTraders";
   const rawSeries = useMemo(
-    () => (data ? (isVolume ? data.volume.series : data.openInterest.series) : []),
-    [data, isVolume],
+    () => (data ? (isUsers ? users?.series ?? [] : isVolume ? data.volume.series : data.openInterest.series) : []),
+    [data, isUsers, isVolume, users],
   );
 
   const series = useMemo(() => selectObservedRange(rawSeries, rangeDays), [rangeDays, rawSeries]);
 
-  const latest = data ? (isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
-  const fmt = compactUsd;
-  const caption = isVolume
-    ? tr(locale, "traded volume · last 24h", "объём торгов · за 24ч")
-    : tr(locale, "open interest · current", "открытый интерес · сейчас");
+  const latest = data ? (isUsers ? users?.latest ?? null : isVolume ? data.volume.latest24h : data.openInterest.latest) : null;
+  const fmt = isUsers ? (value: number) => compactCount(value) : compactUsd;
+  const caption = isUsers
+    ? tr(locale, "unique traders · protocol-wide", "уникальные трейдеры · по протоколу")
+    : isVolume
+      ? tr(locale, "traded volume · last 24h", "объём торгов · за 24ч")
+      : tr(locale, "open interest · current", "открытый интерес · сейчас");
 
   const values = series.map((p) => p.value);
   const delta = values.length > 1 && values[0] > 0 ? ((values[values.length - 1] - values[0]) / values[0]) * 100 : null;
@@ -56,6 +64,7 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
   const metrics: { key: Metric; label: string }[] = [
     { key: "volume", label: tr(locale, "Volume", "Объём") },
     { key: "openInterest", label: "OI" },
+    ...(users ? [{ key: "uniqueTraders" as const, label: tr(locale, "Users", "Пользователи") }] : []),
   ];
 
   const tab = (active: boolean) =>
@@ -74,11 +83,15 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
                 onClick={() => {
                   setMetric(m.key);
                   if (data) {
-                    const nextSeries = m.key === "volume" ? data.volume.series : data.openInterest.series;
+                    const nextSeries = m.key === "uniqueTraders"
+                      ? users?.series ?? []
+                      : m.key === "volume"
+                        ? data.volume.series
+                        : data.openInterest.series;
                     if (!hasObservedRange(nextSeries, rangeDays)) setRangeDays(30);
                   }
                 }}
-                className={tab(metric === m.key)}
+                className={tab(activeMetric === m.key)}
               >
                 {m.label}
               </button>
@@ -112,7 +125,7 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
 
       <div className="rounded-[18px] border border-border bg-surface-1 px-6 pb-5 pt-5">
         <div className="flex items-baseline gap-3.5 pb-4">
-          <div className="font-mono-num text-[28px] text-text-primary">{compactUsd(latest)}</div>
+          <div className="font-mono-num text-[28px] text-text-primary">{isUsers ? compactCount(latest) : compactUsd(latest)}</div>
           {delta !== null && (
             <div className={`text-[13px] ${delta >= 0 ? "text-positive" : "text-negative"}`}>
               {delta >= 0 ? "+" : ""}
@@ -127,9 +140,11 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
 
         {data && (series.length > 1 ? <Chart series={series} fmt={fmt} locale={locale} /> : series.length === 0 ? (
           <div className="flex h-[260px] items-center justify-center px-6 text-center text-[14px] text-text-muted">
-            {isVolume
-              ? tr(locale, "Historical volume will appear as saved observations accumulate.", "История объёма появится по мере накопления сохранённых наблюдений.")
-              : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
+            {isUsers
+              ? tr(locale, "No trader history is available yet.", "История по трейдерам пока недоступна.")
+              : isVolume
+                ? tr(locale, "Historical volume will appear as saved observations accumulate.", "История объёма появится по мере накопления сохранённых наблюдений.")
+                : tr(locale, "No open-interest history is available yet.", "История открытого интереса пока недоступна.")}
           </div>
         ) : (
           <div className="flex h-[260px] items-center justify-center text-[14px] text-text-muted">{fmt(series[0].value)}</div>
