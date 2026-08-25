@@ -28,6 +28,7 @@ from perpfarm.adapters.base import (
     QuoteCurve,
     QuoteCurvePoint,
     VenueAdapter,
+    VenueTotals,
     VolumeData,
 )
 
@@ -237,6 +238,21 @@ class VariationalAdapter(VenueAdapter):
         return VolumeData(
             volume_24h_usd=_float(listing.get("volume_24h")),
             open_interest_usd=(long_oi + short_oi) if long_oi is not None and short_oi is not None else None,
+        )
+
+    def get_venue_totals(self) -> VenueTotals:
+        """Variational's own protocol-wide figures, from the same stats payload.
+
+        `/metadata/stats` states both at the top level, so this costs no extra
+        request during a run -- the payload is already cached on the instance.
+        Both are in the venue's own convention (gross open interest), which is
+        what the activity chart has always drawn.
+        """
+
+        stats = self._get_stats()
+        return VenueTotals(
+            volume_24h_usd=_float(stats.get("total_volume_24h")),
+            open_interest_usd=_float(stats.get("open_interest")),
         )
 
     def get_fees(self) -> FeeData:

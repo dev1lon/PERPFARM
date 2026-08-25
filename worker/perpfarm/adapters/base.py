@@ -89,6 +89,20 @@ class VolumeData:
 
 
 @dataclass(frozen=True)
+class VenueTotals:
+    """The venue's OWN protocol-wide figures, as it publishes them.
+
+    Not a sum of our per-market snapshots: where a venue states its own 24h
+    volume and open interest, that statement is the authority on it, and the
+    daily rollup stores it instead of re-deriving one. Open interest is in the
+    venue's reported convention (gross where it reports gross).
+    """
+
+    volume_24h_usd: float | None
+    open_interest_usd: float | None
+
+
+@dataclass(frozen=True)
 class FeeData:
     maker_bps: float  # can be negative (maker rebate)
     taker_bps: float
@@ -122,6 +136,16 @@ class VenueAdapter(ABC):
     def get_volume(self, symbol: str) -> VolumeData:
         """Return 24h volume and open interest for a native market symbol."""
         raise NotImplementedError
+
+    def get_venue_totals(self) -> VenueTotals | None:
+        """The venue's own protocol-wide 24h volume and open interest.
+
+        Optional: returns None for venues that publish no such figure, and the
+        daily rollup then sums our snapshots instead. Not abstract for that
+        reason -- most adapters have nothing to say here.
+        """
+
+        return None
 
     @abstractmethod
     def get_fees(self) -> FeeData:

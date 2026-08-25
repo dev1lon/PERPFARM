@@ -8,8 +8,10 @@ from perpfarm.ingest.manual import IngestError, ingest_manual
 from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.catalog import refresh_catalog
+from perpfarm.jobs.daily_rollup import run_daily_rollup
 from perpfarm.jobs.fee_watch import run_fee_watch
 from perpfarm.jobs.prune_snapshots import run_prune_snapshots
+from perpfarm.jobs.spread_risk import run_spread_risk
 from perpfarm.jobs.sync_snapshots import run_sync_snapshots
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -195,6 +197,33 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
                 else ""
             )
         )
+        # What the site reads instead of deriving it per visitor: the day's
+        # volume/OI point and the spread-risk rating of every shared pair. Both
+        # describe the run that just finished, so both go after it, and both
+        # are non-fatal -- a stale rating is worth far less than the snapshots.
+        try:
+            rollup = run_daily_rollup(engine, fixtures_dir=fixtures_dir)
+            click.echo(
+                f"daily-rollup: {rollup.written} row(s) "
+                + ", ".join(f"{slug}={source}" for slug, source in sorted(rollup.sources.items()))
+            )
+            for slug, reason in rollup.errors:
+                click.echo(f"  daily-rollup skipped {slug}: {reason}", err=True)
+        except Exception as exc:  # noqa: BLE001 -- never let a rollup fail the cron
+            click.echo(f"  daily-rollup skipped: {exc}", err=True)
+        try:
+            risk = run_spread_risk(engine)
+            if risk.rated:
+                click.echo(
+                    f"spread-risk: {risk.rated} pair(s) "
+                    + ", ".join(
+                        f"{rating}={count}" for rating, count in sorted(risk.by_rating.items())
+                    )
+                )
+            for failure in risk.errors:
+                click.echo(f"  spread-risk skipped: {failure}", err=True)
+        except Exception as exc:  # noqa: BLE001 -- same
+            click.echo(f"  spread-risk skipped: {exc}", err=True)
         # Housekeeping AFTER the write, so a failure here can never cost us the
         # snapshots this run just collected. Non-fatal for the same reason.
         try:

@@ -104,6 +104,9 @@ volume_snapshots = Table(
     Column("open_interest_usd", Numeric),
     UniqueConstraint("market_id", "ts", name="uq_volume_market_ts"),
 )
+# The unique constraint indexes (market_id, ts), which cannot answer "every row
+# newer than X across this venue" -- the shape every chart window has.
+Index("idx_volume_snapshots_ts", volume_snapshots.c.ts.desc())
 
 # One number per market per hour: the venue's own price for the instrument.
 #
@@ -127,6 +130,67 @@ mark_snapshots = Table(
     UniqueConstraint("market_id", "ts", name="uq_mark_market_ts"),
 )
 Index("idx_mark_market_ts", mark_snapshots.c.market_id, mark_snapshots.c.ts.desc())
+
+# One row per venue per UTC day: the protocol-wide volume and open interest the
+# activity chart draws, taken ONCE an hour by the worker instead of once per
+# cache miss on the site.
+#
+# The chart used to be an aggregate over `volume_snapshots` -- 180 days of rows
+# scanned and collapsed to one point per day on every request that missed the
+# edge cache -- even though the protocols publish these totals themselves and
+# they only move once an hour. Now the job asks the venue (or, where a venue
+# publishes no total, sums our snapshots once) and the site reads ~180 tiny
+# rows back.
+#
+# CONVENTION: these columns are stored in the protocol's OWN reported scale --
+# what the venue publishes and what the site displays (Variational's gross,
+# long + short) -- NOT the one-sided value stored in `volume_snapshots`. The
+# display factor is applied once, here, by the job. The site must not apply it
+# again.
+venue_daily_stats = Table(
+    "venue_daily_stats",
+    metadata,
+    Column("venue_id", Integer, ForeignKey("venues.id"), primary_key=True),
+    Column("day", Date, primary_key=True),
+    Column("volume_24h_usd", Numeric),
+    Column("open_interest_usd", Numeric),
+    # 'venue-api' when the protocol published the figure itself (preferred --
+    # it is the authority on its own volume), 'snapshots' when we summed it.
+    Column("source", Text, nullable=False, server_default="snapshots"),
+    Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
+)
+
+# How far two venues' prices for the same instrument wander apart, rated once
+# an hour per venue pair.
+#
+# The site used to answer this per request: pull a week of hourly marks for
+# every shared pair, align them, and rate each one. That is the same answer for
+# every visitor until the next collection, so it is computed here instead and
+# read as one indexed row per pair.
+#
+# `venue_a_id` < `venue_b_id` always, so a pair has exactly one row whichever
+# way round the user asks for it. The rating does not depend on the order: it
+# measures distance from the pair's own normal gap, not the sign of that gap.
+pair_spread_risk = Table(
+    "pair_spread_risk",
+    metadata,
+    Column("venue_a_id", Integer, ForeignKey("venues.id"), primary_key=True),
+    Column("venue_b_id", Integer, ForeignKey("venues.id"), primary_key=True),
+    Column("symbol_canonical", Text, primary_key=True),
+    # How many ticks both venues recorded. Below the minimum the rating is
+    # 'unknown' and the row says so rather than being absent.
+    Column("observations", Integer, nullable=False),
+    Column("median_gap_bps", Numeric),
+    # Share of ticks where the gap left its usual place; NULL when too few.
+    Column("breakout_share", Numeric),
+    Column("rating", Text, nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("venue_a_id < venue_b_id", name="ck_pair_spread_risk_venue_order"),
+    CheckConstraint(
+        "rating IN ('low', 'medium', 'high', 'unknown')", name="ck_pair_spread_risk_rating"
+    ),
+)
+Index("idx_pair_spread_risk_updated", pair_spread_risk.c.updated_at.desc())
 
 # Legacy table retained in metadata because migration 0005 was applied in
 # production. The web app now reads Polymarket directly and no worker writes it.
