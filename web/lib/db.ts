@@ -4,9 +4,20 @@ import type { FeeScheduleEntry, VenueDetail, VenueSummary } from "./types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbRow = Record<string, any>;
 
-let pool: Pool | null = null;
+// Held on globalThis, not in a module-level `let`.
+//
+// `next dev` re-evaluates a module on every hot reload, and a plain module
+// variable is re-created with it -- so an editing session opens a fresh Pool
+// every few seconds while the previous ones keep their connections. Supabase's
+// session pooler caps the project at a couple of dozen clients, and once those
+// are gone every query fails with a dropped connection -- including the ones
+// the deployed site is making against the same database. In production this
+// module is evaluated once and the global behaves exactly like the old
+// variable.
+const globalForPool = globalThis as typeof globalThis & { perpfarmPool?: Pool };
 
 export function getPool(): Pool {
+  let pool = globalForPool.perpfarmPool ?? null;
   if (!pool) {
     const raw = process.env.DATABASE_URL;
     if (!raw) {
@@ -32,6 +43,7 @@ export function getPool(): Pool {
       max: 1,
       idleTimeoutMillis: 10_000,
     });
+    globalForPool.perpfarmPool = pool;
   }
   return pool;
 }

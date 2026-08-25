@@ -98,7 +98,10 @@ export function CrossPairRankings({
       ? response?.pairs ?? bands.flatMap((band) => band.pairs)
       : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
     return mapPairs(source);
-  }, [response, tradfiOnly, oiFilter]);
+    // `tradfiOnly` is deliberately absent: it is a request parameter, so it can
+    // only reach this list through a new `response`. Naming it here claimed a
+    // relationship the code does not have.
+  }, [response, oiFilter]);
 
   if (!response && !error) return suppressLoading ? null : <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
   if (!response || pairs.length === 0) return <div className="mt-5 rounded-2xl border border-negative/40 bg-negative/10 p-4 text-[14px] text-negative">{error ?? tr(locale, "No liquid cross-venue pairs found.", "Ликвидных кросс-площадочных пар не найдено.")}</div>;

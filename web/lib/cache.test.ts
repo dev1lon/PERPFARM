@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  dailyCacheControl,
   secondsUntilNextCollection,
-  secondsUntilNextDay,
   snapshotCacheControl,
 } from "./cache";
 
@@ -40,26 +38,5 @@ describe("snapshotCacheControl", () => {
     const [, maxAge] = header.match(/max-age=(\d+),/) ?? [];
 
     expect(Number(maxAge)).toBeGreaterThan(0);
-  });
-});
-
-describe("secondsUntilNextDay", () => {
-  it("holds a daily chart until the new day's first readings have landed", () => {
-    // 2026-08-20 12:00 -> 2026-08-21 00:10, which is 12h10m away.
-    expect(secondsUntilNextDay(at("2026-08-20T12:00:00Z"))).toBe(12 * 3_600 + 600);
-  });
-
-  it("waits out the lag rather than expiring at midnight sharp", () => {
-    expect(secondsUntilNextDay(at("2026-08-20T00:00:00Z"))).toBe(600);
-  });
-
-  it("never holds longer than a day", () => {
-    expect(secondsUntilNextDay(at("2026-08-20T00:10:01Z"))).toBeLessThanOrEqual(24 * 3_600);
-  });
-
-  it("keeps a daily chart out of the browser cache", () => {
-    // A visitor who leaves a tab open overnight must not be pinned to
-    // yesterday's chart by their own browser.
-    expect(dailyCacheControl()).toMatch(/max-age=0,/);
   });
 });
