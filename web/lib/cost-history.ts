@@ -48,7 +48,7 @@ function cachedRows<T>(key: string): T[] | null {
 }
 
 /** The cached rows for `key`, or the query's, remembered until the next hour. */
-async function rowsFor<T>(key: string, query: () => Promise<{ rows: T[] }>): Promise<T[]> {
+export async function rowsFor<T>(key: string, query: () => Promise<{ rows: T[] }>): Promise<T[]> {
   return cachedRows<T>(key) ?? cacheRows(key, (await query()).rows);
 }
 

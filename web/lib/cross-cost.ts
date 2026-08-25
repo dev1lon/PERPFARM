@@ -9,7 +9,7 @@
  */
 
 import { getPool } from "@/lib/db";
-import { impactAtNotional, loadCostHistory, type CostSample } from "@/lib/cost-history";
+import { impactAtNotional, loadCostHistory, rowsFor, type CostSample } from "@/lib/cost-history";
 import { quoteCurveImpactBps } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
@@ -143,7 +143,11 @@ function venueBps(
 }
 
 async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
-  const { rows } = await getPool().query<VenueMarketRow>(
+  // Cached in this instance's memory until the next collection, like the cost
+  // history it is priced against: the query depends on the two venues and the
+  // hour, never on the size the visitor typed.
+  return rowsFor<VenueMarketRow>(`cross:${[...slugs].sort().join("+")}`, () =>
+    getPool().query<VenueMarketRow>(
     `WITH v AS (SELECT id, slug FROM venues WHERE slug = ANY($1)),
      book AS (
        -- Deliberately UNBOUNDED: the newest row each market has, however old.
@@ -216,9 +220,9 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
      LEFT JOIN fund ON fund.market_id = m.id
      LEFT JOIN fee ON fee.venue_id = m.venue_id
      WHERE m.is_active = true`,
-    [slugs],
+      [slugs],
+    ),
   );
-  return rows;
 }
 
 

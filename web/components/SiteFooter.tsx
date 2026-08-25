@@ -7,9 +7,11 @@ interface Prices {
   eth: number | null;
 }
 
-// Public, keyless, CORS-enabled spot prices. Polled client-side every 60s.
-const PRICE_URL =
-  "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd";
+// Asked through our own route, not CoinGecko directly: the answer is then one
+// upstream call a minute for every visitor at once, cached at the edge, instead
+// of sixty third-party calls an hour from each open tab against a keyless limit
+// that counts per IP address.
+const PRICE_URL = "/api/prices";
 
 function formatUsd(n: number | null): string {
   if (n == null) return "—";
@@ -22,12 +24,12 @@ export function SiteFooter() {
     let alive = true;
     async function load() {
       try {
-        const res = await fetch(PRICE_URL, { cache: "no-store" });
+        const res = await fetch(PRICE_URL);
         const data = await res.json();
         if (!alive) return;
         setPrices({
-          btc: typeof data?.bitcoin?.usd === "number" ? data.bitcoin.usd : null,
-          eth: typeof data?.ethereum?.usd === "number" ? data.ethereum.usd : null,
+          btc: typeof data?.btc === "number" ? data.btc : null,
+          eth: typeof data?.eth === "number" ? data.eth : null,
         });
       } catch {
         /* transient network/rate-limit error -- keep the last known values */
