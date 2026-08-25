@@ -69,21 +69,19 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
   useEffect(() => {
     if (!hasMarket) return;
     let active = true;
-    const load = () => {
-      fetch(`/api/venues/${venueSlug}/fdv-market`)
-        .then((response) => (response.ok ? response.json() as Promise<FdvMarketResponse> : Promise.reject(new Error("failed"))))
-        .then((response) => {
-          if (!active) return;
-          setData(response);
-          setError(false);
-        })
-        .catch(() => active && setError(true));
-    };
-    load();
-    const refresh = window.setInterval(load, 60 * 60 * 1_000);
+    // Fetched once per visit. There used to be an hourly timer here as well,
+    // which re-requested an answer the edge cache holds for exactly that hour
+    // -- so an open tab spent a request to be told the same thing.
+    fetch(`/api/venues/${venueSlug}/fdv-market`)
+      .then((response) => (response.ok ? response.json() as Promise<FdvMarketResponse> : Promise.reject(new Error("failed"))))
+      .then((response) => {
+        if (!active) return;
+        setData(response);
+        setError(false);
+      })
+      .catch(() => active && setError(true));
     return () => {
       active = false;
-      window.clearInterval(refresh);
     };
   }, [venueSlug, hasMarket]);
 

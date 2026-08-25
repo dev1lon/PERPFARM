@@ -8,6 +8,32 @@ export function formatUsd(value: number | null | undefined, opts: { decimals?: n
   })}`;
 }
 
+/** Chart-scale money: $1.23M, $45.6K. Used by the activity chart's axis, its
+ *  headline figure and its tooltip, so all three read the same way. */
+export function compactUsd(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "n/a";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+/** Chart-scale counts: 6.6K traders. */
+export function compactCount(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "n/a";
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+/** A chart tick's day, in the reader's language: "24 Aug" / "24 авг.". */
+export function dayLabel(value: string, locale: "en" | "ru"): string {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export function formatNumber(value: number | null, decimals = 0): string {
   if (value === null || Number.isNaN(value)) return "n/a";
   return value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

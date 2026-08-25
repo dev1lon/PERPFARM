@@ -2,13 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import {
-  compactCount,
-  compactUsd,
-  dayLabel,
-  type ActivityPoint,
-} from "@/components/VariationalMarketActivity";
-import type { ActivityResponse } from "@/lib/activity/types";
+import { compactCount, compactUsd, dayLabel } from "@/lib/format";
+import type { ActivityPoint, ActivityResponse } from "@/lib/activity/types";
 import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
 
 type Range = 30 | 90 | 180;
