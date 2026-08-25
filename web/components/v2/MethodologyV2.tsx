@@ -372,8 +372,8 @@ function CostModel() {
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
                 locale,
-                "The entered volume is turnover per account, not one order. $20,000 per account means a $10,000 entry and a $10,000 exit on each account — a $40,000 two-account cycle.",
-                "Указанный объём — это оборот на одном аккаунте, а не размер одного ордера. $20,000 на аккаунт означает вход на $10,000 и выход на $10,000 на каждом аккаунте — полный цикл двух аккаунтов на $40,000.",
+                "The entered volume is turnover per account, not one order. $20,000 per account means a $10,000 entry and a $10,000 exit on each account — a $40,000 two-account cycle. It is priced on a $100 grid: $20,450 is costed as $20,500, and the figure shown is the one that was costed.",
+                "Указанный объём — это оборот на одном аккаунте, а не размер одного ордера. $20,000 на аккаунт означает вход на $10,000 и выход на $10,000 на каждом аккаунте — полный цикл двух аккаунтов на $40,000. Расчёт идёт с шагом $100: $20,450 считается как $20,500, и показывается именно то число, по которому считали.",
               )}
             </p>
           </div>
