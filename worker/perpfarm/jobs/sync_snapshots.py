@@ -51,6 +51,12 @@ MAX_RETRY_ROUNDS = 5
 #: cron starts writing the same rows.
 RETRY_WINDOW_MINUTES = 45
 
+#: How many markets' rows are held before they are written. Each batch is one
+#: transaction and four statements, so a 700-market run costs ~28 round trips to
+#: the database instead of ~2 800. Small enough that an interrupted run loses at
+#: most this many markets' readings.
+WRITE_BATCH_SIZE = 100
+
 #: One market's fate in one attempt.
 #: - "written"     -- snapshots committed.
 #: - "unwired"     -- no adapter for this venue yet. Permanent; never retried.
@@ -105,71 +111,125 @@ def _mark_price(book: OrderbookTop) -> float | None:
     return None
 
 
-def _collect_market(
-    engine: Engine,
+@dataclass
+class _Reading:
+    """One market's rows, read but not yet written."""
+
+    target: Target
+    book: dict[str, object]
+    funding: dict[str, object]
+    volume: dict[str, object]
+    mark: dict[str, object] | None
+
+
+def _read_market(
     adapter: VenueAdapter,
     *,
-    market_id: int,
-    symbol: str,
+    target: Target,
     ts: datetime,
     has_native_quote_curve: bool,
     has_mark_snapshots: bool,
-) -> Outcome:
-    """Read one market and commit its snapshots. Never raises."""
+) -> tuple[_Reading | None, Outcome | None]:
+    """Read one market from its venue. Never raises; never touches the DB."""
 
+    _slug, market_id, symbol = target
     try:
         book = adapter.get_orderbook_top(symbol)
         funding = adapter.get_funding(symbol)
         volume = adapter.get_volume(symbol)
     except NotImplementedError as reason:
-        return "unwired", str(reason) or type(reason).__name__
+        return None, ("unwired", str(reason) or type(reason).__name__)
     except MarketUnavailable as reason:
-        return "unavailable", str(reason) or type(reason).__name__
+        return None, ("unavailable", str(reason) or type(reason).__name__)
     except Exception as exc:  # noqa: BLE001 -- one market must not sink the batch
-        return "error", str(exc)
+        return None, ("error", str(exc))
+
+    book_values: dict[str, object] = {
+        "market_id": market_id,
+        "ts": ts,
+        "best_bid": book.best_bid,
+        "best_ask": book.best_ask,
+        "spread_bps": book.spread_bps,
+        "impact_bps_10k": book.impact_bps_10k,
+        "impact_bps_50k": book.impact_bps_50k,
+        "impact_bps_100k": book.impact_bps_100k,
+        "depth_usd_10k": book.depth_usd_10k,
+        "depth_usd_50k": book.depth_usd_50k,
+        "depth_usd_100k": book.depth_usd_100k,
+    }
+    # Present on every row of a batch or on none of them: one executemany
+    # cannot mix two column sets. It is a run-level flag, so it does not vary.
+    if has_native_quote_curve:
+        book_values["quote_curve_json"] = _serialize_quote_curve(book)
+    mark = _mark_price(book)
+    return (
+        _Reading(
+            target=target,
+            book=book_values,
+            funding={
+                "market_id": market_id,
+                "ts": ts,
+                "funding_rate_raw": funding.funding_rate_raw,
+                "interval_hours": funding.interval_hours,
+                "funding_rate_annualized": funding.funding_rate_annualized,
+            },
+            volume={
+                "market_id": market_id,
+                "ts": ts,
+                "volume_24h_usd": volume.volume_24h_usd,
+                "open_interest_usd": volume.open_interest_usd,
+            },
+            mark=(
+                {"market_id": market_id, "ts": ts, "mark": mark}
+                if has_mark_snapshots and mark is not None
+                else None
+            ),
+        ),
+        None,
+    )
+
+
+def _write_one(engine: Engine, reading: _Reading) -> Outcome:
+    """One market, one transaction -- the fallback when a batch fails."""
 
     try:
         with engine.begin() as conn:
-            book_values: dict[str, object] = {
-                "market_id": market_id,
-                "ts": ts,
-                "best_bid": book.best_bid,
-                "best_ask": book.best_ask,
-                "spread_bps": book.spread_bps,
-                "impact_bps_10k": book.impact_bps_10k,
-                "impact_bps_50k": book.impact_bps_50k,
-                "impact_bps_100k": book.impact_bps_100k,
-                "depth_usd_10k": book.depth_usd_10k,
-                "depth_usd_50k": book.depth_usd_50k,
-                "depth_usd_100k": book.depth_usd_100k,
-            }
-            if has_native_quote_curve:
-                book_values["quote_curve_json"] = _serialize_quote_curve(book)
-            conn.execute(book_snapshots.insert().values(**book_values))
-            conn.execute(
-                funding_snapshots.insert().values(
-                    market_id=market_id,
-                    ts=ts,
-                    funding_rate_raw=funding.funding_rate_raw,
-                    interval_hours=funding.interval_hours,
-                    funding_rate_annualized=funding.funding_rate_annualized,
-                )
-            )
-            mark = _mark_price(book)
-            if has_mark_snapshots and mark is not None:
-                conn.execute(mark_snapshots.insert().values(market_id=market_id, ts=ts, mark=mark))
-            conn.execute(
-                volume_snapshots.insert().values(
-                    market_id=market_id,
-                    ts=ts,
-                    volume_24h_usd=volume.volume_24h_usd,
-                    open_interest_usd=volume.open_interest_usd,
-                )
-            )
+            conn.execute(book_snapshots.insert().values(**reading.book))
+            conn.execute(funding_snapshots.insert().values(**reading.funding))
+            if reading.mark is not None:
+                conn.execute(mark_snapshots.insert().values(**reading.mark))
+            conn.execute(volume_snapshots.insert().values(**reading.volume))
     except Exception as exc:  # noqa: BLE001 -- same isolation as the fetch phase
         return "error", str(exc)
-
     return "written", ""
+
+
+def _write_batch(engine: Engine, readings: list[_Reading]) -> dict[Target, Outcome]:
+    """Write a batch of markets in one transaction, four statements.
+
+    Every row carries exactly the values `_read_market` produced, stamped with
+    the run's own timestamp -- batching changes how many round trips a run costs
+    (four per hundred markets instead of four per market), never a stored value.
+
+    A batch that fails is retried one market at a time, so a single bad row
+    costs its own market and not the ninety-nine around it. That is the
+    isolation the per-market transactions existed for, kept at the price of one
+    extra pass in the rare case that something actually fails.
+    """
+
+    if not readings:
+        return {}
+    try:
+        with engine.begin() as conn:
+            conn.execute(book_snapshots.insert(), [reading.book for reading in readings])
+            conn.execute(funding_snapshots.insert(), [reading.funding for reading in readings])
+            marks = [reading.mark for reading in readings if reading.mark is not None]
+            if marks:
+                conn.execute(mark_snapshots.insert(), marks)
+            conn.execute(volume_snapshots.insert(), [reading.volume for reading in readings])
+    except Exception:  # noqa: BLE001 -- fall back to per-market isolation
+        return {reading.target: _write_one(engine, reading) for reading in readings}
+    return {reading.target: ("written", "") for reading in readings}
 
 
 def _run_round(
@@ -192,9 +252,10 @@ def _run_round(
     # reuses it would keep failing for a reason that is already fixed.
     adapters: dict[str, VenueAdapter] = {}
     outcomes: dict[Target, Outcome] = {}
+    batch: list[_Reading] = []
 
     for target in targets:
-        slug, market_id, symbol = target
+        slug, _market_id, _symbol = target
         if slug not in adapters:
             try:
                 adapters[slug] = build_adapter(slug, fixtures_dir)
@@ -204,16 +265,26 @@ def _run_round(
             except Exception as exc:  # noqa: BLE001 -- a venue must not sink the batch
                 outcomes[target] = ("error", str(exc))
                 continue
-        outcomes[target] = _collect_market(
-            engine,
+        reading, failure = _read_market(
             adapters[slug],
-            market_id=market_id,
-            symbol=symbol,
+            target=target,
             ts=ts,
             has_native_quote_curve=has_native_quote_curve,
             has_mark_snapshots=has_mark_snapshots,
         )
+        if failure is not None:
+            outcomes[target] = failure
+            continue
+        assert reading is not None  # no failure means a reading
+        batch.append(reading)
+        # Flushed as it fills rather than at the end of the pass: an interrupted
+        # run then keeps everything up to the last full batch, which is what
+        # committing per market used to give.
+        if len(batch) >= WRITE_BATCH_SIZE:
+            outcomes.update(_write_batch(engine, batch))
+            batch = []
 
+    outcomes.update(_write_batch(engine, batch))
     return outcomes
 
 
