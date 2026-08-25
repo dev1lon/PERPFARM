@@ -194,6 +194,10 @@ export const BRAND: Record<string, BrandAssets> = {
     // same as QFEX. No wordmark shipped, so the name renders as text.
     mark: "logos/truenorth/logo.jpg",
   },
+  entropy: {
+    // brand tile as shipped; no separate wordmark, so the name renders as text.
+    mark: "logos/entropy/logo.jpg",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {

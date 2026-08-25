@@ -111,3 +111,7 @@ venue_meta:
   - venue: qfex
     twitter_url: "https://x.com/QFEX"
     docs_url: "https://docs.qfex.com/qfex/about"
+
+  - venue: entropy
+    twitter_url: "https://x.com/entropyIO"
+    docs_url: "https://docs.entropy.io/"

@@ -60,6 +60,9 @@ export const RADAR: HomeProtocol[] = [
   { slug: "perpl", name: "Perpl" },
   { slug: "reya", name: "Reya" },
   { slug: "ondo", name: "Ondo" },
+  // Perps on private-market assets (pre-IPO names), not the crypto majors.
+  // No points programme announced, so it stays a radar tile and a SOON page.
+  { slug: "entropy", name: "Entropy" },
 ];
 
 /** Total tracked protocols, for the hero badge. */

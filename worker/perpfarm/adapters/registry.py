@@ -12,6 +12,7 @@ from typing import Callable
 
 from perpfarm.adapters.base import VenueAdapter
 from perpfarm.adapters.bullet import BulletAdapter
+from perpfarm.adapters.entropy import EntropyAdapter
 from perpfarm.adapters.exchange01 import Exchange01Adapter
 from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
@@ -80,6 +81,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("bullet", "Bullet", BulletAdapter),
     _real("ondo", "Ondo", OndoAdapter),
     _real("qfex", "QFEX", QfexAdapter),
+    _real("entropy", "Entropy", EntropyAdapter),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
