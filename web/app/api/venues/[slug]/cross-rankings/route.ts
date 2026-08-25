@@ -2,6 +2,7 @@ import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { computeCrossRankings } from "@/lib/cross-cost";
+import { quantizeAccountVolumeUsd } from "@/lib/route-model";
 import { isReadyVenue } from "@/lib/venue-status";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
 
     const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
-    const accountVolumeUsd = requested === null ? DEFAULT_ACCOUNT_VOLUME_USD : Number(requested);
+    // Snapped to the $100 grid: see quantizeAccountVolumeUsd. Both bounds are
+    // multiples of the step, so rounding cannot push a valid input out of range.
+    const accountVolumeUsd = quantizeAccountVolumeUsd(
+      requested === null ? DEFAULT_ACCOUNT_VOLUME_USD : Number(requested),
+    );
     if (!Number.isFinite(accountVolumeUsd) || accountVolumeUsd < MIN_ACCOUNT_VOLUME_USD || accountVolumeUsd > MAX_ACCOUNT_VOLUME_USD) {
       return NextResponse.json(
         { error: `Account volume must be between $${MIN_ACCOUNT_VOLUME_USD.toLocaleString("en-US")} and $${MAX_ACCOUNT_VOLUME_USD.toLocaleString("en-US")}` },

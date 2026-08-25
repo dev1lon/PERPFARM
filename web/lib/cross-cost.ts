@@ -241,100 +241,69 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
  */
 export type SpreadRisk = "low" | "medium" | "high" | "unknown";
 
-/** A reading counts as "come apart" past this distance from the pair's own
- *  normal gap. 0.5% is the gap experienced funding farmers already treat as
- *  wide, and on a $10k leg it is ~$50 -- more than a route costs to execute. */
-const SPREAD_BREAKOUT_BPS = 50;
-/** Share of readings beyond that distance. */
-const SPREAD_RISK_LOW_SHARE = 0.05;
-const SPREAD_RISK_MEDIUM_SHARE = 0.15;
-/** Fewer readings than this cannot support a frequency at all. */
-const MIN_TICKS_FOR_RISK = 12;
+/** The thresholds behind these words (50 bps from the pair's own normal gap,
+ *  5% and 15% of readings, at least 12 readings) live with the measure, in
+ *  worker/perpfarm/jobs/spread_risk.py. They are not repeated here: two copies
+ *  of a threshold is how the two sides start rating the same pair differently. */
+export type SpreadRating = { share: number | null; risk: SpreadRisk };
 
-export type MarkSeries = Map<string, Array<{ ts: string; mark: number }>>;
-
-/** Gaps between two venues' prices, in bps, at ticks BOTH of them recorded. */
-export function alignedGapsBps(
-  seriesA: Array<{ ts: string; mark: number }> | undefined,
-  seriesB: Array<{ ts: string; mark: number }> | undefined,
-): number[] {
-  if (!seriesA || !seriesB) return [];
-  const byTs = new Map(seriesB.map((point) => [point.ts, point.mark]));
-  const gaps: number[] = [];
-  for (const point of seriesA) {
-    const other = byTs.get(point.ts);
-    // Same timestamp on both sides or nothing: the whole measure is a small
-    // difference, so comparing prices taken minutes apart would report the
-    // market's own movement as venue disagreement.
-    if (other === undefined || other <= 0 || point.mark <= 0) continue;
-    const mid = (point.mark + other) / 2;
-    gaps.push(((point.mark - other) / mid) * 10_000);
-  }
-  return gaps;
-}
-
-/** Share of readings where the gap left its usual place, or null if too few. */
-export function breakoutShare(gaps: number[]): number | null {
-  if (gaps.length < MIN_TICKS_FOR_RISK) return null;
-  const sorted = [...gaps].sort((left, right) => left - right);
-  const normal = sorted[Math.floor(sorted.length / 2)]!;
-  const breakouts = gaps.filter((gap) => Math.abs(gap - normal) > SPREAD_BREAKOUT_BPS).length;
-  return breakouts / gaps.length;
-}
-
-export function spreadRiskOf(share: number | null): SpreadRisk {
-  if (share === null) return "unknown";
-  if (share <= SPREAD_RISK_LOW_SHARE) return "low";
-  if (share <= SPREAD_RISK_MEDIUM_SHARE) return "medium";
-  return "high";
-}
-
-/** A week of stored marks per pair for one venue.
+/** How long a stored rating may be served after the job that wrote it.
  *
- *  Never throws. Migrations are applied by hand on this project, so between a
- *  deploy and that command the table does not exist yet -- and a missing risk
- *  badge is a far better outcome than a 502 on the whole calculator. The same
- *  applies the first hours after the table appears, when it holds too little
- *  history to rate anything: the badge reads "unknown" and says so. */
-async function loadMarkSeries(slug: string, pairs: string[]): Promise<MarkSeries> {
+ *  The rating describes a week, so a few hours of staleness cannot change it.
+ *  A cron that has been dead for a day is a different matter: the badge then
+ *  reads "unknown", which is honest, rather than quoting a week that no longer
+ *  includes the last one. */
+const RATING_MAX_AGE_HOURS = 24;
+
+/**
+ * The stored rating for every pair listed on both venues.
+ *
+ * The measure itself lives in the worker (worker/perpfarm/jobs/spread_risk.py):
+ * it is the same answer for every visitor until the next collection, and it
+ * used to be re-derived per request from a week of hourly marks -- thousands of
+ * rows pulled and aligned to produce one word per pair.
+ *
+ * Never throws. Migrations are applied by hand on this project, so between a
+ * deploy and that command the table does not exist yet -- and a missing risk
+ * badge is a far better outcome than a 502 on the whole calculator.
+ */
+async function loadSpreadRisk(
+  slugA: string,
+  slugB: string,
+  pairs: string[],
+): Promise<Map<string, SpreadRating>> {
   if (pairs.length === 0) return new Map();
   try {
-    return await queryMarkSeries(slug, pairs);
+    const { rows } = await getPool().query<{
+      pair: string;
+      breakout_share: string | number | null;
+      rating: string;
+    }>(
+      // Rows are stored once per venue pair, ordered by id, so the lookup has
+      // to accept either direction the user asked in.
+      `SELECT r.symbol_canonical AS pair, r.breakout_share, r.rating
+       FROM pair_spread_risk r
+       JOIN venues a ON a.id = r.venue_a_id
+       JOIN venues b ON b.id = r.venue_b_id
+       WHERE ((a.slug = $1 AND b.slug = $2) OR (a.slug = $2 AND b.slug = $1))
+         AND r.symbol_canonical = ANY($3)
+         AND r.updated_at >= now() - make_interval(hours => $4)`,
+      [slugA, slugB, pairs, RATING_MAX_AGE_HOURS],
+    );
+    return new Map(
+      rows.map((row) => [
+        row.pair,
+        {
+          share: asNumber(row.breakout_share),
+          risk: (["low", "medium", "high"].includes(row.rating) ? row.rating : "unknown") as SpreadRisk,
+        },
+      ]),
+    );
   } catch (error) {
-    console.error("[cross-cost] mark history unavailable, spread risk will read unknown --", error);
+    console.error("[cross-cost] spread-risk ratings unavailable, the badge will read unknown --", error);
     return new Map();
   }
 }
-
-async function queryMarkSeries(slug: string, pairs: string[]): Promise<MarkSeries> {
-  // Only the pairs actually listed on BOTH venues. Without this the query
-  // returned every market's whole week -- for Variational alone that is 539
-  // markets x 168 readings, most of them for pairs no route can use.
-  const { rows } = await getPool().query<{ pair: string; ts: string; mark: string | number }>(
-    `SELECT m.symbol_canonical AS pair, s.ts, s.mark
-     FROM mark_snapshots s
-     JOIN markets m ON m.id = s.market_id
-     JOIN venues v ON v.id = m.venue_id
-     WHERE v.slug = $1 AND m.is_active = true
-       AND m.symbol_canonical = ANY($3)
-       AND s.ts >= now() - make_interval(days => $2)
-     ORDER BY m.symbol_canonical, s.ts`,
-    [slug, SPREAD_WINDOW_DAYS, pairs],
-  );
-  const series: MarkSeries = new Map();
-  for (const row of rows) {
-    const mark = asNumber(row.mark);
-    if (mark === null) continue;
-    const ts = typeof row.ts === "string" ? row.ts : new Date(row.ts).toISOString();
-    const existing = series.get(row.pair);
-    if (existing) existing.push({ ts, mark });
-    else series.set(row.pair, [{ ts, mark }]);
-  }
-  return series;
-}
-
-/** The window the badge reads. A week is what the worker keeps hourly. */
-const SPREAD_WINDOW_DAYS = 7;
 
 function round(p: CrossPair): CrossPair {
   return {
@@ -402,10 +371,7 @@ export async function computeCrossRankings(
   const newestB = newestOf(B);
 
   const sharedPairs = [...A.keys()].filter((pair) => B.has(pair));
-  const [marksA, marksB] = await Promise.all([
-    loadMarkSeries(slugA, sharedPairs),
-    loadMarkSeries(slugB, sharedPairs),
-  ]);
+  const ratings = await loadSpreadRisk(slugA, slugB, sharedPairs);
 
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
@@ -541,12 +507,12 @@ export async function computeCrossRankings(
     const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
-    const spreadBreakoutShare = breakoutShare(alignedGapsBps(marksA.get(sym), marksB.get(sym)));
+    const rating = ratings.get(sym);
 
     candidates.push({
       pair: sym,
-      spreadBreakoutShare,
-      spreadRisk: spreadRiskOf(spreadBreakoutShare),
+      spreadBreakoutShare: rating?.share ?? null,
+      spreadRisk: rating?.risk ?? "unknown",
       makerVenue,
       takerVenue,
       spreadCostUsd,

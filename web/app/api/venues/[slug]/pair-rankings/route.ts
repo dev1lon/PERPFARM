@@ -8,6 +8,7 @@ import {
   displayedOpenInterestUsd,
   minOpenInterestUsd,
   oiBandFor,
+  quantizeAccountVolumeUsd,
   snapshotsAreFresh,
 } from "@/lib/route-model";
 import { TRADFI_TICKERS, isTradfiMarket } from "@/lib/tradfi";
@@ -129,7 +130,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const feeBps = fees.makerBps + fees.takerBps;
 
   const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
-  const accountVolumeUsd = requested === null ? config.defaultAccountVolumeUsd : Number(requested);
+  // Snapped to the $100 grid, so two visitors asking near-identical questions
+  // share one cached answer instead of repricing every market twice. Both
+  // bounds are multiples of the step, so this cannot leave the allowed range.
+  const accountVolumeUsd = quantizeAccountVolumeUsd(
+    requested === null ? config.defaultAccountVolumeUsd : Number(requested),
+  );
   if (!Number.isFinite(accountVolumeUsd) || accountVolumeUsd < MIN_ACCOUNT_VOLUME_USD || accountVolumeUsd > MAX_ACCOUNT_VOLUME_USD) {
     return NextResponse.json(
       { error: `Account volume must be between $${MIN_ACCOUNT_VOLUME_USD.toLocaleString("en-US")} and $${MAX_ACCOUNT_VOLUME_USD.toLocaleString("en-US")}` },

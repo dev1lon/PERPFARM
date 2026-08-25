@@ -28,6 +28,26 @@ export const HOURS_PER_YEAR = 8_760;
 export const MIN_VOLUME_USD = 1_000;
 
 /**
+ * Account volumes are priced on a $100 grid.
+ *
+ * Every distinct number a visitor types is its own cached answer, and a typed
+ * figure is arbitrary: $20,450 and $20,500 are the same trade. Snapping to $100
+ * means the second person to ask a near-identical question is served the first
+ * one's answer instead of repricing several hundred markets for it.
+ *
+ * $100 and no coarser, because the answer moves with size and the user has to
+ * be able to see that: at the bottom of the allowed range ($1,000) one step is
+ * a tenth of the position. The snapped value is what gets priced AND what the
+ * response reports, so the number on screen is always the number that was
+ * costed.
+ */
+export const ACCOUNT_VOLUME_STEP_USD = 100;
+
+export function quantizeAccountVolumeUsd(accountVolumeUsd: number): number {
+  return Math.round(accountVolumeUsd / ACCOUNT_VOLUME_STEP_USD) * ACCOUNT_VOLUME_STEP_USD;
+}
+
+/**
  * Past this age the newest snapshot is no longer "live".
  *
  * The worker runs hourly, so three hours means it has missed two turns. The

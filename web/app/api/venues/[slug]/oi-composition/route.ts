@@ -1,4 +1,4 @@
-import { dailyCacheControl } from "@/lib/cache";
+import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
@@ -155,7 +155,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         latest: series[series.length - 1] ?? null,
         series,
       },
-      { headers: { "Cache-Control": dailyCacheControl() } },
+      // Held until shortly after the next hourly collection, not until the next
+      // day: the series is daily, but its LAST point is today's open interest,
+      // and open interest is the one figure on this page that is worth seeing
+      // move during the day.
+      { headers: { "Cache-Control": snapshotCacheControl() } },
     );
   } catch (error) {
     return NextResponse.json(

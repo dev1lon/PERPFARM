@@ -15,8 +15,54 @@
  * Variational used percentiles, which is why one page could promise a "24h
  * median" the other had no way to produce.
  */
+import { secondsUntilNextCollection } from "@/lib/cache";
 import { getPool } from "@/lib/db";
 import { quoteCurveImpactBps, quoteCurveMarkPrice, quoteCurveMarketSide } from "@/lib/quote-curve";
+
+/**
+ * The rows behind a pricing run, kept in this server instance's memory until
+ * the next collection is due.
+ *
+ * The queries below do not depend on the fill size -- they pull a venue's
+ * stored snapshots, and the size is applied afterwards, in arithmetic. So two
+ * visitors pricing $20,000 and $21,000 were pulling the same tens of megabytes
+ * of quote curves out of Postgres a second apart to compute two slightly
+ * different numbers from identical rows.
+ *
+ * Held only until the next hourly collection, because that is the only thing
+ * that can change the answer, and only for a few venues at a time. A cold
+ * instance simply reads from the database as before: this is a saving, never a
+ * source of truth.
+ */
+const MAX_CACHED_VENUES = 4;
+const rowCache = new Map<string, { expiresAt: number; rows: unknown[] }>();
+
+function cachedRows<T>(key: string): T[] | null {
+  const entry = rowCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    rowCache.delete(key);
+    return null;
+  }
+  return entry.rows as T[];
+}
+
+/** The cached rows for `key`, or the query's, remembered until the next hour. */
+async function rowsFor<T>(key: string, query: () => Promise<{ rows: T[] }>): Promise<T[]> {
+  return cachedRows<T>(key) ?? cacheRows(key, (await query()).rows);
+}
+
+function cacheRows<T>(key: string, rows: T[]): T[] {
+  // A Map iterates in insertion order, so this evicts the venue that has gone
+  // longest without being asked for.
+  while (rowCache.size >= MAX_CACHED_VENUES) {
+    const oldest = rowCache.keys().next();
+    if (oldest.done) break;
+    rowCache.delete(oldest.value);
+  }
+  rowCache.set(key, { expiresAt: Date.now() + secondsUntilNextCollection() * 1_000, rows });
+  return rows;
+}
 
 /**
  * How much of the 24h window to actually pull.
@@ -115,8 +161,9 @@ type BookHistoryRow = ImpactSnapshot & { pair: string };
  * them -- the caller passes a slug, not a hard-coded venue.
  */
 export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number): Promise<Map<string, CostSample[]>> {
-  const { rows } = await getPool().query<BookHistoryRow>(
-    `WITH v AS (SELECT id FROM venues WHERE slug = $3),
+  const rows = await rowsFor<BookHistoryRow>(`history:${venueSlug}`, () =>
+    getPool().query<BookHistoryRow>(
+      `WITH v AS (SELECT id FROM venues WHERE slug = $3),
      ranked AS (
        SELECT m.symbol_canonical AS pair,
               b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
@@ -130,7 +177,8 @@ export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number
      SELECT pair, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
      FROM ranked
      WHERE rn <= $1 AND (rn - 1) % $2 = 0`,
-    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+      [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+    ),
   );
 
   const byPair = new Map<string, CostSample[]>();
@@ -175,8 +223,9 @@ type VenueMarketRow = ImpactSnapshot & {
  * worker already records all of it hourly; the site reads what it recorded.
  */
 export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: number): Promise<Map<string, VenueMarket>> {
-  const { rows } = await getPool().query<VenueMarketRow>(
-    `WITH v AS (SELECT id FROM venues WHERE slug = $3),
+  const rows = await rowsFor<VenueMarketRow>(`markets:${venueSlug}`, () =>
+    getPool().query<VenueMarketRow>(
+      `WITH v AS (SELECT id FROM venues WHERE slug = $3),
      ranked AS (
        SELECT m.symbol_canonical AS pair, b.ts,
               b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
@@ -202,7 +251,8 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
      FROM ranked LEFT JOIN vol ON vol.pair = ranked.pair
      WHERE ranked.rn <= $1 AND (ranked.rn - 1) % $2 = 0
      ORDER BY ranked.pair, ranked.rn`,
-    [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+      [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
+    ),
   );
 
   const byPair = new Map<string, VenueMarket>();
