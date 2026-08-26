@@ -48,14 +48,23 @@ function tickIndexes(n: number): number[] {
   return Array.from({ length: 6 }, (_, k) => Math.round((k * (n - 1)) / 5));
 }
 
-export function OiCompositionChart({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
+export function OiCompositionChart({
+  venueSlug = "variational",
+  initialData = null,
+}: {
+  venueSlug?: "variational" | "txflow";
+  /** Rendered with the page when the server could read it. The fetch below is
+   *  then never made; it stays for the case where that server read failed. */
+  initialData?: Composition | null;
+}) {
   const locale = useLocale();
-  const [data, setData] = useState<Composition | null>(null);
+  const [data, setData] = useState<Composition | null>(initialData);
   const [error, setError] = useState(false);
   const [hi, setHi] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (initialData) return;
     let active = true;
     fetch(`/api/venues/${venueSlug}/oi-composition`)
       .then((r) => (r.ok ? (r.json() as Promise<Composition>) : Promise.reject(new Error("failed"))))
@@ -64,7 +73,7 @@ export function OiCompositionChart({ venueSlug = "variational" }: { venueSlug?: 
     return () => {
       active = false;
     };
-  }, [venueSlug]);
+  }, [venueSlug, initialData]);
 
   const series = data?.series ?? [];
   const n = series.length;

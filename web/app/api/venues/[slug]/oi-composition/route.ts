@@ -2,63 +2,19 @@ import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicMessage } from "@/lib/api-error";
 import { getPool } from "@/lib/db";
+import { loadOiComposition } from "@/lib/oi-composition";
 import { displayedOpenInterestUsd } from "@/lib/route-model";
 import { TRADFI_TICKER_LIST } from "@/lib/tradfi";
 import { isReadyVenue } from "@/lib/venue-status";
 
 /**
- * Daily open interest split into BTC / TradFi / other crypto, for any protocol.
+ * Daily open-interest composition for one protocol, plus the two audit modes
+ * that belong to an endpoint rather than to a page.
  *
- * One reading per market per day (the last of that day) so a market with more
- * snapshots cannot outweigh the rest, then summed per category. Each protocol's
- * own display convention is applied at the end -- Variational stores one side
- * of a gross figure, TxFlow stores what it reports.
- *
- * Was one file per protocol with the same SQL twice; only the slug and the
- * display factor ever differed, and both of those are parameters.
+ * The series itself is built in lib/oi-composition.ts, which the protocol page
+ * also calls when it renders this chart on the server.
  */
 export const dynamic = "force-dynamic";
-
-const HISTORY_DAYS = 180;
-
-type Row = {
-  day: string;
-  btc: string | number | null;
-  tradfi: string | number | null;
-  other: string | number | null;
-};
-
-function num(value: unknown): number {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-async function loadComposition(slug: string): Promise<Row[]> {
-  const { rows } = await getPool().query<Row>(
-    `WITH v AS (SELECT id FROM venues WHERE slug = $3),
-     daily AS (
-       SELECT DISTINCT ON (s.market_id, (s.ts AT TIME ZONE 'UTC')::date)
-              (s.ts AT TIME ZONE 'UTC')::date AS day,
-              m.symbol_canonical AS pair,
-              s.open_interest_usd AS oi
-       FROM volume_snapshots s
-       JOIN markets m ON m.id = s.market_id
-       WHERE m.venue_id = (SELECT id FROM v)
-         AND s.open_interest_usd IS NOT NULL
-         AND s.ts >= now() - ($1 || ' days')::interval
-       ORDER BY s.market_id, (s.ts AT TIME ZONE 'UTC')::date, s.ts DESC
-     )
-     SELECT day,
-            SUM(CASE WHEN pair = 'BTC' THEN oi ELSE 0 END) AS btc,
-            SUM(CASE WHEN pair <> 'BTC' AND pair = ANY($2) THEN oi ELSE 0 END) AS tradfi,
-            SUM(CASE WHEN pair <> 'BTC' AND NOT (pair = ANY($2)) THEN oi ELSE 0 END) AS other
-     FROM daily
-     GROUP BY day
-     ORDER BY day`,
-    [HISTORY_DAYS, TRADFI_TICKER_LIST, slug],
-  );
-  return rows;
-}
 
 /** Latest reading per market, so a share can be traced back to the tickers. */
 async function loadLatestByPair(slug: string): Promise<{ pair: string; oi: string | number | null }[]> {
@@ -105,6 +61,11 @@ async function unclassifiedVariationalMarkets(): Promise<string[]> {
     .map((listing) => `${listing.ticker}=${listing.name}`);
 }
 
+function num(value: unknown): number {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!isReadyVenue(slug)) {
@@ -133,28 +94,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ count: markets.length, markets });
     }
 
-    const series = (await loadComposition(slug))
-      .map((row) => {
-        const btc = displayedOpenInterestUsd(num(row.btc), slug);
-        const tradfi = displayedOpenInterestUsd(num(row.tradfi), slug);
-        const other = displayedOpenInterestUsd(num(row.other), slug);
-        return {
-          date: typeof row.day === "string" ? row.day.slice(0, 10) : new Date(row.day).toISOString().slice(0, 10),
-          btc,
-          tradfi,
-          other,
-          total: btc + tradfi + other,
-        };
-      })
-      .filter((point) => point.total > 0);
-
     return NextResponse.json(
-      {
-        asOf: new Date().toISOString(),
-        days: series.length,
-        latest: series[series.length - 1] ?? null,
-        series,
-      },
+      await loadOiComposition(slug),
       // Held until shortly after the next hourly collection, not until the next
       // day: the series is daily, but its LAST point is today's open interest,
       // and open interest is the one figure on this page that is worth seeing

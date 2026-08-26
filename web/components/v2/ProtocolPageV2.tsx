@@ -10,6 +10,9 @@ import { MarketActivityV2 } from "@/components/v2/MarketActivityV2";
 import { ProtocolCalculatorV2 } from "@/components/v2/ProtocolCalculatorV2";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
+import type { ActivityResponse } from "@/lib/activity/types";
+import type { CheapestRoute } from "@/lib/cheapest-route";
+import type { FdvMarketResponse } from "@/lib/fdv-market";
 import { protocolPageConfig, type ActivityConfig, type HedgePartnerCard, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
 import type { VenueSummary } from "@/lib/types";
 import { protocolName } from "@/lib/venue-status";
@@ -28,6 +31,21 @@ import { protocolName } from "@/lib/venue-status";
  */
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
+
+/**
+ * What the SERVER already read for this page, rendered with it.
+ *
+ * Every card used to ask for its own numbers after the page had painted, so a
+ * visitor watched four placeholders fill in one by one. The page is
+ * regenerated hourly anyway -- the same window those answers are cached for --
+ * so it may as well carry them. A field left out (or a read that failed) puts
+ * the card back on its own fetch, which is why every one of them is optional.
+ */
+export type ProtocolPageData = {
+  activity?: ActivityResponse | null;
+  cheapestRoute?: CheapestRoute | null;
+  fdvMarkets?: FdvMarketResponse | null;
+};
 
 function H2({ children }: { children: React.ReactNode }) {
   return <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{children}</h2>;
@@ -221,28 +239,41 @@ function HedgeCard({
   );
 }
 
-function HedgeRecommendations({ config }: { config: ProtocolPageConfig }) {
+/** A stored route the server already read, in the shape this card uses. */
+function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: string; cycleCostUsd: number } | null {
+  // A partner is accepted only if it resolves to a listed protocol. Anything
+  // else -- a fixture venue, a retired slug -- is treated as no answer rather
+  // than printing a raw database slug.
+  return route?.partnerSlug && protocolName(route.partnerSlug) && typeof route.cycleCostUsd === "number" && Number.isFinite(route.cycleCostUsd)
+    ? { partnerSlug: route.partnerSlug, cycleCostUsd: route.cycleCostUsd }
+    : null;
+}
+
+function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageConfig; initialRoute?: CheapestRoute | null }) {
   const locale = useLocale();
-  // The hourly worker has already compared self-match and every venue. The
-  // browser only asks for that stored result.
-  const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number } | null>(null);
+  // The hourly worker has already compared self-match and every venue; the page
+  // arrives with that stored result. The fetch below is the fallback for when
+  // the server could not read it.
+  const server = acceptedRoute(initialRoute);
+  const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number } | null>(server);
   // "Lowest cost" is a claim about a computed comparison. Until one has been
   // loaded the card must not make it, on any protocol.
-  const [routeStatus, setRouteStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [routeStatus, setRouteStatus] = useState<"loading" | "ready" | "unavailable">(
+    server ? "ready" : initialRoute ? "unavailable" : "loading",
+  );
   useEffect(() => {
+    if (initialRoute) return;
     let active = true;
     fetch(`/api/venues/${config.slug}/cheapest-route`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!active) return;
-        // A partner is accepted only if it resolves to a listed protocol.
-        // Anything else -- a fixture venue, a retired slug -- is treated as no
-        // answer rather than printing a raw database slug.
-        if (!d?.partnerSlug || !protocolName(d.partnerSlug) || typeof d.cycleCostUsd !== "number" || !Number.isFinite(d.cycleCostUsd)) {
+        const accepted = acceptedRoute(d);
+        if (!accepted) {
           setRouteStatus("unavailable");
           return;
         }
-        setCheapest(d);
+        setCheapest(accepted);
         setRouteStatus("ready");
       })
       .catch(() => {
@@ -251,7 +282,7 @@ function HedgeRecommendations({ config }: { config: ProtocolPageConfig }) {
     return () => {
       active = false;
     };
-  }, [config.slug]);
+  }, [config.slug, initialRoute]);
 
   const partner: HedgePartnerCard = config.hedge.partner;
   const cheapestSlug = cheapest?.partnerSlug ?? config.slug;
@@ -488,11 +519,14 @@ export function ProtocolPageV2({
   slug,
   otherVenues,
   extras,
+  initial,
 }: {
   slug: ProtocolSlug;
   otherVenues: VenueSummary[];
   /** Sections unique to ONE protocol, appended after the reference layout. */
   extras?: React.ReactNode;
+  /** What the server read for this page; see ProtocolPageData. */
+  initial?: ProtocolPageData;
 }) {
   const locale = useLocale();
   const config = protocolPageConfig(slug, locale);
@@ -505,7 +539,7 @@ export function ProtocolPageV2({
 
         {/* General hedge guidance comes before the calculator, so the reader
             can choose the right counterparty before running a route. */}
-        <HedgeRecommendations config={config} />
+        <HedgeRecommendations config={config} initialRoute={initial?.cheapestRoute} />
 
         {/* Live calculator + recommended route + 10-pairs table. */}
         <ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug={slug} />
@@ -515,10 +549,10 @@ export function ProtocolPageV2({
         <ActivityAndDistribution config={config} />
 
         {/* Prediction-market FDV expectations sit before the activity chart. */}
-        <FdvMarketsV2 venueSlug={slug} />
+        <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} />
 
         {/* Market-activity chart (live activity API). */}
-        <MarketActivityV2 venueSlug={slug} />
+        <MarketActivityV2 venueSlug={slug} initialData={initial?.activity} />
 
         {extras}
 

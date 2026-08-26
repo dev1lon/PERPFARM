@@ -59,15 +59,23 @@ function compactUsd(value: number | null): string {
  * no public market exists yet the section states that, rather than being
  * dropped and leaving a differently-shaped page.
  */
-export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
+export function FdvMarketsV2({
+  venueSlug = "variational",
+  initialData = null,
+}: {
+  venueSlug?: "variational" | "txflow";
+  /** Rendered with the page when the server could read Polymarket. The fetch
+   *  below then never runs; it stays for the case where that read failed. */
+  initialData?: FdvMarketResponse | null;
+}) {
   const locale = useLocale();
-  const [data, setData] = useState<FdvMarketResponse | null>(null);
+  const [data, setData] = useState<FdvMarketResponse | null>(initialData);
   const [error, setError] = useState(false);
   // Only Variational has a listed Polymarket event today.
   const hasMarket = venueSlug === "variational";
 
   useEffect(() => {
-    if (!hasMarket) return;
+    if (!hasMarket || initialData) return;
     let active = true;
     // Fetched once per visit. There used to be an hourly timer here as well,
     // which re-requested an answer the edge cache holds for exactly that hour
@@ -83,7 +91,7 @@ export function FdvMarketsV2({ venueSlug = "variational" }: { venueSlug?: "varia
     return () => {
       active = false;
     };
-  }, [venueSlug, hasMarket]);
+  }, [venueSlug, hasMarket, initialData]);
 
   return (
     <section className="mt-11">

@@ -1,6 +1,6 @@
 "use client";
 
-import { ProtocolPageV2 } from "@/components/v2/ProtocolPageV2";
+import { ProtocolPageV2, type ProtocolPageData } from "@/components/v2/ProtocolPageV2";
 import type { VenueSummary } from "@/lib/types";
 
 /**
@@ -13,6 +13,13 @@ import type { VenueSummary } from "@/lib/types";
  * duplicate of an older recommendations block. None of that can recur while
  * both pages render from one component.
  */
-export function TxFlowV2({ otherVenues }: { otherVenues: VenueSummary[] }) {
-  return <ProtocolPageV2 slug="txflow" otherVenues={otherVenues} />;
+export function TxFlowV2({
+  otherVenues,
+  initial,
+}: {
+  otherVenues: VenueSummary[];
+  /** Read on the server with the page; see ProtocolPageData. */
+  initial?: ProtocolPageData;
+}) {
+  return <ProtocolPageV2 slug="txflow" otherVenues={otherVenues} initial={initial} />;
 }

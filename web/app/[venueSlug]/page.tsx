@@ -3,13 +3,20 @@ import { notFound } from "next/navigation";
 import { ProtocolSoonV2 } from "@/components/v2/ProtocolSoonV2";
 import { ProtocolV2 } from "@/components/v2/ProtocolV2";
 import { TxFlowV2 } from "@/components/v2/TxFlowV2";
+import { loadTxflowActivity } from "@/lib/activity/txflow";
+import { loadVariationalActivity } from "@/lib/activity/variational";
+import { loadCheapestRoute } from "@/lib/cheapest-route";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
+import { loadFdvMarkets } from "@/lib/fdv-market";
+import { loadOiComposition } from "@/lib/oi-composition";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
 
-// ISR: the page shell (layout, venue list, static copy) is cached and
-// regenerated at most hourly. Live numbers (Run, activity chart) are fetched
-// client-side from API routes, so they stay fresh regardless of this window.
+// ISR: the page and the numbers on it are generated together and regenerated
+// at most hourly -- the same window the API routes behind those numbers are
+// cached for, so nothing is staler than it was when each card fetched its own.
+// The calculator is the exception and stays live: it prices whatever size the
+// visitor types, from the newest stored snapshots, when they press Run.
 export const revalidate = 3600;
 
 export async function generateMetadata({
@@ -50,11 +57,32 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
-  if (venueSlug === "variational") {
-    return <ProtocolV2 otherVenues={otherVenues} />;
-  }
-  if (venueSlug === "txflow") {
-    return <TxFlowV2 otherVenues={otherVenues} />;
+  if (venueSlug === "variational" || venueSlug === "txflow") {
+    // The cards' numbers, read HERE rather than by four separate requests from
+    // the browser after the page has painted. This page is regenerated hourly,
+    // which is the same window those answers are cached for anyway.
+    //
+    // `allSettled`, and each result handed over only if it arrived: a card
+    // whose read failed falls back to asking for itself, exactly as before, so
+    // one unavailable source can never blank a page that has everything else.
+    const [activity, cheapestRoute, fdvMarkets, oiComposition] = await Promise.allSettled([
+      venueSlug === "txflow" ? loadTxflowActivity() : loadVariationalActivity(),
+      loadCheapestRoute(venueSlug),
+      loadFdvMarkets(venueSlug),
+      venueSlug === "variational" ? loadOiComposition(venueSlug) : Promise.resolve(null),
+    ]);
+    const settled = <T,>(result: PromiseSettledResult<T>): T | undefined =>
+      result.status === "fulfilled" ? result.value : undefined;
+    const initial = {
+      activity: settled(activity),
+      cheapestRoute: settled(cheapestRoute),
+      fdvMarkets: settled(fdvMarkets),
+    };
+    return venueSlug === "variational" ? (
+      <ProtocolV2 otherVenues={otherVenues} initial={initial} oiComposition={settled(oiComposition)} />
+    ) : (
+      <TxFlowV2 otherVenues={otherVenues} initial={initial} />
+    );
   }
   return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog.name} meta={venueRow?.meta ?? null} />;
 }

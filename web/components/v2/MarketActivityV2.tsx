@@ -14,14 +14,24 @@ type Metric = "volume" | "openInterest" | "uniqueTraders";
 
 /** Native market-activity chart. Every plotted point comes from the activity
  * API or a saved observation; unavailable historical ranges stay disabled. */
-export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "variational" | "txflow" }) {
+export function MarketActivityV2({
+  venueSlug = "variational",
+  initialData = null,
+}: {
+  venueSlug?: "variational" | "txflow";
+  /** Rendered with the page when the server could read it, so the chart is on
+   *  screen at first paint. The fetch below then never runs; it stays for the
+   *  case where that server read failed. */
+  initialData?: ActivityResponse | null;
+}) {
   const locale = useLocale();
-  const [data, setData] = useState<ActivityResponse | null>(null);
+  const [data, setData] = useState<ActivityResponse | null>(initialData);
   const [error, setError] = useState(false);
   const [metric, setMetric] = useState<Metric>("volume");
   const [rangeDays, setRangeDays] = useState<Range>(30);
 
   useEffect(() => {
+    if (initialData) return;
     let active = true;
     fetch(`/api/venues/${venueSlug}/activity`)
       .then((r) => (r.ok ? (r.json() as Promise<ActivityResponse>) : Promise.reject(new Error("failed"))))
@@ -30,7 +40,7 @@ export function MarketActivityV2({ venueSlug = "variational" }: { venueSlug?: "v
     return () => {
       active = false;
     };
-  }, [venueSlug]);
+  }, [venueSlug, initialData]);
 
   const users = data?.uniqueTraders;
   // A protocol without a trader history must never be left showing that tab --
