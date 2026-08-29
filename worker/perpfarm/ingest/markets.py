@@ -38,6 +38,24 @@ def sync_markets(
                 f"venue '{slug}' not found in `venues` table -- run `perpfarm bootstrap-venues` first"
             )
 
+        # Anything the venue no longer lists is deactivated, so a delisted
+        # ticker stops being collected instead of failing every hour forever.
+        # A venue only marks SOME removals as inactive itself; the rest simply
+        # vanish from the list, and those rows used to stay active for good.
+        #
+        # Guarded by the empty check: a venue that answers with an empty list
+        # (an API hiccup, an auth change) must never retire its whole market
+        # set -- that would blank every chart and route it feeds.
+        listed_symbols = [m.symbol for m in market_infos]
+        if listed_symbols and not dry_run:
+            conn.execute(
+                markets.update()
+                .where(markets.c.venue_id == venue_id)
+                .where(markets.c.symbol.not_in(listed_symbols))
+                .where(markets.c.is_active.is_(True))
+                .values(is_active=False)
+            )
+
         for m in market_infos:
             symbol_canonical = overrides.get((slug, m.symbol), m.symbol_canonical)
             stmt = pg_insert(markets).values(
