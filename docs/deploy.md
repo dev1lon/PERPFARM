@@ -36,13 +36,18 @@ delivery is not implemented.
 Vercel:
 
 - `DATABASE_URL`
-- optional `DUNE_API_KEY`
-- optional `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` override (defaults to `5754146`)
-- optional `DEFILLAMA_API_KEY`
+- optional `DUNE_API_KEY` — only the FALLBACK path uses it now (see the cron
+  below), so the site can still draw TxFlow's chart before the worker has
+  stored it.
 
 Render cron:
 
 - `DATABASE_URL`
+- `DUNE_API_KEY` — TxFlow publishes its numbers on its own Dune dashboard, and
+  the hourly run copies them into `venue_daily_stats` so a page load reads
+  Postgres instead of a third party. Without it the run logs
+  `dune: skipped (no DUNE_API_KEY)` and the site falls back to asking Dune
+  itself, exactly as it did before.
 - `PYTHON_VERSION=3.11.9`
 
 `DATABASE_URL` should include `sslmode=require` when required by the provider.

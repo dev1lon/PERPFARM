@@ -6,7 +6,7 @@ Staging is the isolated preview for changes before `main`.
 - Database: separate Supabase/Postgres project.
 - Scheduled worker: none by default.
 
-## Initial database setup
+## Database setup, and after every schema change
 
 From `worker/`, with the staging connection in `DATABASE_URL`:
 
@@ -16,6 +16,13 @@ perpfarm refresh-catalog
 perpfarm job fee-watch
 perpfarm job sync-snapshots
 ```
+
+`alembic upgrade head` is not optional after a migration lands on the branch:
+staging has no cron, so nothing else will ever apply it. Migrations 0010 and
+0011 added `venue_daily_stats` (the daily chart points), `pair_spread_risk`
+(the cross-venue risk badge) and a traders column. Until they are applied, the
+preview keeps working -- the chart falls back to summing snapshots and the
+badge reads "unknown" -- but it is not testing what production runs.
 
 There is no `job nightly` command. Pair rankings are calculated on request
 from the saved snapshots.
@@ -29,9 +36,7 @@ this command is run against the staging database.
 | Variable | Required |
 |---|---:|
 | `DATABASE_URL` | yes |
-| `DUNE_API_KEY` | optional |
-| `DUNE_VARIATIONAL_UNIQUE_TRADERS_QUERY_ID` | optional override; defaults to `5754146` |
-| `DEFILLAMA_API_KEY` | optional |
+| `DUNE_API_KEY` | optional — only the TxFlow fallback path reads it |
 
 Push test changes to `staging`; merge to `main` only after the preview and
 automated checks pass.
