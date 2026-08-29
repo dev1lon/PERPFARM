@@ -71,7 +71,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("tradexyz", "Tradexyz", TradexyzAdapter),
     _real("hotstuff", "HotStuff", HotStuffAdapter),
     _real("hibachi", "Hibachi", HibachiAdapter, api_status="live"),
-    _real("risex", "RiseX", RiseXAdapter),
+    _real("risex", "RiseX", RiseXAdapter, api_status="live"),
     # Keep the legacy slug for existing data while displaying the current
     # protocol name in the product.
     _real("01exchange", "N1", Exchange01Adapter),
