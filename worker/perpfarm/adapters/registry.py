@@ -81,7 +81,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("bullet", "Bullet", BulletAdapter),
     _real("ondo", "Ondo", OndoAdapter),
     _real("qfex", "QFEX", QfexAdapter),
-    _real("entropy", "Entropy", EntropyAdapter),
+    _real("entropy", "Entropy", EntropyAdapter, api_status="live"),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]

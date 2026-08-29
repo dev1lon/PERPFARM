@@ -454,6 +454,15 @@ function txflow(locale: Locale): ProtocolPageConfig {
  *   6. `points`       -- season numbers, once a programme is announced.
  */
 
+/** The one sentence every unwritten slot says, so they cannot drift apart. */
+function notWrittenYet(name: string, locale: Locale): string {
+  return tr(
+    locale,
+    `PerpFarm has not published this part of its ${name} guidance yet.`,
+    `PerpFarm пока не опубликовал эту часть рекомендаций по ${name}.`,
+  );
+}
+
 type PendingProtocol = {
   slug: ProtocolSlug;
   name: string;
@@ -493,11 +502,33 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
         `PerpFarm has not verified a data path for ${protocol.name} yet, so no route, cost or point estimate is published for it here. Everything on this page comes from the protocol itself.`,
         `PerpFarm пока не проверил источник данных для ${protocol.name}, поэтому маршруты, стоимость и оценки поинтов для него не публикуются. Всё на этой странице — из самого протокола.`,
       ),
-      // TODO(manual): your priorities and practical tips for this protocol.
-      // Both lists render only when they have entries, so an empty list leaves
-      // the panel short rather than leaving a heading over nothing.
-      priorities: [],
-      tips: [],
+      // The reference's shape, waiting for its words: two priorities and four
+      // tips, in the same slots every other protocol uses. Kept visible on
+      // purpose -- a protocol page that silently drops half the panel is a
+      // different page, and the empty slots say what is still missing.
+      //
+      // TODO(manual): replace `title` and `body` on each of the six.
+      priorities: [
+        {
+          label: "Priority 1",
+          kicker: tr(locale, "strongest driver", "главный фактор"),
+          title: tr(locale, "Not written yet", "Пока не написано"),
+          body: notWrittenYet(protocol.name, locale),
+          primary: true,
+        },
+        {
+          label: "Priority 2",
+          kicker: tr(locale, "secondary", "вторично"),
+          title: tr(locale, "Not written yet", "Пока не написано"),
+          body: notWrittenYet(protocol.name, locale),
+          primary: false,
+        },
+      ],
+      tips: ["01", "02", "03", "04"].map((n) => ({
+        n,
+        title: tr(locale, "Not written yet", "Пока не написано"),
+        body: notWrittenYet(protocol.name, locale),
+      })),
       docsUrl: protocol.docsUrl,
       docsLabel: tr(locale, `${protocol.name} docs ↗`, `Документация ${protocol.name} ↗`),
     },
