@@ -62,6 +62,21 @@ def test_traders_accumulate_from_the_daily_counts_alone():
     }
 
 
+def test_todays_trader_count_never_falls_below_a_day_already_known():
+    """The two queries disagree by a few dozen, and on a day the daily series
+    has not reached yet there is no entry for today. Storing the card raw made
+    the published curve drop -- 6,905 traders yesterday, 6,849 today, which
+    reads as 56 people un-trading."""
+
+    through_yesterday = {date(2026, 8, 27): 6807, date(2026, 8, 28): 6905}
+
+    assert job.today_trader_count(through_yesterday, 6849.0) == 6905
+    # A fresher card that is genuinely higher still wins.
+    assert job.today_trader_count(through_yesterday, 6950.0) == 6950
+    # Nothing published means nothing stored, not a zero.
+    assert job.today_trader_count(through_yesterday, None) is None
+
+
 def test_a_card_takes_its_newest_dated_reading():
     rows = [
         {"day": "2026-08-24", "total_volume_24h": 10.0},

@@ -192,6 +192,22 @@ def cumulative_traders(rows: Sequence[Mapping[str, Any]]) -> dict[date, int]:
     return totals
 
 
+def today_trader_count(traders: Mapping[date, int], card: float | None) -> int | None:
+    """Today's distinct-trader count: the card, but never below what is known.
+
+    The two Dune queries disagree by a few dozen -- the daily counts sum past
+    the all-time card -- and on a day the daily series has not reached yet
+    there is no entry for today at all. Storing the card raw then made the
+    curve DROP: 6,905 traders yesterday, 6,849 today, which reads as 56 people
+    un-trading. A distinct count cannot fall, so today never sits below the
+    highest day already known.
+    """
+
+    if card is None:
+        return None
+    return int(max(card, max(traders.values(), default=0)))
+
+
 def latest_card_value(rows: Sequence[Mapping[str, Any]], names: Sequence[str]) -> float | None:
     """The newest reading in a single-value card.
 
@@ -245,11 +261,11 @@ def run_dune_sync(engine: Engine, *, api_key: str | None = None) -> DuneSyncSumm
             latest_volume = latest_card_value(fetch_rows(venue.volume_24h, key), VOLUME_24H_NAMES)
             if latest_volume is not None:
                 volume[today] = latest_volume
-            latest_traders = latest_card_value(fetch_rows(venue.total_traders, key), TOTAL_TRADERS_NAMES)
+            latest_traders = today_trader_count(
+                traders, latest_card_value(fetch_rows(venue.total_traders, key), TOTAL_TRADERS_NAMES)
+            )
             if latest_traders is not None:
-                # A distinct count only rises, so the higher of the two
-                # readings is simply the fresher one.
-                traders[today] = int(max(latest_traders, traders.get(today, 0)))
+                traders[today] = latest_traders
 
             days = sorted(set(volume) | set(open_interest) | set(traders))
             if not days:
