@@ -174,7 +174,12 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
         if not skip_refresh:
             try:
                 _do_refresh_catalog(engine, fixtures_dir, data_dir)
-            except (IngestError, click.ClickException) as exc:
+            # Every failure, not just the two named ones. A dropped database
+            # connection here used to escape and kill the whole run before a
+            # single snapshot was collected -- an hour of history lost to a
+            # blip in a step that only refreshes the market LIST. Seen doing
+            # exactly that against staging.
+            except Exception as exc:  # noqa: BLE001
                 click.echo(f"  refresh-catalog skipped: {exc}", err=True)
         # Fee check, folded in so fees don't need their own cron. Public fee
         # schedules change rarely, so run it once a week; non-fatal.
