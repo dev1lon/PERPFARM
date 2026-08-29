@@ -1,17 +1,21 @@
 /**
  * TxFlow's activity series.
  *
- * Dune is TxFlow's official analytics source and supplies BOTH the history and
- * the current reading for every metric.
+ * Dune is TxFlow's official analytics source. The hourly worker now copies what
+ * that dashboard publishes into `venue_daily_stats`, and this reads it back --
+ * so a page load touches Postgres and nothing else.
  *
- * It used to supply only the latest point, stitched onto a hand-pasted CSV. Two
- * series measured differently, joined at the seam, is how a $195 reading from
- * launch day ended up drawn as today's $18M open interest. One source per chart:
- * the CSV survives only as a fallback for when Dune returns nothing at all (no
- * API key on a preview deploy), and is never mixed in.
+ * The Dune path below is the fallback, unchanged, for as long as the sync has
+ * not run (no API key on the worker yet) or has fallen behind. Beneath even
+ * that sits a hand-pasted CSV, for when Dune answers nothing at all.
+ *
+ * What must never happen is mixing them: two series measured differently and
+ * joined at the seam is how a $195 reading from launch day was once drawn as
+ * today's $18M open interest. One source per chart, whole.
  */
 import { asNumber, duneRowDate, duneSeries, fetchDuneRows, latestDuneValue, valueFromDuneRow } from "@/lib/dune";
 import { TXFLOW_ACTIVITY_HISTORY } from "@/lib/txflow-activity-history";
+import { isFresh, loadDailyStats, type DailyStatsRow } from "@/lib/activity/daily-stats";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
 
 /** Full daily series. */
@@ -46,7 +50,43 @@ function cumulativeNewTraderSeries(rows: Record<string, unknown>[]): ActivityPoi
     .slice(-HISTORY_DAYS);
 }
 
+/** The stored series, when the worker has copied the dashboard recently. */
+function fromStoredRows(rows: DailyStatsRow[]): ActivityResponse {
+  const series = (pick: (row: DailyStatsRow) => number | null): ActivityPoint[] =>
+    rows
+      .map((row) => ({ date: row.date, value: pick(row) }))
+      .filter((point): point is ActivityPoint => point.value !== null)
+      .slice(-HISTORY_DAYS);
+
+  const volumeSeries = series((row) => asNumber(row.volume_24h_usd));
+  const openInterestSeries = series((row) => asNumber(row.open_interest_usd));
+  const traderSeries = series((row) => asNumber(row.unique_traders));
+
+  return {
+    asOf: new Date().toISOString(),
+    days: HISTORY_DAYS,
+    volume: { series: volumeSeries, observedDays: volumeSeries.length, latest24h: volumeSeries.at(-1)?.value ?? null },
+    openInterest: { series: openInterestSeries, observedDays: openInterestSeries.length, latest: openInterestSeries.at(-1)?.value ?? null },
+    ...(traderSeries.length > 1
+      ? { uniqueTraders: { series: traderSeries, observedDays: traderSeries.length, latest: traderSeries.at(-1)?.value ?? null } }
+      : {}),
+  };
+}
+
 export async function loadTxflowActivity(): Promise<ActivityResponse> {
+  // Only rows the Dune sync wrote: our own summed rows for TxFlow measure
+  // something else over a shorter history, and swapping them under a published
+  // chart would change its numbers without saying so.
+  const stored = await loadDailyStats("txflow", { sources: ["dune"] }).catch((error: unknown) => {
+    console.error("[activity] stored TxFlow series unavailable, asking Dune --", error);
+    return [] as DailyStatsRow[];
+  });
+  if (isFresh(stored)) return fromStoredRows(stored);
+
+  return loadTxflowActivityFromDune();
+}
+
+async function loadTxflowActivityFromDune(): Promise<ActivityResponse> {
   const [volumeHistoryRows, volume24hRows, oiRows, totalTraderRows, newTraderRows] = await Promise.all([
     fetchDuneRows(DUNE_VOLUME_HISTORY_QUERY_ID),
     fetchDuneRows(DUNE_VOLUME_24H_QUERY_ID),

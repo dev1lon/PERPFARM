@@ -21,29 +21,12 @@
  */
 import { getPool } from "@/lib/db";
 import { asNumber } from "@/lib/dune";
+import { loadDailyStats, type DailyStatsRow } from "@/lib/activity/daily-stats";
 import { oiDisplayFactor } from "@/lib/route-model";
 import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
 
-type DailyRow = {
-  date: string;
-  volume_24h_usd: string | number | null;
-  open_interest_usd: string | number | null;
-};
-
-/** The stored daily points, oldest first. One indexed read, ~180 small rows. */
-async function getStoredDaily(slug: string): Promise<DailyRow[]> {
-  const { rows } = await getPool().query<DailyRow>(
-    `SELECT s.day::text AS date, s.volume_24h_usd, s.open_interest_usd
-     FROM venue_daily_stats s
-     JOIN venues v ON v.id = s.venue_id
-     WHERE v.slug = $1
-       AND s.day >= ((now() AT TIME ZONE 'UTC')::date - make_interval(days => $2))
-     ORDER BY s.day ASC`,
-    [slug, HISTORY_DAYS],
-  );
-  return rows;
-}
+type DailyRow = Pick<DailyStatsRow, "date" | "volume_24h_usd" | "open_interest_usd">;
 
 /**
  * The same daily points, summed from raw snapshots.
@@ -79,7 +62,7 @@ async function getObservedDaily(slug: string): Promise<DailyRow[]> {
 /** Stored rollup where it exists, the old aggregate where it does not yet. */
 async function getDaily(slug: string): Promise<DailyRow[]> {
   try {
-    const stored = await getStoredDaily(slug);
+    const stored = await loadDailyStats(slug);
     if (stored.length > 0) return stored;
   } catch (error) {
     console.error("[activity] venue_daily_stats unavailable, summing snapshots instead --", error);
