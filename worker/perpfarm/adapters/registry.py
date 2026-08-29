@@ -76,11 +76,11 @@ REGISTRY: list[VenueRegistration] = [
     # protocol name in the product.
     _real("01exchange", "N1", Exchange01Adapter),
     _real("perpl", "Perpl", PerplAdapter),
-    _real("polymarket", "Polymarket", PolymarketAdapter),
+    _real("polymarket", "Polymarket", PolymarketAdapter, api_status="live"),
     _real("reya", "Reya", ReyaAdapter),
     _real("bullet", "Bullet", BulletAdapter),
     _real("ondo", "Ondo", OndoAdapter),
-    _real("qfex", "QFEX", QfexAdapter),
+    _real("qfex", "QFEX", QfexAdapter, api_status="live"),
     _real("entropy", "Entropy", EntropyAdapter, api_status="live"),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
