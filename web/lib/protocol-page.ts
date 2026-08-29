@@ -415,13 +415,11 @@ function txflow(locale: Locale): ProtocolPageConfig {
       ),
       eligibleLabel: tr(locale, "Counts toward it", "Что засчитывается"),
       eligibleValue: tr(locale, "Perp taker volume", "Тейкерский объём"),
-      // Carries the same referral code as the trade link above. TxFlow's own
-      // referral URL is a path (`/r/CODE`), and whether it also honours a
-      // `?ref=` on another page is not something we can verify from here --
-      // their app sits behind Cloudflare, which refuses every request that is
-      // not a browser. An ignored parameter costs nothing and the page still
-      // opens; if it turns out not to attribute, drop it.
-      rulesUrl: "https://app.txflow.com/campaign?ref=TXDEVILON",
+      // Plain campaign page, no referral parameter: TxFlow's referral is a path
+      // (`/r/CODE`) and a `?ref=` here was not honoured, so carrying one only
+      // made the link look like it did something it did not. The referral lives
+      // on the trade link above, which is the one people sign up through.
+      rulesUrl: "https://app.txflow.com/campaign",
       endedNote: tr(
         locale,
         "This campaign has ended. Check TxFlow for the next one.",
