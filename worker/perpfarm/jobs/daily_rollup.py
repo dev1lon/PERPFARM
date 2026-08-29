@@ -62,9 +62,10 @@ GROUP BY day
 ORDER BY day
 """
 
-#: A venue's own reading always wins; a summed one only fills a gap or refreshes
+#: A published figure always wins; a summed one only fills a gap or refreshes
 #: an earlier sum. Without the WHERE clause the 00:05 run would replace
-#: yesterday's published total with our sum of it.
+#: yesterday's published total -- from the venue itself or from its own Dune
+#: dashboard -- with our sum of it.
 _UPSERT_SQL = """
 INSERT INTO venue_daily_stats (venue_id, day, volume_24h_usd, open_interest_usd, source, updated_at)
 VALUES (:venue_id, :day, :volume, :open_interest, :source, now())
@@ -73,7 +74,7 @@ SET volume_24h_usd = EXCLUDED.volume_24h_usd,
     open_interest_usd = EXCLUDED.open_interest_usd,
     source = EXCLUDED.source,
     updated_at = now()
-WHERE EXCLUDED.source = 'venue-api' OR venue_daily_stats.source = 'snapshots'
+WHERE EXCLUDED.source <> 'snapshots' OR venue_daily_stats.source = 'snapshots'
 """
 
 

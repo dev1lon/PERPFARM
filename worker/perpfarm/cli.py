@@ -9,6 +9,7 @@ from perpfarm.ingest.markets import sync_markets
 from perpfarm.ingest.venues import bootstrap_venues
 from perpfarm.jobs.catalog import refresh_catalog
 from perpfarm.jobs.daily_rollup import run_daily_rollup
+from perpfarm.jobs.dune_txflow import run_dune_sync
 from perpfarm.jobs.fee_watch import run_fee_watch
 from perpfarm.jobs.prune_snapshots import run_prune_snapshots
 from perpfarm.jobs.spread_risk import run_spread_risk
@@ -211,6 +212,19 @@ def job_cmd(name: str, as_of, fixtures_dir: Path, data_dir: Path, skip_refresh: 
                 click.echo(f"  daily-rollup skipped {slug}: {reason}", err=True)
         except Exception as exc:  # noqa: BLE001 -- never let a rollup fail the cron
             click.echo(f"  daily-rollup skipped: {exc}", err=True)
+        # TxFlow publishes its numbers on its own Dune dashboard; they are
+        # stored here so the site reads Postgres instead of a third party.
+        # Without DUNE_API_KEY this says so and does nothing.
+        try:
+            dune = run_dune_sync(engine)
+            if dune.skipped:
+                click.echo("dune: skipped (no DUNE_API_KEY)")
+            else:
+                click.echo(f"dune: {dune.written} day(s) stored")
+            for failure in dune.errors:
+                click.echo(f"  dune skipped: {failure}", err=True)
+        except Exception as exc:  # noqa: BLE001 -- never let a third party fail the cron
+            click.echo(f"  dune skipped: {exc}", err=True)
         try:
             risk = run_spread_risk(engine)
             if risk.rated:

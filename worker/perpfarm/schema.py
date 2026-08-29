@@ -154,8 +154,15 @@ venue_daily_stats = Table(
     Column("day", Date, primary_key=True),
     Column("volume_24h_usd", Numeric),
     Column("open_interest_usd", Numeric),
-    # 'venue-api' when the protocol published the figure itself (preferred --
-    # it is the authority on its own volume), 'snapshots' when we summed it.
+    # Distinct traders on the protocol that day, where the protocol publishes
+    # one (TxFlow's Dune dashboard does; nothing else does yet).
+    Column("unique_traders", Integer),
+    # Where the day's figures came from, in order of authority:
+    #   'dune'      -- the protocol's own published analytics
+    #   'venue-api' -- the protocol's own live totals
+    #   'snapshots' -- our sum of per-market readings, used when it publishes
+    #                  neither.
+    # A summed row never overwrites one of the first two.
     Column("source", Text, nullable=False, server_default="snapshots"),
     Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=func.now()),
 )

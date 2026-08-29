@@ -18,11 +18,12 @@ def test_a_day_is_the_last_reading_of_each_market_not_a_sum_of_its_hours():
 
 
 def test_a_published_total_is_never_replaced_by_our_own_sum():
-    """The venue is the authority on its own volume. Without this the 00:05 run
-    would overwrite yesterday's published figure with our sum of it."""
+    """The protocol is the authority on its own volume, whether it published it
+    live or on its Dune dashboard. Without this the 00:05 run would overwrite
+    yesterday's published figure with our sum of it."""
 
     assert (
-        "WHERE EXCLUDED.source = 'venue-api' OR venue_daily_stats.source = 'snapshots'"
+        "WHERE EXCLUDED.source <> 'snapshots' OR venue_daily_stats.source = 'snapshots'"
         in job._UPSERT_SQL
     )
 
