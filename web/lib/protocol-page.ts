@@ -538,7 +538,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
       name: "QFEX",
       twitterUrl: "https://x.com/QFEX",
       docsUrl: "https://docs.qfex.com/qfex/about",
-      tradeUrl: "https://app.qfex.com", // TODO(manual): referral link
+      // app.qfex.com does not resolve; qfex.com does.
+      tradeUrl: "https://qfex.com", // TODO(manual): referral link
       season: "0",
       farmEstimate: { value: tr(locale, "Retro points", "Ретро-поинты"), positive: true, tip: retroExpectedTip("QFEX", locale) },
       otcPointPrice: "TBA",
