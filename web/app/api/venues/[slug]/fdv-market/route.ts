@@ -6,7 +6,12 @@ import { FDV_REVALIDATE_SECONDS, loadFdvMarkets } from "@/lib/fdv-market";
 //
 // The reading itself is in lib/fdv-market.ts: the protocol page renders this
 // panel on the server now, and both paths must produce the same answer.
-export const revalidate = FDV_REVALIDATE_SECONDS;
+//
+// A LITERAL, not FDV_REVALIDATE_SECONDS. Next reads a route's segment config by
+// static analysis, before any of this file's imports exist, so a constant from
+// another module is not a value it can see -- it fails the production build
+// with "Unknown identifier". The two are tied together by a test instead.
+export const revalidate = 3600;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
