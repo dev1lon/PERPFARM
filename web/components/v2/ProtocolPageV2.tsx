@@ -15,7 +15,7 @@ import type { CheapestRoute } from "@/lib/cheapest-route";
 import type { FdvMarketResponse } from "@/lib/fdv-market";
 import { protocolPageConfig, type ActivityConfig, type HedgePartnerCard, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
 import type { VenueSummary } from "@/lib/types";
-import { protocolName } from "@/lib/venue-status";
+import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
 /**
  * THE protocol page. One layout, one set of words, one set of controls, for
@@ -46,6 +46,25 @@ export type ProtocolPageData = {
   cheapestRoute?: CheapestRoute | null;
   fdvMarkets?: FdvMarketResponse | null;
 };
+
+/**
+ * What a section says when the protocol has no verified data path yet.
+ *
+ * The layout is the reference for EVERY protocol, so a listed one that we do
+ * not price keeps the same headings and says why they are empty. Dropping the
+ * sections instead would leave a differently shaped page and quietly hide that
+ * the protocol is listed but unpriced.
+ */
+function NotPricedYet({ title, body }: { title: string; body: string }) {
+  return (
+    <section className="mt-11">
+      <div className="pb-4">
+        <H2>{title}</H2>
+      </div>
+      <EmptyNote className="min-h-[148px] py-6">{body}</EmptyNote>
+    </section>
+  );
+}
 
 function H2({ children }: { children: React.ReactNode }) {
   return <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{children}</h2>;
@@ -147,6 +166,7 @@ function GuidancePanel({ config }: { config: ProtocolPageConfig }) {
       <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{guidance.kicker}</div>
       <p className="pt-2 text-[15px] leading-[1.6] text-text-muted">{guidance.intro}</p>
 
+      {guidance.priorities.length === 0 ? null : (
       <div className="grid gap-3 pt-5 sm:grid-cols-2">
         {guidance.priorities.map((priority) => (
           <div key={priority.label} className={`rounded-[18px] border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}>
@@ -161,7 +181,9 @@ function GuidancePanel({ config }: { config: ProtocolPageConfig }) {
           </div>
         ))}
       </div>
+      )}
 
+      {guidance.tips.length === 0 ? null : (
       <div className="mt-8 border-t border-border/80 pt-6">
         <h3 className="text-[15px] font-semibold text-text-primary">{tr(locale, "Practical tips", "Практические советы")}</h3>
         <ol className="grid gap-3 pt-4 sm:grid-cols-2">
@@ -176,6 +198,7 @@ function GuidancePanel({ config }: { config: ProtocolPageConfig }) {
           ))}
         </ol>
       </div>
+      )}
 
       <a href={guidance.docsUrl} target="_blank" rel="noreferrer" className="mt-5 inline-block text-[13px] font-semibold text-accent hover:text-accent-hover">
         {guidance.docsLabel}
@@ -251,6 +274,11 @@ function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: 
 
 function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageConfig; initialRoute?: CheapestRoute | null }) {
   const locale = useLocale();
+  // The first card states the CHEAPEST route, which only exists where the
+  // worker prices one. On a protocol we do not collect, that card would claim
+  // a comparison that was never made, so only the hand-placed partner card is
+  // shown -- and nothing is asked of an endpoint that would answer 502.
+  const priced = isReadyVenue(config.slug);
   // The hourly worker has already compared self-match and every venue; the page
   // arrives with that stored result. The fetch below is the fallback for when
   // the server could not read it.
@@ -262,7 +290,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     server ? "ready" : initialRoute ? "unavailable" : "loading",
   );
   useEffect(() => {
-    if (initialRoute) return;
+    if (initialRoute || !priced) return;
     let active = true;
     fetch(`/api/venues/${config.slug}/cheapest-route`)
       .then((r) => (r.ok ? r.json() : null))
@@ -282,7 +310,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     return () => {
       active = false;
     };
-  }, [config.slug, initialRoute]);
+  }, [config.slug, initialRoute, priced]);
 
   const partner: HedgePartnerCard = config.hedge.partner;
   const cheapestSlug = cheapest?.partnerSlug ?? config.slug;
@@ -290,7 +318,8 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     <div className="mt-11">
       <H2>{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</H2>
       <div className="pb-4 pt-1.5 text-[14px] text-text-muted">{config.hedge.intro}</div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 ${priced ? "sm:grid-cols-2" : ""}`}>
+        {!priced ? null : (
         <HedgeCard
           homeSlug={config.slug}
           homeName={config.name}
@@ -314,6 +343,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
               : [[tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
           }
         />
+        )}
         <HedgeCard
           homeSlug={config.slug}
           homeName={config.name}
@@ -541,18 +571,42 @@ export function ProtocolPageV2({
             can choose the right counterparty before running a route. */}
         <HedgeRecommendations config={config} initialRoute={initial?.cheapestRoute} />
 
-        {/* Live calculator + recommended route + 10-pairs table. */}
-        <ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug={slug} />
+        {/* Live calculator + recommended route + 10-pairs table -- only where
+            there is a data path to price. */}
+        {isReadyVenue(slug) ? (
+          <ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug={slug} />
+        ) : (
+          <NotPricedYet
+            title={tr(locale, "Route calculator", "Калькулятор маршрута")}
+            body={tr(
+              locale,
+              `PerpFarm does not collect market data for ${config.name} yet, so there is nothing to price a route from. Use the calculator on a protocol that has one, and place this leg by hand.`,
+              `PerpFarm пока не собирает рыночные данные по ${config.name}, так что считать маршрут не из чего. Используйте калькулятор на протоколе, где данные есть, а эту ногу ставьте руками.`,
+            )}
+          />
+        )}
 
         {/* Points distribution belongs with the market charts, below the route
             decision rather than above the calculator. */}
         <ActivityAndDistribution config={config} />
 
-        {/* Prediction-market FDV expectations sit before the activity chart. */}
-        <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} />
+        {/* Prediction-market FDV expectations sit before the activity chart.
+            The panel states its own absence, so it renders for everyone. */}
+        {isReadyVenue(slug) ? <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} /> : null}
 
         {/* Market-activity chart (live activity API). */}
-        <MarketActivityV2 venueSlug={slug} initialData={initial?.activity} />
+        {isReadyVenue(slug) ? (
+          <MarketActivityV2 venueSlug={slug} initialData={initial?.activity} />
+        ) : (
+          <NotPricedYet
+            title={tr(locale, "Market activity", "Активность рынка")}
+            body={tr(
+              locale,
+              `Volume, open interest and traders are drawn from saved observations, and PerpFarm has not started collecting them for ${config.name}.`,
+              `Объём, открытый интерес и трейдеры рисуются по сохранённым наблюдениям — по ${config.name} мы их пока не собираем.`,
+            )}
+          />
+        )}
 
         {extras}
 

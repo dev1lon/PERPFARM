@@ -15,7 +15,13 @@
 import { tr, type Locale } from "@/components/LocaleProvider";
 import { farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 
-export type ProtocolSlug = "variational" | "txflow";
+export type ProtocolSlug =
+  | "variational"
+  | "txflow"
+  | "qfex"
+  | "risex"
+  | "polymarket"
+  | "entropy";
 
 export type HeroMetric = { label: string; value: string; valueClass?: string; tip?: string };
 
@@ -430,10 +436,183 @@ function txflow(locale: Locale): ProtocolPageConfig {
   };
 }
 
+/* ---- listed protocols without a verified data path yet ----
+ *
+ * These pages exist so a listed protocol is a real page rather than a SOON
+ * placeholder: its links, its season, its points status and its hedge partner
+ * are all real. What is NOT here is anything we would have to invent.
+ *
+ * TO FILL IN BY HAND, per protocol (each marked TODO below):
+ *   1. `tradeUrl`     -- your referral link, and `tradePerk` if it carries a
+ *                        fee discount. Until then the trade button points at
+ *                        the venue's plain app URL.
+ *   2. `heroMetrics`  -- farm estimate and OTC point price, once you have them.
+ *   3. `guidance`     -- the priorities and practical tips for this protocol;
+ *                        the panel renders only the intro while they are empty.
+ *   4. `hedge.body`   -- why THIS partner, in one sentence.
+ *   5. `activity`     -- a running campaign, if the venue announces one.
+ *   6. `points`       -- season numbers, once a programme is announced.
+ */
+
+type PendingProtocol = {
+  slug: ProtocolSlug;
+  name: string;
+  twitterUrl: string;
+  docsUrl: string;
+  /** TODO(manual): replace with the referral link. */
+  tradeUrl: string;
+  season: string;
+  /** What the home card already claims, so both say the same thing. */
+  farmEstimate: { value: string; positive?: boolean; tip?: string };
+  otcPointPrice: string;
+  /** The venue a farmer would hedge on by hand today. */
+  hedgePartnerSlug: string;
+};
+
+function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPageConfig {
+  return {
+    slug: protocol.slug,
+    name: protocol.name,
+    twitterUrl: protocol.twitterUrl,
+    docsUrl: protocol.docsUrl,
+    tradeUrl: protocol.tradeUrl,
+    heroMetrics: [
+      { label: tr(locale, "Season", "Сезон"), value: protocol.season },
+      {
+        label: tr(locale, "Farm estimate", "Оценка фарма"),
+        value: protocol.farmEstimate.value,
+        valueClass: protocol.farmEstimate.positive ? "text-positive" : undefined,
+        tip: protocol.farmEstimate.tip ?? farmEstimateTip(locale),
+      },
+      { label: tr(locale, "OTC point price", "OTC цена поинта"), value: protocol.otcPointPrice, tip: otcPointTip(locale) },
+    ],
+    guidance: {
+      kicker: tr(locale, `How ${protocol.name} awards points`, `Как ${protocol.name} начисляет поинты`),
+      intro: tr(
+        locale,
+        `PerpFarm has not verified a data path for ${protocol.name} yet, so no route, cost or point estimate is published for it here. Everything on this page comes from the protocol itself.`,
+        `PerpFarm пока не проверил источник данных для ${protocol.name}, поэтому маршруты, стоимость и оценки поинтов для него не публикуются. Всё на этой странице — из самого протокола.`,
+      ),
+      // TODO(manual): your priorities and practical tips for this protocol.
+      // Both lists render only when they have entries, so an empty list leaves
+      // the panel short rather than leaving a heading over nothing.
+      priorities: [],
+      tips: [],
+      docsUrl: protocol.docsUrl,
+      docsLabel: tr(locale, `${protocol.name} docs ↗`, `Документация ${protocol.name} ↗`),
+    },
+    hedge: {
+      intro: tr(
+        locale,
+        `Both legs still have to be placed by hand: PerpFarm does not price ${protocol.name} routes yet, so nothing below is a costed recommendation.`,
+        `Обе ноги пока ставятся руками: PerpFarm ещё не считает маршруты для ${protocol.name}, так что ниже — не рассчитанная рекомендация.`,
+      ),
+      partner: {
+        slug: protocol.hedgePartnerSlug,
+        // TODO(manual): why this partner, in one sentence.
+        body: tr(
+          locale,
+          "The deepest book PerpFarm does price, so the hedge leg is at least the part of the route you can measure.",
+          "Самый глубокий стакан из тех, что PerpFarm считает, — значит хедж-ногу вы хотя бы можете измерить.",
+        ),
+        tags: [[tr(locale, "Placed by hand", "Ставится руками"), "neutral"]],
+      },
+    },
+    activity: { kind: "none" },
+    points: { kind: "none" },
+  };
+}
+
+function retroExpectedTip(name: string, locale: Locale): string {
+  return tr(
+    locale,
+    `${name} has not announced a points or retroactive program. PerpFarm considers one likely; this is our view, not an official claim.`,
+    `${name} не анонсировал программу поинтов или ретродроп. PerpFarm считает её вероятной; это наше мнение, а не заявление протокола.`,
+  );
+}
+
+function qfex(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "qfex",
+      name: "QFEX",
+      twitterUrl: "https://x.com/QFEX",
+      docsUrl: "https://docs.qfex.com/qfex/about",
+      tradeUrl: "https://app.qfex.com", // TODO(manual): referral link
+      season: "0",
+      farmEstimate: { value: tr(locale, "Retro points", "Ретро-поинты"), positive: true, tip: retroExpectedTip("QFEX", locale) },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+}
+
+function entropy(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "entropy",
+      name: "Entropy",
+      twitterUrl: "https://x.com/entropyIO",
+      docsUrl: "https://docs.entropy.io/",
+      tradeUrl: "https://entropy.io", // TODO(manual): referral link
+      season: "0",
+      farmEstimate: { value: tr(locale, "Retro points", "Ретро-поинты"), positive: true, tip: retroExpectedTip("Entropy", locale) },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+}
+
+function risex(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "risex",
+      name: "RiseX",
+      twitterUrl: "https://x.com/risechain",
+      docsUrl: "https://docs.risechain.com/",
+      tradeUrl: "https://risex.io", // TODO(manual): referral link
+      season: "—",
+      // The same range the home card publishes, so the two cannot disagree.
+      farmEstimate: { value: "$1–2/pt" },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+}
+
+function polymarket(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "polymarket",
+      name: "Polymarket",
+      twitterUrl: "https://x.com/Polymarket",
+      docsUrl: "https://docs.polymarket.us/api/introduction",
+      tradeUrl: "https://polymarket.com", // TODO(manual): referral link
+      season: "—",
+      farmEstimate: { value: tr(locale, "Retro activity", "Ретро-активность"), positive: true, tip: retroExpectedTip("Polymarket", locale) },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+}
+
 const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   variational,
   txflow,
+  qfex,
+  risex,
+  polymarket,
+  entropy,
 };
+
+/** Whether this slug has a protocol page at all (the rest get the SOON page). */
+export function hasProtocolPage(slug: string): slug is ProtocolSlug {
+  return slug in BUILDERS;
+}
 
 export function protocolPageConfig(slug: ProtocolSlug, locale: Locale): ProtocolPageConfig {
   return BUILDERS[slug](locale);

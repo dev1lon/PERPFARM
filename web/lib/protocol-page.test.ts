@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { protocolPageConfig, type ProtocolSlug } from "./protocol-page";
+import { hasProtocolPage, protocolPageConfig, type ProtocolSlug } from "./protocol-page";
+import { ALL_PROTOCOLS } from "./home-protocols";
+import { isReadyVenue } from "./venue-status";
 
-const SLUGS: ProtocolSlug[] = ["variational", "txflow"];
+/** Protocols with a verified data path: the calculator prices these. */
+const PRICED_SLUGS: ProtocolSlug[] = ["variational", "txflow"];
+/** Every protocol that has a page, priced or not. */
+const SLUGS: ProtocolSlug[] = [...PRICED_SLUGS, "qfex", "risex", "polymarket", "entropy"];
 const componentsDir = join(__dirname, "..", "components", "v2");
 const read = (file: string) => readFileSync(join(componentsDir, file), "utf-8");
 
@@ -32,18 +37,43 @@ describe("protocol page reference", () => {
     expect(config.docsUrl).toMatch(/^https:\/\//);
     // Three hero tiles, same labels in the same order on every protocol.
     expect(config.heroMetrics.map((m) => m.label)).toEqual(["Season", "Farm estimate", "OTC point price"]);
-    expect(config.guidance.priorities.map((p) => p.label)).toEqual(["Priority 1", "Priority 2"]);
-    expect(config.guidance.priorities.filter((p) => p.primary)).toHaveLength(1);
-    // Numbered in order from 01, however many a protocol has to say. The count
-    // is content -- TxFlow dropped to three when its guidance was rewritten --
-    // but a gap or a repeat in the numbering is drift.
-    expect(config.guidance.tips.length).toBeGreaterThanOrEqual(3);
+    // Numbering is drift-checked wherever tips exist; a protocol whose
+    // guidance is not written yet has none, and the panel renders without them.
     expect(config.guidance.tips.map((t) => t.n)).toEqual(
       config.guidance.tips.map((_, index) => String(index + 1).padStart(2, "0")),
     );
     expect(config.guidance.docsUrl).toMatch(/^https:\/\//);
     expect(config.hedge.partner.slug).not.toBe(slug);
     expect(config.hedge.partner.tags.length).toBeGreaterThan(0);
+  });
+
+  it.each(PRICED_SLUGS)("%s states its priorities and practical tips", (slug) => {
+    // Written guidance is what a priced protocol is FOR. An unpriced one is
+    // allowed to have none yet; this one is not.
+    const config = protocolPageConfig(slug, "en");
+
+    expect(config.guidance.priorities.map((p) => p.label)).toEqual(["Priority 1", "Priority 2"]);
+    expect(config.guidance.priorities.filter((p) => p.primary)).toHaveLength(1);
+    expect(config.guidance.tips.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("gives every listed protocol either a page or the SOON placeholder", () => {
+    // A slug in the catalog with a page must be in the union, and a page must
+    // never exist for a slug the catalog does not list -- that is how a raw
+    // database slug once reached a user.
+    for (const slug of SLUGS) {
+      expect(ALL_PROTOCOLS.map((protocol) => protocol.slug)).toContain(slug);
+      expect(hasProtocolPage(slug)).toBe(true);
+    }
+    expect(hasProtocolPage("venue_alpha")).toBe(false);
+  });
+
+  it("prices exactly the protocols with a verified data path", () => {
+    // The page renders the calculator on this answer alone, so a protocol that
+    // is listed but not collected must not be marked ready by accident.
+    for (const slug of SLUGS) {
+      expect(isReadyVenue(slug)).toBe(PRICED_SLUGS.includes(slug));
+    }
   });
 
   it.each(SLUGS)("%s is translated in both languages", (slug) => {

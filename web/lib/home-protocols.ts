@@ -46,6 +46,9 @@ export const TIER_S: HomeProtocol[] = [
 export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", farmEstimate: "$1–2/pt", status: "live" },
   { slug: "polymarket", name: "Polymarket", status: "retro-activity" },
+  // Perps on private-market assets (pre-IPO names), not the crypto majors.
+  // Carded like QFEX: a season, retro points expected, no numbers claimed.
+  { slug: "entropy", name: "Entropy", season: "Season 0", status: "retro" },
 ];
 
 /** Radar — compact tiles, name only. */
@@ -60,9 +63,6 @@ export const RADAR: HomeProtocol[] = [
   { slug: "perpl", name: "Perpl" },
   { slug: "reya", name: "Reya" },
   { slug: "ondo", name: "Ondo" },
-  // Perps on private-market assets (pre-IPO names), not the crypto majors.
-  // No points programme announced, so it stays a radar tile and a SOON page.
-  { slug: "entropy", name: "Entropy" },
 ];
 
 /** Total tracked protocols, for the hero badge. */

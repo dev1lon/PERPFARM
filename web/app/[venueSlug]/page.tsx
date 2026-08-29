@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ProtocolPageV2 } from "@/components/v2/ProtocolPageV2";
 import { ProtocolSoonV2 } from "@/components/v2/ProtocolSoonV2";
 import { ProtocolV2 } from "@/components/v2/ProtocolV2";
 import { TxFlowV2 } from "@/components/v2/TxFlowV2";
@@ -9,6 +10,7 @@ import { loadCheapestRoute } from "@/lib/cheapest-route";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { loadFdvMarkets } from "@/lib/fdv-market";
 import { loadOiComposition } from "@/lib/oi-composition";
+import { hasProtocolPage } from "@/lib/protocol-page";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
 
@@ -83,6 +85,14 @@ export default async function VenuePage({
     ) : (
       <TxFlowV2 otherVenues={otherVenues} initial={initial} />
     );
+  }
+
+  // A listed protocol we do not price yet gets the SAME page, with nothing to
+  // prefetch: its calculator and activity sections state why they are empty
+  // (see ProtocolPageV2), and everything else on it is real -- links, season,
+  // points status, hedge partner.
+  if (hasProtocolPage(venueSlug)) {
+    return <ProtocolPageV2 slug={venueSlug} otherVenues={otherVenues} />;
   }
   return <ProtocolSoonV2 slug={venueSlug} name={venueRow?.name ?? catalog.name} meta={venueRow?.meta ?? null} />;
 }

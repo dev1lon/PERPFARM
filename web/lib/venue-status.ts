@@ -15,10 +15,20 @@
  */
 import { findProtocol } from "@/lib/home-protocols";
 
-const READY_VENUE_SLUGS = new Set(["variational", "txflow"]);
+const READY_VENUE_SLUGS = ["variational", "txflow"] as const;
 
-export function isReadyVenue(slug: string): boolean {
-  return READY_VENUE_SLUGS.has(slug);
+/** A protocol whose data path is verified -- the only kind that can be priced. */
+export type ReadyVenueSlug = (typeof READY_VENUE_SLUGS)[number];
+
+/**
+ * The ONE answer to "do we have data for this protocol". The API routes gate on
+ * it, and the page uses it to decide whether to render the calculator and the
+ * activity chart at all -- a listed protocol without a data path gets the same
+ * layout with those sections stating why they are empty, never a calculator
+ * that can only fail.
+ */
+export function isReadyVenue(slug: string): slug is ReadyVenueSlug {
+  return (READY_VENUE_SLUGS as readonly string[]).includes(slug);
 }
 
 /** Every protocol we are willing to route to, for server-side filtering. */
