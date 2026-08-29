@@ -43,5 +43,14 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      # TxFlow's numbers live on its official Dune dashboard, and the hourly run
+      # copies them into `venue_daily_stats` so the website reads Postgres
+      # rather than a third party. Set this in the Render dashboard -- the same
+      # key the web app already has. Without it the run logs
+      # "dune: skipped (no DUNE_API_KEY)" and the site falls back to asking Dune
+      # itself, exactly as it did before: a missing key costs freshness and
+      # independence, never a chart.
+      - key: DUNE_API_KEY
+        sync: false
       - key: PYTHON_VERSION
         value: "3.11.9"
