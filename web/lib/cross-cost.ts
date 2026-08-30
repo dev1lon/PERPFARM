@@ -22,7 +22,7 @@ import {
   oiBandsFor,
 } from "@/lib/route-model";
 import { isTradfiMarket } from "@/lib/tradfi";
-import { publishedFees } from "@/lib/venue-fees";
+import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
   slug: string;
@@ -38,6 +38,8 @@ type VenueMarketRow = {
   funding: string | number | null;
   taker_bps: string | number | null;
   maker_bps: string | number | null;
+  /** The venue's own instrument class, where it publishes one. */
+  asset_class: string | null;
 };
 
 export type CrossPair = {
@@ -87,7 +89,10 @@ export type CrossRankings = {
   /** Every eligible pair, cheapest first -- what the "All" tab pages through. */
   pairs: CrossPair[];
   /** The fee schedule actually applied per venue, so the UI never hard-codes one. */
-  feeSchedule: Array<{ venue: string; makerBps: number; takerBps: number }>;
+  /** One entry per schedule actually applied. A venue that prices by
+   *  instrument class contributes one entry per class present in the answer,
+   *  each naming its class; a venue with a single rate contributes one. */
+  feeSchedule: Array<{ venue: string; makerBps: number; takerBps: number; assetClass?: string | null }>;
   /** Why pairs were excluded, so an empty result explains itself. */
   drops: Record<string, number>;
   /** Home-venue tickers with no counterpart on the hedge venue, for diagnosis
@@ -126,9 +131,11 @@ function venueBps(
     [50_000, asNumber(row.impact_bps_50k)],
     [100_000, asNumber(row.impact_bps_100k)],
   ]);
-  // A stored schedule wins; otherwise fall back to the venue's published one.
+  // A stored schedule wins; otherwise fall back to the venue's published one
+  // FOR THIS MARKET'S CLASS -- QFEX charges five times more on a single stock
+  // than on an FX pair, so one rate per venue would misprice most of its list.
   // Only a venue we have neither for is treated as unknown.
-  const published = publishedFees(row.slug);
+  const published = publishedFees(row.slug, row.asset_class);
   const takerFee = asNumber(row.taker_bps) ?? published?.takerBps ?? null;
   const makerFee = asNumber(row.maker_bps) ?? published?.makerBps ?? null;
   if (spread === null || impact === null || takerFee === null || makerFee === null) return null;
@@ -210,7 +217,7 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        WHERE effective_from <= CURRENT_DATE AND venue_id IN (SELECT id FROM v)
        ORDER BY venue_id, effective_from DESC, created_at DESC
      )
-     SELECT v.slug, m.symbol_canonical AS pair, book.ts AS book_ts,
+     SELECT v.slug, m.symbol_canonical AS pair, m.asset_class, book.ts AS book_ts,
             book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps, fee.maker_bps
      FROM markets m
@@ -325,6 +332,26 @@ function round(p: CrossPair): CrossPair {
   };
 }
 
+/** The schedules a venue's priced markets actually paid, dearest first.
+ *
+ *  Restricted to the pairs that survived into the answer: a class listed on
+ *  the venue but absent from the table would describe a fee nobody in it was
+ *  charged. */
+function schedulesOf(slug: string, rows: Map<string, VenueMarketRow>, pricedPairs: Set<string>) {
+  const seen = new Map<string, { venue: string; makerBps: number; takerBps: number; assetClass: string | null }>();
+  for (const row of rows.values()) {
+    if (!pricedPairs.has(row.pair)) continue;
+    const key = row.asset_class ?? "";
+    if (seen.has(key)) continue;
+    const published = publishedFees(slug, row.asset_class);
+    const makerBps = asNumber(row.maker_bps ?? null) ?? published?.makerBps ?? null;
+    const takerBps = asNumber(row.taker_bps ?? null) ?? published?.takerBps ?? null;
+    if (makerBps === null || takerBps === null) continue;
+    seen.set(key, { venue: slug, makerBps, takerBps, assetClass: assetClassLabel(row.asset_class) });
+  }
+  return [...seen.values()].sort((a, b) => b.takerBps - a.takerBps);
+}
+
 // oiKey is the main venue's OI: a hedge must be liquid, but must never recategorise
 // the market that the user chose to farm.
 function bandFrom(key: Exclude<CrossBand["key"], "all">, candidates: Array<CrossPair & { oiKey: number }>, limit = 10): CrossBand {
@@ -333,27 +360,23 @@ function bandFrom(key: Exclude<CrossBand["key"], "all">, candidates: Array<Cross
   return { key, oiRangeUsd: [Math.min(...ois), Math.max(...ois)], pairs };
 }
 
-/** A venue's fee schedule as this run priced it: a stored row wins, else the
- *  published one. Fees are venue-wide, so any of its markets carries them. */
-function scheduleOf(slug: string, rows: Map<string, VenueMarketRow>) {
-  const row = rows.values().next().value;
-  const published = publishedFees(slug);
-  const makerBps = asNumber(row?.maker_bps ?? null) ?? published?.makerBps ?? null;
-  const takerBps = asNumber(row?.taker_bps ?? null) ?? published?.takerBps ?? null;
-  return makerBps === null || takerBps === null ? null : { venue: slug, makerBps, takerBps };
-}
-
 export async function computeCrossRankings(
   slugA: string,
   slugB: string,
   accountVolumeUsd: number,
   tradfiOnly = false,
 ): Promise<CrossRankings> {
-  const [rows, histA, histB] = await Promise.all([
-    loadVenueMarkets([slugA, slugB]),
-    loadCostHistory(slugA, accountVolumeUsd / 2),
-    loadCostHistory(slugB, accountVolumeUsd / 2),
-  ]);
+  // SEQUENTIAL on purpose. Each instance's pool holds a single connection
+  // (see lib/db.ts -- Supabase caps the project's clients), so issuing these
+  // three as a Promise.all did not run them in parallel: the first took the
+  // connection and the other two sat in the pool's queue until they hit its
+  // ten-second wait limit and threw "timeout exceeded when trying to connect",
+  // turning the whole comparison into a 502. Awaiting them in turn costs the
+  // same total time -- they were serialized regardless -- and none of them can
+  // time out waiting for a connection the previous one has already released.
+  const rows = await loadVenueMarkets([slugA, slugB]);
+  const histA = await loadCostHistory(slugA, accountVolumeUsd / 2);
+  const histB = await loadCostHistory(slugB, accountVolumeUsd / 2);
   let observations = 0;
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
     [slugA, new Map()],
@@ -541,6 +564,7 @@ export async function computeCrossRankings(
   // the thresholds. What the hedge venue considers a big market is irrelevant
   // to which band the market the user is farming belongs in.
   const MAIN_OI_BANDS = oiBandsFor(slugA);
+  const pricedPairs = new Set(candidates.map((candidate) => candidate.pair));
   const bands = [
     bandFrom("high", candidates.filter((p) => p.oiKey > MAIN_OI_BANDS.high)),
     bandFrom("medium", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.medium && p.oiKey <= MAIN_OI_BANDS.high)),
@@ -568,9 +592,10 @@ export async function computeCrossRankings(
     asOf: [newestA, newestB].filter((ts): ts is string => ts !== null).sort().at(-1) ?? null,
     bands,
     pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
-    feeSchedule: [scheduleOf(slugA, A), scheduleOf(slugB, B)].filter(
-      (entry): entry is { venue: string; makerBps: number; takerBps: number } => entry !== null,
-    ),
+    feeSchedule: [
+      ...schedulesOf(slugA, A, pricedPairs),
+      ...schedulesOf(slugB, B, pricedPairs),
+    ],
   };
 }
 
