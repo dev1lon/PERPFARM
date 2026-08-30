@@ -15,6 +15,7 @@ import {
   FUNDING_HOLD_HOURS,
   snapshotsAreFresh,
   HOURS_PER_YEAR,
+  MIN_PAIRS_FOR_BANDS,
   MIN_VOLUME_USD,
   OI_BANDS,
   displayedOpenInterestUsd,
@@ -583,7 +584,10 @@ export async function computeCrossRankings(
     minVolumeUsd: MIN_VOLUME_USD,
     minOpenInterestUsd: minOpenInterestUsd(slugA),
     hedgeMinOpenInterestUsd: OI_BANDS.low,
-    grouped: true,
+    // Same rule as the same-protocol table: with only a few shared markets the
+    // bands are noise -- entropy x qfex shares ONE pair, and splitting it into
+    // three tabs offers two that can never fill.
+    grouped: candidates.length >= MIN_PAIRS_FOR_BANDS,
     costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
     sources: [
       { venue: slugA, live: snapshotsAreFresh(newestA) },

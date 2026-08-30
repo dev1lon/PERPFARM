@@ -4,6 +4,7 @@ import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
 import {
   FUNDING_HOLD_HOURS,
+  MIN_PAIRS_FOR_BANDS,
   MIN_VOLUME_USD,
   displayedOpenInterestUsd,
   minOpenInterestUsd,
@@ -33,8 +34,6 @@ export const dynamic = "force-dynamic";
 
 const MIN_ACCOUNT_VOLUME_USD = 1_000;
 const MAX_ACCOUNT_VOLUME_USD = 200_000;
-/** Below this many live pairs the three-way OI split is noise; show one list. */
-const MIN_PAIRS_FOR_BANDS = 15;
 
 type Competition = { name: string; startUtc: number; endUtc: number };
 
