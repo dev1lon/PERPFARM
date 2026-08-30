@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { compactCount, compactUsd, dayLabel } from "@/lib/format";
+import type { ReadyVenueSlug } from "@/lib/venue-status";
 import type { ActivityPoint, ActivityResponse } from "@/lib/activity/types";
 import { hasObservedRange, selectObservedRange } from "@/lib/activity-range";
 
@@ -18,7 +19,7 @@ export function MarketActivityV2({
   venueSlug = "variational",
   initialData = null,
 }: {
-  venueSlug?: "variational" | "txflow";
+  venueSlug?: ReadyVenueSlug;
   /** Rendered with the page when the server could read it, so the chart is on
    *  screen at first paint. The fetch below then never runs; it stays for the
    *  case where that server read failed. */

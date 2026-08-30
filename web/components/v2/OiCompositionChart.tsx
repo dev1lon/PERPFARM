@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
+import type { ReadyVenueSlug } from "@/lib/venue-status";
 
 type Point = { date: string; btc: number; tradfi: number; other: number; total: number };
 interface Composition {
@@ -52,7 +53,7 @@ export function OiCompositionChart({
   venueSlug = "variational",
   initialData = null,
 }: {
-  venueSlug?: "variational" | "txflow";
+  venueSlug?: ReadyVenueSlug;
   /** Rendered with the page when the server could read it. The fetch below is
    *  then never made; it stays for the case where that server read failed. */
   initialData?: Composition | null;

@@ -6,7 +6,7 @@ import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { InfoTip } from "@/components/v2/InfoTip";
-import { protocolName } from "@/lib/venue-status";
+import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
@@ -366,10 +366,12 @@ export function ProtocolCalculatorV2({
   venueSlug = "variational",
 }: {
   otherVenues: VenueSummary[];
-  venueSlug?: "variational" | "txflow";
+  venueSlug?: ReadyVenueSlug;
 }) {
   const locale = useLocale();
-  const homeName = venueSlug === "txflow" ? "TxFlow" : "Variational";
+  // From the catalog, never a branch: a third protocol used to be silently
+  // labelled "Variational" by the fallback side of that ternary.
+  const homeName = protocolName(venueSlug) ?? venueSlug;
   const allHedgeOptions = [
     { slug: "variational", name: "Variational" },
     { slug: "txflow", name: "TxFlow" },
@@ -601,7 +603,13 @@ type RecommendationPolicy = { preferMediumOi: boolean; preferTradfi: boolean };
 
 // This is intentionally a protocol-owned policy, not a hedge-venue setting.
 // It is kept in code while the requested CMS remains only a future plan.
-const RECOMMENDATION_POLICY: Record<"variational" | "txflow", RecommendationPolicy> = {
+/** A protocol whose points mechanics we have not written up yet: recommend on
+ *  cost alone, among the markets its own page treats as eligible. That is a
+ *  statement about price, which we measure -- not about how it awards points,
+ *  which we would be inventing. */
+const DEFAULT_RECOMMENDATION_POLICY: RecommendationPolicy = { preferMediumOi: false, preferTradfi: true };
+
+const RECOMMENDATION_POLICY: Record<string, RecommendationPolicy> = {
   variational: { preferMediumOi: true, preferTradfi: true },
   // TxFlow has not announced points mechanics. Its current guidance is
   // therefore eligible trading volume on the venue it focuses on (TradFi),
@@ -609,11 +617,20 @@ const RECOMMENDATION_POLICY: Record<"variational" | "txflow", RecommendationPoli
   txflow: { preferMediumOi: false, preferTradfi: true },
 };
 
-/** Recommended strategy duration. It is independent from Funding · 12h. */
-function recommendedHold(homeSlug: "variational" | "txflow", locale: Locale): string {
-  return homeSlug === "variational"
-    ? tr(locale, "12–24h", "12–24 ч")
-    : tr(locale, "2–4h", "2–4 ч");
+/** Recommended strategy duration, where one has been written. It is independent
+ *  from Funding · 12h.
+ *
+ *  A protocol with no published guidance shows an em dash rather than borrowing
+ *  another protocol's holding time: how long to hold is a points-mechanics
+ *  claim, and we have not made one for it. */
+const RECOMMENDED_HOLD: Record<string, { en: string; ru: string }> = {
+  variational: { en: "12–24h", ru: "12–24 ч" },
+  txflow: { en: "2–4h", ru: "2–4 ч" },
+};
+
+function recommendedHold(homeSlug: string, locale: Locale): string {
+  const hold = RECOMMENDED_HOLD[homeSlug];
+  return hold ? tr(locale, hold.en, hold.ru) : "—";
 }
 
 /**
@@ -623,12 +640,12 @@ function recommendedHold(homeSlug: "variational" | "txflow", locale: Locale): st
  */
 export function selectRecommendedPair(
   bands: RankingResponse["bands"],
-  homeSlug: "variational" | "txflow",
+  homeSlug: string,
 ): [PairRanking | undefined, BestRule] {
   const all = bands.flatMap((band) => band.pairs);
   const medium = bands.find((band) => band.key === "medium")?.pairs ?? [];
   const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
-  const policy = RECOMMENDATION_POLICY[homeSlug];
+  const policy = RECOMMENDATION_POLICY[homeSlug] ?? DEFAULT_RECOMMENDATION_POLICY;
 
   // The primary venue, never the hedge, decides this set. Execution cost is a
   // tie-breaker only within that home-venue strategy.
@@ -662,7 +679,7 @@ export function RouteResults({
   best: PairRanking | undefined;
   bestRule?: BestRule;
   hedgeName: string;
-  homeSlug: "variational" | "txflow";
+  homeSlug: string;
   hedgeSlug?: "variational" | "txflow";
   homeName: string;
   expanded: string | null;

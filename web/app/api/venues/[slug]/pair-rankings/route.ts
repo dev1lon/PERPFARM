@@ -70,6 +70,30 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
     competition: null,
     isEligible: isTradfiMarket,
   },
+  // Protocols added once their data path was verified. None runs a competition
+  // today, and each uses the shared TradFi classification -- which is a
+  // property of the INSTRUMENT, not of the venue asking, so QFEX's AAPL and
+  // Variational's AAPL are the same kind of market on both pages.
+  qfex: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
+  risex: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
+  polymarket: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
+  entropy: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
 };
 
 type PairRanking = {

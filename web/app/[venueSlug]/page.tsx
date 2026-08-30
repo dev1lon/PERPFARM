@@ -4,6 +4,7 @@ import { ProtocolPageV2 } from "@/components/v2/ProtocolPageV2";
 import { ProtocolSoonV2 } from "@/components/v2/ProtocolSoonV2";
 import { ProtocolV2 } from "@/components/v2/ProtocolV2";
 import { TxFlowV2 } from "@/components/v2/TxFlowV2";
+import { loadStoredActivity } from "@/lib/activity/stored";
 import { loadTxflowActivity } from "@/lib/activity/txflow";
 import { loadVariationalActivity } from "@/lib/activity/variational";
 import { loadCheapestRoute } from "@/lib/cheapest-route";
@@ -59,7 +60,7 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
-  if (venueSlug === "variational" || venueSlug === "txflow") {
+  if (hasProtocolPage(venueSlug) && isReadyVenue(venueSlug)) {
     // The cards' numbers, read HERE rather than by four separate requests from
     // the browser after the page has painted. This page is regenerated hourly,
     // which is the same window those answers are cached for anyway.
@@ -68,7 +69,11 @@ export default async function VenuePage({
     // whose read failed falls back to asking for itself, exactly as before, so
     // one unavailable source can never blank a page that has everything else.
     const [activity, cheapestRoute, fdvMarkets, oiComposition] = await Promise.allSettled([
-      venueSlug === "txflow" ? loadTxflowActivity() : loadVariationalActivity(),
+      venueSlug === "txflow"
+        ? loadTxflowActivity()
+        : venueSlug === "variational"
+          ? loadVariationalActivity()
+          : loadStoredActivity(venueSlug),
       loadCheapestRoute(venueSlug),
       loadFdvMarkets(venueSlug),
       venueSlug === "variational" ? loadOiComposition(venueSlug) : Promise.resolve(null),
@@ -80,11 +85,13 @@ export default async function VenuePage({
       cheapestRoute: settled(cheapestRoute),
       fdvMarkets: settled(fdvMarkets),
     };
-    return venueSlug === "variational" ? (
-      <ProtocolV2 otherVenues={otherVenues} initial={initial} oiComposition={settled(oiComposition)} />
-    ) : (
-      <TxFlowV2 otherVenues={otherVenues} initial={initial} />
-    );
+    if (venueSlug === "variational") {
+      return <ProtocolV2 otherVenues={otherVenues} initial={initial} oiComposition={settled(oiComposition)} />;
+    }
+    if (venueSlug === "txflow") {
+      return <TxFlowV2 otherVenues={otherVenues} initial={initial} />;
+    }
+    return <ProtocolPageV2 slug={venueSlug} otherVenues={otherVenues} initial={initial} />;
   }
 
   // A listed protocol we do not price yet gets the SAME page, with nothing to

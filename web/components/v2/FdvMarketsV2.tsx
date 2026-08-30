@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { EmptyNote } from "@/components/v2/EmptyNote";
 import { formatUtcDateTime } from "@/lib/format";
+import type { ReadyVenueSlug } from "@/lib/venue-status";
 
 const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y";
 
@@ -63,7 +64,7 @@ export function FdvMarketsV2({
   venueSlug = "variational",
   initialData = null,
 }: {
-  venueSlug?: "variational" | "txflow";
+  venueSlug?: ReadyVenueSlug;
   /** Rendered with the page when the server could read Polymarket. The fetch
    *  below then never runs; it stays for the case where that read failed. */
   initialData?: FdvMarketResponse | null;

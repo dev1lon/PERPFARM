@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { snapshotCacheControl } from "@/lib/cache";
 import { publicMessage } from "@/lib/api-error";
+import { loadStoredActivity } from "@/lib/activity/stored";
 import { loadTxflowActivity } from "@/lib/activity/txflow";
 import { loadVariationalActivity } from "@/lib/activity/variational";
+import { isReadyVenue } from "@/lib/venue-status";
 import type { ActivityResponse } from "@/lib/activity/types";
 
 /**
@@ -22,14 +24,20 @@ import type { ActivityResponse } from "@/lib/activity/types";
  */
 export const dynamic = "force-dynamic";
 
+/** Protocols that carry something beyond our own stored rows. */
 const LOADERS: Record<string, () => Promise<ActivityResponse>> = {
   variational: loadVariationalActivity,
   txflow: loadTxflowActivity,
 };
 
+/** Every other collected protocol draws exactly what the worker stored. */
+function loaderFor(slug: string): (() => Promise<ActivityResponse>) | null {
+  return LOADERS[slug] ?? (isReadyVenue(slug) ? () => loadStoredActivity(slug) : null);
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const load = LOADERS[slug];
+  const load = loaderFor(slug);
   if (!load) {
     return NextResponse.json({ error: "No activity data for this protocol" }, { status: 404 });
   }

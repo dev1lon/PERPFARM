@@ -15,7 +15,17 @@
  */
 import { findProtocol } from "@/lib/home-protocols";
 
-const READY_VENUE_SLUGS = ["variational", "txflow"] as const;
+const READY_VENUE_SLUGS = [
+  "variational",
+  "txflow",
+  // Added once BOTH halves of a data path existed: hourly snapshots being
+  // collected, and a fee schedule read off the venue. Either alone is not
+  // enough -- a route priced without fees reads as cheaper than it is.
+  "qfex",
+  "risex",
+  "polymarket",
+  "entropy",
+] as const;
 
 /** A protocol whose data path is verified -- the only kind that can be priced. */
 export type ReadyVenueSlug = (typeof READY_VENUE_SLUGS)[number];

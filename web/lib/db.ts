@@ -42,6 +42,13 @@ export function getPool(): Pool {
       // quickly when idle, instead of pg's default of up to 10 per pool.
       max: 1,
       idleTimeoutMillis: 10_000,
+      // With a single connection per instance, a request that arrives while
+      // another is mid-query waits for it. pg's default wait is UNBOUNDED, so
+      // one slow query could hold a page open for minutes with no error --
+      // seen locally as a cross-venue route that never returned. Ten seconds
+      // is longer than any healthy query here, and failing turns that hang
+      // into the card's own "try again" state.
+      connectionTimeoutMillis: 10_000,
     });
     globalForPool.perpfarmPool = pool;
   }

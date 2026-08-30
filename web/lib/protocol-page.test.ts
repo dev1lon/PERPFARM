@@ -5,10 +5,11 @@ import { hasProtocolPage, protocolPageConfig, type ProtocolSlug } from "./protoc
 import { ALL_PROTOCOLS } from "./home-protocols";
 import { isReadyVenue } from "./venue-status";
 
-/** Protocols with a verified data path: the calculator prices these. */
-const PRICED_SLUGS: ProtocolSlug[] = ["variational", "txflow"];
+/** Protocols whose guidance has been written. The rest have the reference's
+ *  empty slots waiting for it. */
+const WRITTEN_GUIDANCE: ProtocolSlug[] = ["variational", "txflow"];
 /** Every protocol that has a page, priced or not. */
-const SLUGS: ProtocolSlug[] = [...PRICED_SLUGS, "qfex", "risex", "polymarket", "entropy"];
+const SLUGS: ProtocolSlug[] = [...WRITTEN_GUIDANCE, "qfex", "risex", "polymarket", "entropy"];
 const componentsDir = join(__dirname, "..", "components", "v2");
 const read = (file: string) => readFileSync(join(componentsDir, file), "utf-8");
 
@@ -47,7 +48,7 @@ describe("protocol page reference", () => {
     expect(config.hedge.partner.tags.length).toBeGreaterThan(0);
   });
 
-  it.each(PRICED_SLUGS)("%s states its priorities and practical tips", (slug) => {
+  it.each(WRITTEN_GUIDANCE)("%s states its priorities and practical tips", (slug) => {
     // Written guidance is what a priced protocol is FOR. An unpriced one is
     // allowed to have none yet; this one is not.
     const config = protocolPageConfig(slug, "en");
@@ -68,12 +69,24 @@ describe("protocol page reference", () => {
     expect(hasProtocolPage("venue_alpha")).toBe(false);
   });
 
-  it("prices exactly the protocols with a verified data path", () => {
-    // The page renders the calculator on this answer alone, so a protocol that
-    // is listed but not collected must not be marked ready by accident.
+  it("prices every protocol it has a page for, and nothing else", () => {
+    // The page renders the calculator on this answer alone. Every protocol
+    // with a page now has both halves of a data path -- collection and a
+    // published fee schedule -- and a slug with neither must never be ready.
     for (const slug of SLUGS) {
-      expect(isReadyVenue(slug)).toBe(PRICED_SLUGS.includes(slug));
+      expect(isReadyVenue(slug)).toBe(true);
     }
+    expect(isReadyVenue("hibachi")).toBe(false);
+    expect(isReadyVenue("venue_alpha")).toBe(false);
+  });
+
+  it.each(SLUGS)("%s keeps the reference's guidance shape", (slug) => {
+    // Two priorities and at least four tips, written or waiting to be: the
+    // panel must not change shape between protocols.
+    const config = protocolPageConfig(slug, "en");
+
+    expect(config.guidance.priorities).toHaveLength(2);
+    expect(config.guidance.tips.length).toBeGreaterThanOrEqual(4);
   });
 
   it.each(SLUGS)("%s is translated in both languages", (slug) => {
