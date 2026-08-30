@@ -497,10 +497,15 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
     ],
     guidance: {
       kicker: tr(locale, `How ${protocol.name} awards points`, `Как ${protocol.name} начисляет поинты`),
+      // What is missing on these pages is the WRITING, not the data: the
+      // adapters were wired and the calculator below prices their routes from
+      // stored snapshots like every other protocol. The intro used to say the
+      // opposite -- "no route or cost is published" -- directly above a table
+      // of costed routes.
       intro: tr(
         locale,
-        `PerpFarm has not verified a data path for ${protocol.name} yet, so no route, cost or point estimate is published for it here. Everything on this page comes from the protocol itself.`,
-        `PerpFarm пока не проверил источник данных для ${protocol.name}, поэтому маршруты, стоимость и оценки поинтов для него не публикуются. Всё на этой странице — из самого протокола.`,
+        `${protocol.name} routes are priced from PerpFarm's own hourly collection, like every other protocol here. What is not written yet is how ${protocol.name} awards points: it has announced no mechanics, so the guidance below is left blank rather than guessed.`,
+        `Маршруты ${protocol.name} считаются по нашему часовому сбору данных, как и у остальных протоколов. Не написано другое — как ${protocol.name} начисляет поинты: механики не анонсированы, поэтому рекомендации ниже оставлены пустыми, а не придуманы.`,
       ),
       // The reference's shape, waiting for its words: two priorities and four
       // tips, in the same slots every other protocol uses. Kept visible on
@@ -535,18 +540,19 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
     hedge: {
       intro: tr(
         locale,
-        `Both legs still have to be placed by hand: PerpFarm does not price ${protocol.name} routes yet, so nothing below is a costed recommendation.`,
-        `Обе ноги пока ставятся руками: PerpFarm ещё не считает маршруты для ${protocol.name}, так что ниже — не рассчитанная рекомендация.`,
+        `General guidance for ${protocol.name}, independent of the calculation below.`,
+        `Общие рекомендации по ${protocol.name}, независимо от расчёта ниже.`,
       ),
       partner: {
         slug: protocol.hedgePartnerSlug,
         // TODO(manual): why this partner, in one sentence.
         body: tr(
           locale,
-          "The deepest book PerpFarm does price, so the hedge leg is at least the part of the route you can measure.",
-          "Самый глубокий стакан из тех, что PerpFarm считает, — значит хедж-ногу вы хотя бы можете измерить.",
+          "The deepest book among the protocols PerpFarm prices, so the hedge leg is the cheapest half of the route to cross.",
+          "Самый глубокий стакан среди протоколов, которые считает PerpFarm, — значит хедж-нога дешевле всего в пересечении.",
         ),
-        tags: [[tr(locale, "Placed by hand", "Ставится руками"), "neutral"]],
+        // TODO(manual): the real reason for this partner, and its tags.
+        tags: [[tr(locale, "Deepest book", "Самый глубокий стакан"), "neutral"]],
       },
     },
     activity: { kind: "none" },
