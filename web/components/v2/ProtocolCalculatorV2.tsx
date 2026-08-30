@@ -7,6 +7,7 @@ import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { InfoTip } from "@/components/v2/InfoTip";
 import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
+import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 
@@ -466,7 +467,10 @@ export function ProtocolCalculatorV2({
   // "All" means every eligible pair (paged ten at a time inside the table); an
   // OI tab keeps its curated ten. Older responses carry no `pairs`, so the
   // union of the bands stands in.
-  const tablePairs = [...(oiFilter === "all" || !grouped ? data?.pairs ?? flatPairs : bandPairs(oiFilter))]
+  // Resolved against the answer: a band the response does not carry falls back
+  // to "All" rather than drawing an empty table under a highlighted tab.
+  const activeFilter = resolveBandFilter(bands, oiFilter);
+  const tablePairs = [...(activeFilter === "all" || !grouped ? data?.pairs ?? flatPairs : bandPairs(activeFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
   const [best, bestRule] = selectRecommendedPair(bands, venueSlug);
 
@@ -580,7 +584,7 @@ export function ProtocolCalculatorV2({
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
-          oiFilter={oiFilter}
+          oiFilter={activeFilter}
           setOiFilter={setOiFilter}
         />
       )}
@@ -688,7 +692,10 @@ export function RouteResults({
   bestRule?: BestRule;
   hedgeName: string;
   homeSlug: string;
-  hedgeSlug?: "variational" | "txflow";
+  /** Only ever used to label and mark the short leg. It was typed as the two
+   *  protocols that existed when this was written, which forced every caller
+   *  to cast a slug it already knew was valid. */
+  hedgeSlug?: string;
   homeName: string;
   expanded: string | null;
   setExpanded: (v: string | null) => void;
@@ -935,16 +942,28 @@ export function RouteResults({
             </label>
             {grouped && (
               <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
-                {(["all", "high", "medium", "low"] as BandKey[]).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => changeFilter(k)}
-                    className={`pf-transition rounded-[7px] px-3 py-1.5 text-[12px] font-semibold ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
-                  >
-                    {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
-                  </button>
-                ))}
+                {(["all", "high", "medium", "low"] as BandKey[]).map((k) => {
+                  // A band the answer has no pairs in is DISABLED rather than
+                  // dropped: the row keeps its width, so it cannot reflow
+                  // between two scans, and the reader can see that the band
+                  // exists and is empty. Clicking it used to blank the table --
+                  // on the cross-protocol card, the whole block including these
+                  // tabs, with no way back.
+                  const available = bandHasPairs(data.bands, k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      disabled={!available}
+                      aria-disabled={!available}
+                      title={available ? undefined : tr(locale, "No pairs in this open-interest band", "В этой полосе открытого интереса нет пар")}
+                      onClick={() => changeFilter(k)}
+                      className={`pf-transition rounded-[7px] px-3 py-1.5 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                    >
+                      {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

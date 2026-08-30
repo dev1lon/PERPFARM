@@ -116,6 +116,21 @@ const OI_BANDS_BY_VENUE: Record<string, OiBands> = {
   // Variational is a far deeper venue; these are its previously calibrated
   // cutoffs and are what its "Medium OI" guidance refers to.
   variational: { high: 20_000_000, medium: 3_000_000, low: 50_000 },
+  // Cut at each venue's own terciles, measured from its live book on
+  // 2026-08-30. On the TxFlow defaults every QFEX market was "high" -- its
+  // book starts where TxFlow's ends -- so Medium and Low were permanently
+  // empty tabs, and choosing one emptied the table.
+  //
+  //   QFEX  162 markets, $0-13.7M (p33 $665k, p66 $1.28M) -> 56 / 54 / 41
+  //   RiseX  26 markets, $109k-11.2M (p33 $447k, p66 $2.0M)
+  //   Entropy 3 markets, $504k-6.0M -- too few to band, but the floor still
+  //           has to sit under its smallest market rather than at $10k.
+  qfex: { high: 1_250_000, medium: 650_000, low: 50_000 },
+  risex: { high: 2_000_000, medium: 450_000, low: 100_000 },
+  entropy: { high: 3_000_000, medium: 1_000_000, low: 100_000 },
+  // Polymarket Perps is deliberately NOT listed: its book (p33 $62k, p66
+  // $265k) sits almost exactly on the default cutoffs, and all three of its
+  // bands fill.
 };
 
 export function oiBandsFor(venueSlug: string): OiBands {
@@ -139,4 +154,47 @@ export function oiBandFor(displayedOiUsd: number, venueSlug: string): OiBandKey 
   if (displayedOiUsd >= bands.medium) return "medium";
   if (displayedOiUsd >= bands.low) return "low";
   return null;
+}
+
+/**
+ * Below this many eligible pairs the table is not split into OI bands at all.
+ *
+ * Three tabs over a handful of markets sort them into one populated band and
+ * two empty ones, which says more about the cutoffs than about the markets.
+ * Shared so the same-protocol and cross-protocol answers group alike.
+ */
+export const MIN_PAIRS_FOR_BANDS = 15;
+
+/** The tab keys the results table offers: the three OI bands plus "All". */
+export type BandFilterKey = OiBandKey | "all";
+
+/**
+ * Which band the table can actually show.
+ *
+ * A response carries only the bands that ended up with pairs in them -- a
+ * comparison whose every market is large has a `high` band and nothing else.
+ * The tab row is fixed, so a selected band can name one the answer does not
+ * contain, and the table then has nothing to draw. On the cross-protocol card
+ * that emptied the whole block, tabs included, leaving no way back to a tab
+ * that works.
+ *
+ * So the selection is resolved against the data before it is used: an empty or
+ * missing band falls back to "All", which is never empty when there are pairs
+ * at all.
+ */
+export function resolveBandFilter<T>(
+  bands: ReadonlyArray<{ key: string; pairs: readonly T[] }>,
+  selected: BandFilterKey,
+): BandFilterKey {
+  if (selected === "all") return "all";
+  return bandHasPairs(bands, selected) ? selected : "all";
+}
+
+/** Whether a band exists in this answer and has anything to show. */
+export function bandHasPairs<T>(
+  bands: ReadonlyArray<{ key: string; pairs: readonly T[] }>,
+  key: BandFilterKey,
+): boolean {
+  if (key === "all") return bands.some((band) => band.pairs.length > 0);
+  return (bands.find((band) => band.key === key)?.pairs.length ?? 0) > 0;
 }

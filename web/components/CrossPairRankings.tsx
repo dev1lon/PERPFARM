@@ -5,6 +5,7 @@ import { tr, useLocale } from "@/components/LocaleProvider";
 import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
 import { isTradfiMarket } from "@/lib/tradfi";
 import { protocolName } from "@/lib/venue-status";
+import { resolveBandFilter } from "@/lib/route-model";
 
 type CrossPair = {
   pair: string; oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
@@ -92,18 +93,27 @@ export function CrossPairRankings({
     // list is meant to be complete so the table can page through it.
   }).sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
 
+  // The answer carries only the bands that ended up with pairs, so a selection
+  // made against a previous scan -- or a band this comparison simply has none
+  // of -- resolves back to "All" instead of emptying the table.
+  const activeFilter = resolveBandFilter(response?.bands ?? [], oiFilter);
+
   const pairs = useMemo<PairRanking[]>(() => {
     const bands = response?.bands ?? [];
-    const source = oiFilter === "all" || !response?.grouped
+    const source = activeFilter === "all" || !response?.grouped
       ? response?.pairs ?? bands.flatMap((band) => band.pairs)
-      : bands.find((band) => band.key === oiFilter)?.pairs ?? [];
+      : bands.find((band) => band.key === activeFilter)?.pairs ?? [];
     return mapPairs(source);
     // `tradfiOnly` is deliberately absent: it is a request parameter, so it can
     // only reach this list through a new `response`. Naming it here claimed a
     // relationship the code does not have.
-  }, [response, oiFilter]);
+  }, [response, activeFilter]);
 
   if (!response && !error) return suppressLoading ? null : <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
+  // The red box means THIS COMPARISON found nothing -- not that the tab the
+  // reader is on is empty. It used to cover both, so choosing a band with no
+  // pairs replaced the entire block, tabs included, and the only way back was
+  // to run the scan again.
   if (!response || pairs.length === 0) return <div className="mt-5 rounded-2xl border border-negative/40 bg-negative/10 p-4 text-[14px] text-negative">{error ?? tr(locale, "No liquid cross-venue pairs found.", "Ликвидных кросс-площадочных пар не найдено.")}</div>;
 
   const data: RankingResponse = {
@@ -123,6 +133,6 @@ export function CrossPairRankings({
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
     pairs: response.pairs ? mapPairs(response.pairs) : undefined,
   };
-  const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug as "variational" | "txflow");
-  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug as "variational" | "txflow"} hedgeSlug={hedgeSlug as "variational" | "txflow"} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={oiFilter} setOiFilter={setOiFilter} />;
+  const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug);
+  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} />;
 }
