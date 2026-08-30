@@ -2,6 +2,17 @@
 # `perpfarm sync-markets` for tickers an adapter can't normalize on its own
 # (e.g. a venue listing 'kPEPE-PERP' should map to canonical 'PEPE' so it
 # matches other venues' 'PEPE-PERP'). Not written to any DB table.
+#
+# ONLY map two tickers together when they are the SAME instrument at the SAME
+# scale. A canonical symbol is what the cross-venue table matches on and what
+# the spread-risk job compares marks across, so two contracts merged under one
+# name are compared mark to mark as if their prices should agree.
+#
+# SP500 and US500 are the counter-example and are deliberately NOT mapped:
+# both track the S&P 500, but Polymarket's SP500 trades near $7,700 while
+# QFEX's US500 trades near $770 -- a tenth of the index. Merging them would
+# invent a permanent 90% "divergence" between the venues and price a hedge
+# that does not hedge.
 
 overrides:
   - venue: venue_alpha
