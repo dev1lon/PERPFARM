@@ -1,7 +1,9 @@
 """What the daily rollup must keep true for the chart it feeds."""
 
 import pathlib
+from datetime import date
 
+from perpfarm.adapters.base import VenueTotals
 from perpfarm.jobs import daily_rollup as job
 from perpfarm.jobs import sync_snapshots
 from perpfarm.jobs.hedge_recommendations import OI_DISPLAY_FACTOR
@@ -58,3 +60,52 @@ def test_batched_writes_change_round_trips_not_values():
     assert "[reading.book for reading in readings]" in source
     assert "[reading.volume for reading in readings]" in source
     assert "return {reading.target: _write_one(engine, reading) for reading in readings}" in source
+
+
+def test_a_venue_that_publishes_only_open_interest_keeps_our_summed_volume():
+    """Polymarket states its open interest but publishes volume nowhere outside
+    each market's candles. The two used to be written as separate rows, and the
+    guard above then blocked the hourly volume update for the rest of the day --
+    freezing the chart at whatever the first run after midnight had summed."""
+
+    today = date(2026, 8, 30)
+    summed = {date(2026, 8, 29): (900.0, 800.0), today: (1_000.0, 500.0)}
+
+    merged = job.merge_totals(summed, today, VenueTotals(volume_24h_usd=None, open_interest_usd=46_482_438.0))
+
+    volume, open_interest, source = merged[today]
+    assert volume == 1_000.0, "our summed volume must survive"
+    assert open_interest == 46_482_438.0, "the venue's own OI must win"
+    assert source == job.SOURCE_VENUE_API
+    # Yesterday is untouched: "last 24 hours" says nothing about a closed day.
+    assert merged[date(2026, 8, 29)] == (900.0, 800.0, job.SOURCE_SNAPSHOTS)
+
+
+def test_a_published_total_replaces_our_sum_of_the_same_day():
+    today = date(2026, 8, 30)
+
+    merged = job.merge_totals(
+        {today: (542_000.0, 260_000_000.0)},
+        today,
+        VenueTotals(volume_24h_usd=609_004.0, open_interest_usd=264_175_351.0),
+    )
+
+    assert merged[today] == (609_004.0, 264_175_351.0, job.SOURCE_VENUE_API)
+
+
+def test_a_venue_is_recorded_even_before_we_have_a_snapshot_of_it():
+    """Its first day, or an hour in which every market failed to collect."""
+
+    today = date(2026, 8, 30)
+
+    merged = job.merge_totals({}, today, VenueTotals(volume_24h_usd=1.0, open_interest_usd=2.0))
+
+    assert merged == {today: (1.0, 2.0, job.SOURCE_VENUE_API)}
+
+
+def test_a_venue_with_no_published_total_stays_our_sum():
+    today = date(2026, 8, 30)
+
+    merged = job.merge_totals({today: (5.0, 6.0)}, today, None)
+
+    assert merged == {today: (5.0, 6.0, job.SOURCE_SNAPSHOTS)}

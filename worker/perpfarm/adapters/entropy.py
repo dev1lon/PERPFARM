@@ -35,6 +35,7 @@ from perpfarm.adapters.base import (
     QuoteCurve,
     QuoteCurvePoint,
     VenueAdapter,
+    VenueTotals,
     VolumeData,
 )
 
@@ -258,6 +259,29 @@ class EntropyAdapter(VenueAdapter):
                 price * open_interest_base if price is not None and open_interest_base is not None else None
             ),
         )
+
+    def get_venue_totals(self) -> VenueTotals:
+        """Entropy's own dex, totalled from the single call the run makes.
+
+        Hyperliquid publishes no aggregate for a HIP-3 dex, so this adds up the
+        venue's own per-market figures over every live market on `io`. With
+        three markets that is exact, and it stays complete even in an hour when
+        one market's book failed to collect.
+        """
+
+        volume = 0.0
+        open_interest = 0.0
+        for market, context in self._all().values():
+            if market.get("isDelisted") is True:
+                continue
+            market_volume = _float(context.get("dayNtlVlm"))
+            if market_volume is not None:
+                volume += market_volume
+            price = _float(context.get("markPx"))
+            size = _float(context.get("openInterest"))
+            if price is not None and size is not None:
+                open_interest += price * size
+        return VenueTotals(volume_24h_usd=volume, open_interest_usd=open_interest)
 
     def get_fees(self) -> FeeData:
         """The HIP-3 schedule Entropy publishes: 0.030% maker, 0.090% taker.

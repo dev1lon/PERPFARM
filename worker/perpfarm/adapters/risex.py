@@ -27,6 +27,7 @@ from perpfarm.adapters.base import (
     QuoteCurve,
     QuoteCurvePoint,
     VenueAdapter,
+    VenueTotals,
     VolumeData,
 )
 
@@ -247,6 +248,30 @@ class RiseXAdapter(VenueAdapter):
                 price * open_interest_base if price is not None and open_interest_base is not None else None
             ),
         )
+
+    def get_venue_totals(self) -> VenueTotals:
+        """RiseX's own numbers for the whole venue.
+
+        It publishes no protocol-wide figure, so this adds up the per-market
+        ones IT publishes -- in the single `/markets` call the run already
+        makes, over every listed market. That is not the same as summing our
+        stored snapshots: this is complete by construction, while a snapshot
+        sum silently drops any market whose collection failed that hour.
+        """
+
+        volume = 0.0
+        open_interest = 0.0
+        for row in self._markets().values():
+            if row.get("active") is not True:
+                continue
+            market_volume = _float(row.get("quote_volume_24h"))
+            if market_volume is not None:
+                volume += market_volume
+            price = _float(row.get("mark_price")) or _float(row.get("last_price"))
+            size = _float(row.get("open_interest"))
+            if price is not None and size is not None:
+                open_interest += price * size
+        return VenueTotals(volume_24h_usd=volume, open_interest_usd=open_interest)
 
     def get_fees(self) -> FeeData:
         """Tier 1 of the published ladder: 3.00 bps taker, 1.00 bps maker.

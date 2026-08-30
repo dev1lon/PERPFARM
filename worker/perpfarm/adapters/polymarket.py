@@ -30,6 +30,7 @@ from perpfarm.adapters.base import (
     QuoteCurve,
     QuoteCurvePoint,
     VenueAdapter,
+    VenueTotals,
     VolumeData,
 )
 
@@ -294,6 +295,28 @@ class PolymarketAdapter(VenueAdapter):
                 price * open_interest_base if price is not None and open_interest_base is not None else None
             ),
         )
+
+    def get_venue_totals(self) -> VenueTotals:
+        """Open interest for the whole venue, from the one `/tickers` call.
+
+        Volume is deliberately None: Polymarket publishes none per venue and
+        none per ticker either -- it exists only inside each market's candles,
+        and pulling 67 candle histories to add them up here would repeat, in
+        one job, the work the hourly collection already did. The daily rollup
+        therefore keeps its own summed volume and takes only this figure.
+        """
+
+        open_interest = 0.0
+        for symbol in self._all():
+            try:
+                ticker = self._ticker(symbol)
+            except MarketUnavailable:
+                continue
+            price = _float(ticker.get("mark_price")) or _float(ticker.get("mid_price"))
+            size = _float(ticker.get("open_interest"))
+            if price is not None and size is not None:
+                open_interest += price * size
+        return VenueTotals(volume_24h_usd=None, open_interest_usd=open_interest)
 
     def get_fees(self) -> FeeData:
         # Entry tier of the published schedule (docs.polymarket.com/perps,
