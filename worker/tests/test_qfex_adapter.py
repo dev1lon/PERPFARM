@@ -106,9 +106,14 @@ def test_an_unknown_market_never_reaches_the_network():
         _StubAdapter().get_orderbook_top("NOPE-USD")
 
 
-def test_fees_are_not_guessed():
-    """QFEX prices by asset class as well as by volume tier, and early
-    depositors hold a lifetime tier. One venue-wide pair cannot say that."""
+def test_fees_are_the_entry_tier_for_single_stocks():
+    """QFEX prices by asset class and our model carries one pair per venue, so
+    it carries the class this venue actually is -- and the dearest one. Indices
+    and commodities pay 0.02%/0.05%, FX 0.01%/0.02%, so those are priced above
+    what they cost rather than below."""
 
-    with pytest.raises(NotImplementedError):
-        _StubAdapter().get_fees()
+    fees = _StubAdapter().get_fees()
+
+    assert fees.maker_bps == pytest.approx(5.0)
+    assert fees.taker_bps == pytest.approx(10.0)
+    assert fees.source_url is not None

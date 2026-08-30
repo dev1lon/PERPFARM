@@ -40,6 +40,10 @@ MIN_OPEN_INTEREST_BY_SLUG: dict[str, float] = {
 PUBLISHED_FEES: dict[str, tuple[float, float]] = {
     "variational": (0.0, 0.0),
     "txflow": (1.5 * 0.95, 4.5 * 0.95),
+    "polymarket": (1.25, 4.0),
+    "risex": (1.0, 3.0),
+    "qfex": (5.0, 10.0),
+    "entropy": (3.0, 9.0),
 }
 
 

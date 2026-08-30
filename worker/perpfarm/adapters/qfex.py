@@ -15,11 +15,8 @@ than multiplied by a price. And funding is settled hourly but only while a
 symbol's underlier venue is open -- outside those hours QFEX publishes a rate
 of exactly 0, which is a real reading, not a missing one.
 
-TODO(verify): the fee schedule. QFEX prices by ASSET CLASS as well as by 30-day
-volume (entry tier: 0.02% FX, 0.05% commodities and indices, 0.10% single
-stocks), and depositors before 2026-08-24 hold a lifetime tier of 0 bps maker /
-1.5 bps taker on equities. One venue-wide pair cannot describe that honestly, so
-`get_fees` raises until the tier to publish is chosen.
+Fees are the published entry tier for SINGLE STOCKS, which is what nearly
+every QFEX market is: 0.05% maker, 0.10% taker, no discount applied.
 """
 
 from __future__ import annotations
@@ -41,6 +38,7 @@ from perpfarm.adapters.base import (
 )
 
 API_BASE = "https://api.qfex.com"
+FEE_SOURCE_URL = "https://docs.qfex.com/qfex/fees"
 _HOURS_PER_YEAR = 8760.0
 #: QFEX settles funding every 60 minutes (docs.qfex.com/qfex/funding).
 _FUNDING_INTERVAL_HOURS = 1.0
@@ -237,9 +235,14 @@ class QfexAdapter(VenueAdapter):
         )
 
     def get_fees(self) -> FeeData:
-        raise NotImplementedError(
-            "TODO(verify): QFEX prices by asset class as well as by 30-day volume "
-            "(entry tier 0.02% FX / 0.05% commodities and indices / 0.10% single "
-            "stocks), and early depositors hold a lifetime 0 bps maker, 1.5 bps "
-            "taker equities tier. Choose which schedule PerpFarm publishes."
-        )
+        """Tier 5 SINGLE STOCKS: 0.05% maker, 0.10% taker.
+
+        QFEX prices by asset class as well as by volume, and our model carries
+        one pair per venue -- so it carries the class this venue actually is.
+        Nearly every QFEX market is a single stock, and that class is also the
+        most expensive: indices and commodities pay 0.02% / 0.05% and FX 0.01% /
+        0.02%, so a route on one of those is priced ABOVE what it costs, never
+        below. Tier 5 is the entry tier, no discount applied.
+        """
+
+        return FeeData(maker_bps=5.0, taker_bps=10.0, source_url=FEE_SOURCE_URL)

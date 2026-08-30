@@ -102,9 +102,13 @@ def test_an_unknown_market_never_reaches_the_network():
         _StubAdapter().get_orderbook_top("io:NOTLISTED")
 
 
-def test_fees_are_not_guessed():
-    """A HIP-3 dex adds the deployer's own share to Hyperliquid's base fees.
-    Until that is read off the venue, no Entropy route may be priced."""
+def test_fees_are_the_published_hip3_schedule():
+    """Twice Hyperliquid's standard perp rate, split between Hyperliquid and
+    the deployer. Volume tiers and growth mode only ever take it lower, so
+    this is the honest end to price a route at."""
 
-    with pytest.raises(NotImplementedError):
-        _StubAdapter().get_fees()
+    fees = _StubAdapter().get_fees()
+
+    assert fees.maker_bps == pytest.approx(3.0)
+    assert fees.taker_bps == pytest.approx(9.0)
+    assert fees.source_url is not None

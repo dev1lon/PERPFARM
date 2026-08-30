@@ -16,10 +16,8 @@ from Hyperliquid's own unauthenticated `/info` endpoint:
 * ``l2Book`` for the public CLOB depth, which gives a real VWAP walk rather
   than a guess from the displayed spread.
 
-TODO(verify): the fee schedule. A HIP-3 dex pays Hyperliquid's base fees plus
-whatever the deployer adds, and Entropy's docs sit behind Cloudflare. Until
-someone reads it off the venue, `get_fees` raises -- so PerpFarm collects the
-market data but prices no Entropy route, which is the honest order to do it in.
+Fees follow the HIP-3 schedule Entropy documents: twice Hyperliquid's standard
+perp rate, split between Hyperliquid and the deployer.
 """
 
 from __future__ import annotations
@@ -41,6 +39,7 @@ from perpfarm.adapters.base import (
 )
 
 INFO_URL = "https://api.hyperliquid.xyz/info"
+FEE_SOURCE_URL = "https://docs.entropy.io/"
 #: Entropy's own HIP-3 dex. Every symbol it lists carries it as a prefix.
 ENTROPY_DEX = "io"
 _HOURS_PER_YEAR = 8760.0
@@ -261,8 +260,13 @@ class EntropyAdapter(VenueAdapter):
         )
 
     def get_fees(self) -> FeeData:
-        raise NotImplementedError(
-            "TODO(verify): Entropy's fee schedule. A HIP-3 dex pays Hyperliquid's "
-            "base maker/taker plus the deployer's own share, and docs.entropy.io "
-            "is not reachable from a non-browser client."
-        )
+        """The HIP-3 schedule Entropy publishes: 0.030% maker, 0.090% taker.
+
+        Hyperliquid's standard perp rates are 0.015% / 0.045%; a HIP-3 market
+        charges TWICE that, split between Hyperliquid and the deployer. Volume
+        tiers, staking discounts and referral rebates can take it lower, and a
+        market in "growth mode" pays a tenth of it -- so this is the top of the
+        range, which is the honest end to price a route at.
+        """
+
+        return FeeData(maker_bps=3.0, taker_bps=9.0, source_url=FEE_SOURCE_URL)

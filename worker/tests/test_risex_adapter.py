@@ -113,9 +113,12 @@ def test_an_unknown_market_never_reaches_the_network():
         _StubAdapter().get_orderbook_top("NOPE/USDC")
 
 
-def test_fees_are_not_guessed():
-    """RiseX's maker/taker tiers are not in the chain docs, and a route priced
-    at an invented fee is worse than a route not priced at all."""
+def test_fees_are_the_published_entry_tier():
+    """Tier 1 of the venue's own ladder -- what an account that has not traded
+    pays. Tier 2 ($5M of 14-day weighted volume) drops to 2.50 / 0.75."""
 
-    with pytest.raises(NotImplementedError):
-        _StubAdapter().get_fees()
+    fees = _StubAdapter().get_fees()
+
+    assert fees.maker_bps == pytest.approx(1.0)
+    assert fees.taker_bps == pytest.approx(3.0)
+    assert fees.source_url is not None

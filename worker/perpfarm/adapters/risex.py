@@ -8,10 +8,8 @@ API is unauthenticated and answers everything PerpFarm records:
 * ``/api/v1/orderbook?market_id=N`` -- fifty levels a side of the public CLOB,
   which is what turns "spread" into a real VWAP walk at the size being priced.
 
-TODO(verify): the fee schedule. docs.risechain.com documents the chain rather
-than the exchange's maker/taker tiers, so `get_fees` raises until someone reads
-it off the venue -- PerpFarm then collects RiseX market data but prices no
-RiseX route, which is the honest order to do it in.
+Fees come from the venue's own Fee Tier page: Tier 1 is 3.00 bps taker and
+1.00 bps maker until 14-day weighted volume crosses $5M.
 """
 
 from __future__ import annotations
@@ -33,6 +31,7 @@ from perpfarm.adapters.base import (
 )
 
 API_BASE = "https://api.rise.trade/api/v1"
+FEE_SOURCE_URL = "https://rise.trade"
 _HOURS_PER_YEAR = 8760.0
 _NANOSECONDS_PER_HOUR = 3_600_000_000_000.0
 #: Same geometric ladder as the other CLOB adapters.
@@ -250,7 +249,12 @@ class RiseXAdapter(VenueAdapter):
         )
 
     def get_fees(self) -> FeeData:
-        raise NotImplementedError(
-            "TODO(verify): RiseX's maker/taker schedule. docs.risechain.com documents "
-            "the chain, not the exchange's fee tiers."
-        )
+        """Tier 1 of the published ladder: 3.00 bps taker, 1.00 bps maker.
+
+        Tiers are set by 14-day weighted volume and re-cut daily at 16:00 UTC;
+        an account that has not traded sits at Tier 1, so that is what a new
+        farmer pays. Tier 2 ($5M) drops to 2.50 / 0.75, and the ladder goes on
+        to 1.50 / 0.00 -- pricing at Tier 1 is the conservative end.
+        """
+
+        return FeeData(maker_bps=1.0, taker_bps=3.0, source_url=FEE_SOURCE_URL)
