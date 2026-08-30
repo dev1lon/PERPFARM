@@ -46,6 +46,36 @@ PUBLISHED_FEES: dict[str, tuple[float, float]] = {
     "entropy": (3.0, 9.0),
 }
 
+# Venues that charge by INSTRUMENT CLASS instead of one venue-wide rate, keyed
+# by the class string the venue publishes and we store on the market. QFEX
+# charges five times more on a single stock than on an FX pair, so the entry
+# above is only its majority class and the real rate is looked up per market.
+# Keep in lockstep with ASSET_CLASS_FEES in web/lib/venue-fees.ts.
+ASSET_CLASS_FEES: dict[str, dict[str, tuple[float, float]]] = {
+    "qfex": {
+        "EQUITY": (5.0, 10.0),
+        "INDEX": (2.0, 5.0),
+        "COMMODITY": (2.0, 5.0),
+        "FX": (1.0, 2.0),
+    },
+}
+
+
+def published_fees(slug: str, asset_class: str | None = None) -> tuple[float, float] | None:
+    """The documented schedule for one market: its class first, venue-wide next.
+
+    A class we have never seen -- a product line added after this shipped --
+    falls back to the venue's headline rate rather than to nothing, so a new
+    listing is never priced as if trading it were free.
+    """
+
+    by_class = ASSET_CLASS_FEES.get(slug)
+    if by_class is not None and asset_class:
+        for_class = by_class.get(asset_class.upper())
+        if for_class is not None:
+            return for_class
+    return PUBLISHED_FEES.get(slug)
+
 
 @dataclass(frozen=True)
 class Market:
@@ -61,6 +91,8 @@ class Market:
     open_interest_usd: float | None
     maker_bps: float | None
     taker_bps: float | None
+    #: The venue's own instrument class, where it publishes one.
+    asset_class: str | None = None
 
 
 @dataclass
@@ -182,7 +214,7 @@ def _venue_bps(market: Market, fill_notional_usd: float, *, cheapest: bool) -> t
     impact = _curve_impact_bps(market.quote_curve, fill_notional_usd, cheapest=cheapest)
     if impact is None:
         impact = _bucket_impact_bps(market, fill_notional_usd)
-    fallback = PUBLISHED_FEES.get(market.slug)
+    fallback = published_fees(market.slug, market.asset_class)
     maker = market.maker_bps if market.maker_bps is not None else (fallback[0] if fallback else None)
     taker = market.taker_bps if market.taker_bps is not None else (fallback[1] if fallback else None)
     if spread is None or impact is None or maker is None or taker is None:
@@ -285,7 +317,7 @@ def run_hedge_recommendations(engine: Engine, *, ts: datetime) -> Recommendation
     query = text(
         """
         WITH active AS (
-          SELECT m.id, m.venue_id, m.symbol_canonical, v.slug
+          SELECT m.id, m.venue_id, m.symbol_canonical, m.asset_class, v.slug
           FROM markets m JOIN venues v ON v.id = m.venue_id
           WHERE m.is_active = true AND v.slug <> ALL(:fixture_slugs)
         ), book AS (
@@ -312,7 +344,7 @@ def run_hedge_recommendations(engine: Engine, *, ts: datetime) -> Recommendation
           WHERE effective_from <= CURRENT_DATE
           ORDER BY venue_id, effective_from DESC, created_at DESC
         )
-        SELECT a.venue_id, a.slug, a.symbol_canonical,
+        SELECT a.venue_id, a.slug, a.symbol_canonical, a.asset_class,
                book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
                volume.volume_24h_usd, volume.open_interest_usd, fee.maker_bps, fee.taker_bps
         FROM active a
@@ -337,6 +369,7 @@ def run_hedge_recommendations(engine: Engine, *, ts: datetime) -> Recommendation
                     open_interest_usd=_number(row.open_interest_usd),
                     maker_bps=_number(row.maker_bps),
                     taker_bps=_number(row.taker_bps),
+                    asset_class=row.asset_class,
                 )
                 for row in conn.execute(query, {"fixture_slugs": sorted(FIXTURE_SLUGS)})
             ]

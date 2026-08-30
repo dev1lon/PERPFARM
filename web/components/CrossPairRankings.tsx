@@ -20,7 +20,7 @@ type CrossResponse = {
   asOf: string; accountVolumeUsd: number; fillNotionalUsd: number; totalCycleVolumeUsd: number;
   holdHours: number; minVolumeUsd: number; grouped: boolean;
   minOpenInterestUsd?: number; hedgeMinOpenInterestUsd?: number;
-  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number }>;
+  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number; assetClass?: string | null }>;
   costBasis?: "24h-median" | "latest-snapshot";
   sources?: Array<{ venue: string; live: boolean }>;
   bands: { key: CrossBandKey; pairs: CrossPair[] }[];

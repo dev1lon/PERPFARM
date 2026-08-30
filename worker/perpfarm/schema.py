@@ -49,6 +49,12 @@ markets = Table(
     Column("symbol_canonical", Text, nullable=False),
     Column("base_asset", Text, nullable=False),
     Column("is_active", Boolean, nullable=False, server_default="true"),
+    # The venue's OWN instrument class, verbatim, where it publishes one
+    # ('EQUITY', 'INDEX', 'COMMODITY', 'FX' on QFEX). Null everywhere else.
+    # Stored because it sets the PRICE: QFEX charges 0.10% taker on a single
+    # stock and 0.02% on an FX pair, so one venue-wide fee would be five times
+    # wrong on one of them.
+    Column("asset_class", Text),
     UniqueConstraint("venue_id", "symbol", name="uq_markets_venue_symbol"),
 )
 Index("idx_markets_canonical", markets.c.symbol_canonical)

@@ -32,6 +32,12 @@ class MarketInfo:
     symbol_canonical: str  # normalized cross-venue key, e.g. "PEPE"
     base_asset: str
     is_active: bool
+    #: The venue's OWN classification of the instrument, verbatim, where it
+    #: publishes one -- QFEX says EQUITY / INDEX / COMMODITY / FX. It is stored
+    #: because it changes the PRICE: QFEX charges 0.10% taker on a single stock
+    #: and 0.02% on an FX pair, so a venue-wide fee would be five times wrong
+    #: on one of them. Classes are not invented for venues that publish none.
+    asset_class: str | None = None
 
 
 @dataclass(frozen=True)

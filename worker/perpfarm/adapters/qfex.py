@@ -22,6 +22,7 @@ every QFEX market is: 0.05% maker, 0.10% taker, no discount applied.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -34,10 +35,16 @@ from perpfarm.adapters.base import (
     QuoteCurve,
     QuoteCurvePoint,
     VenueAdapter,
+    VenueTotals,
     VolumeData,
 )
 
 API_BASE = "https://api.qfex.com"
+#: QFEX's aggregate feed takes its interval in NANOSECONDS -- an hour is
+#: 3_600_000_000_000, and every smaller-looking number is rejected with
+#: "interval must be a whole number of minutes".
+_METRICS_INTERVAL_NS = 3_600_000_000_000
+_METRICS_WINDOW_HOURS = 24
 FEE_SOURCE_URL = "https://docs.qfex.com/qfex/fees"
 _HOURS_PER_YEAR = 8760.0
 #: QFEX settles funding every 60 minutes (docs.qfex.com/qfex/funding).
@@ -109,6 +116,7 @@ class QfexAdapter(VenueAdapter):
 
     def __init__(self) -> None:
         self._contracts: dict[str, Mapping[str, object]] | None = None
+        self._refdata: dict[str, Mapping[str, object]] | None = None
 
     def _get(self, path: str) -> object:
         response = httpx.get(
@@ -136,6 +144,25 @@ class QfexAdapter(VenueAdapter):
             }
         return self._contracts
 
+    def _reference(self) -> dict[str, Mapping[str, object]]:
+        """Per-symbol reference data: the venue's own status and asset class.
+
+        `/md/contracts` carries neither, and both matter -- an INACTIVE symbol
+        must stop being collected, and the class sets the fee.
+        """
+
+        if self._refdata is None:
+            payload = self._get("/refdata")
+            rows = payload.get("data") if isinstance(payload, Mapping) else None
+            self._refdata = {
+                symbol: row
+                for row in (rows if isinstance(rows, list) else [])
+                if isinstance(row, Mapping)
+                and isinstance((symbol := row.get("symbol")), str)
+                and symbol
+            }
+        return self._refdata
+
     def _contract(self, symbol: str) -> Mapping[str, object]:
         contract = self._all().get(symbol)
         if contract is None:
@@ -143,6 +170,7 @@ class QfexAdapter(VenueAdapter):
         return contract
 
     def get_markets(self) -> list[MarketInfo]:
+        reference = self._reference()
         markets: list[MarketInfo] = []
         for ticker, row in self._all().items():
             base_asset = row.get("base_currency")
@@ -153,12 +181,19 @@ class QfexAdapter(VenueAdapter):
             # wearing the same ticker.
             if row.get("product_type") not in (None, "Perpetual"):
                 continue
+            details = reference.get(ticker, {})
+            status = details.get("status")
+            asset_class = details.get("product_category")
             markets.append(
                 MarketInfo(
                     symbol=ticker,
                     symbol_canonical=base_asset.upper(),
                     base_asset=base_asset.upper(),
-                    is_active=True,
+                    # QFEX publishes ACTIVE / INACTIVE / DELISTED. A symbol
+                    # missing from refdata keeps collecting rather than being
+                    # retired on the strength of one endpoint's silence.
+                    is_active=status in (None, "ACTIVE"),
+                    asset_class=asset_class if isinstance(asset_class, str) else None,
                 )
             )
         return markets
@@ -232,6 +267,44 @@ class QfexAdapter(VenueAdapter):
         return VolumeData(
             volume_24h_usd=_float(contract.get("target_volume")),
             open_interest_usd=_float(contract.get("open_interest_usd")),
+        )
+
+    def get_venue_totals(self) -> VenueTotals | None:
+        """QFEX's OWN protocol-wide figures, not our sum of its markets.
+
+        `/defillama/metrics` is the aggregate feed the venue publishes for
+        DefiLlama: one row per hour with that hour's volume and the open
+        interest at its end. The day's volume is the sum of those hours, and
+        open interest is a level, so it is the newest row's -- never a sum.
+        """
+
+        end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        start = end - timedelta(hours=_METRICS_WINDOW_HOURS)
+        payload = self._get(
+            "/defillama/metrics"
+            f"?fromISO={start.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            f"&toISO={end.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+            f"&interval={_METRICS_INTERVAL_NS}"
+        )
+        rows = payload.get("data") if isinstance(payload, Mapping) else None
+        if not isinstance(rows, list) or not rows:
+            return None
+        volume = 0.0
+        counted = 0
+        open_interest: float | None = None
+        for row in rows:
+            if not isinstance(row, Mapping):
+                continue
+            hourly = _float(row.get("dailyVolumeUSD"))
+            if hourly is not None:
+                volume += hourly
+                counted += 1
+            level = _float(row.get("openInterestAtEndUSD"))
+            if level is not None:
+                open_interest = level
+        return VenueTotals(
+            volume_24h_usd=volume if counted else None,
+            open_interest_usd=open_interest,
         )
 
     def get_fees(self) -> FeeData:

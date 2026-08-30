@@ -25,10 +25,11 @@
  *    (docs.polymarket.com/perps -> Fees).
  *  - RiseX: Tier 1 of its Fee Tier page, 1.00 bps maker / 3.00 bps taker until
  *    14-day weighted volume crosses $5M.
- *  - QFEX: entry tier for SINGLE STOCKS, 0.05% maker / 0.10% taker, no
- *    discount. QFEX prices by asset class and nearly every market it lists is
- *    a single stock -- the most expensive class -- so indices, commodities and
- *    FX are priced above what they cost, never below (docs.qfex.com/qfex/fees).
+ *  - QFEX: priced BY ASSET CLASS, no discount (docs.qfex.com/qfex/fees) --
+ *    0.05%/0.10% on a single stock, 0.02%/0.05% on an index or a commodity,
+ *    0.01%/0.02% on an FX pair. Charging every market the single-stock rate
+ *    made its 23 non-equity markets cost up to five times what they do, so the
+ *    class of each market is read from QFEX itself and stored with it.
  *  - Entropy: the HIP-3 schedule, 0.030% maker / 0.090% taker -- twice
  *    Hyperliquid's standard perp rate, split between Hyperliquid and the
  *    deployer. Volume tiers and growth mode can take it lower, so this is the
@@ -47,7 +48,53 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   entropy: { makerBps: 3.0, takerBps: 9.0 },
 };
 
-/** Published schedule for a venue, or null when we have not verified one. */
-export function publishedFees(slug: string): VenueFees | null {
+/**
+ * Venues that charge by INSTRUMENT CLASS rather than one venue-wide rate.
+ *
+ * Keyed by the class string the venue itself publishes and we store on the
+ * market (`markets.asset_class`), so a class we have never seen -- a new
+ * product line -- falls back to the venue's headline rate above instead of
+ * being priced as free.
+ */
+const ASSET_CLASS_FEES: Record<string, Record<string, VenueFees>> = {
+  qfex: {
+    EQUITY: { makerBps: 5.0, takerBps: 10.0 },
+    INDEX: { makerBps: 2.0, takerBps: 5.0 },
+    COMMODITY: { makerBps: 2.0, takerBps: 5.0 },
+    FX: { makerBps: 1.0, takerBps: 2.0 },
+  },
+};
+
+/** How to name a class in the fee note under a route. */
+const ASSET_CLASS_LABELS: Record<string, string> = {
+  EQUITY: "stocks",
+  INDEX: "indices",
+  COMMODITY: "commodities",
+  FX: "FX",
+};
+
+export function assetClassLabel(assetClass: string | null | undefined): string | null {
+  if (!assetClass) return null;
+  return ASSET_CLASS_LABELS[assetClass.toUpperCase()] ?? assetClass.toLowerCase();
+}
+
+/** True where the venue's rate depends on which instrument is traded. */
+export function feesVaryByAssetClass(slug: string): boolean {
+  return slug in ASSET_CLASS_FEES;
+}
+
+/**
+ * Published schedule for a venue, or null when we have not verified one.
+ *
+ * `assetClass` is the venue's own class for the market being priced. It is
+ * consulted only for venues that publish a per-class schedule; everywhere else
+ * the venue-wide rate is the answer and the argument is ignored.
+ */
+export function publishedFees(slug: string, assetClass?: string | null): VenueFees | null {
+  const byClass = ASSET_CLASS_FEES[slug];
+  if (byClass && assetClass) {
+    const forClass = byClass[assetClass.toUpperCase()];
+    if (forClass) return forClass;
+  }
   return PUBLISHED_FEES[slug] ?? null;
 }

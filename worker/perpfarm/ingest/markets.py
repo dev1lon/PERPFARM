@@ -64,6 +64,7 @@ def sync_markets(
                 symbol_canonical=symbol_canonical,
                 base_asset=m.base_asset,
                 is_active=m.is_active,
+                asset_class=m.asset_class,
             )
             stmt = stmt.on_conflict_do_update(
                 index_elements=[markets.c.venue_id, markets.c.symbol],
@@ -71,6 +72,7 @@ def sync_markets(
                     "symbol_canonical": stmt.excluded.symbol_canonical,
                     "base_asset": stmt.excluded.base_asset,
                     "is_active": stmt.excluded.is_active,
+                    "asset_class": stmt.excluded.asset_class,
                 },
             )
             if not dry_run:

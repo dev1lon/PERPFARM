@@ -12,7 +12,7 @@ import {
   snapshotsAreFresh,
 } from "@/lib/route-model";
 import { TRADFI_TICKERS, isTradfiMarket } from "@/lib/tradfi";
-import { publishedFees } from "@/lib/venue-fees";
+import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
 /**
@@ -151,7 +151,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!fees) {
     return NextResponse.json({ error: `No published fee schedule for ${slug}` }, { status: 404 });
   }
-  const feeBps = fees.makerBps + fees.takerBps;
 
   const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
   // Snapped to the $100 grid, so two visitors asking near-identical questions
@@ -177,6 +176,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     let newestBookTs: string | null = null;
     let observations = 0;
+    // Every schedule this answer actually applied, keyed by the class it came
+    // from, so the fee note names what was charged instead of one headline
+    // rate that most of the table did not pay.
+    const appliedFees = new Map<string, { makerBps: number; takerBps: number }>();
     const candidates = [...markets.values()]
       .map((market): PairRanking | null => {
         const eligible = config.isEligible(market.pair);
@@ -189,6 +192,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const openInterestUsd = Math.round(displayedOpenInterestUsd(market.openInterestUsd, slug));
         if (openInterestUsd < oiFloorUsd) return null;
 
+        // Priced with THIS market's schedule. QFEX charges by instrument class
+        // -- five times more on a single stock than on an FX pair -- so a fee
+        // read once per venue would be wrong on every market outside the
+        // majority class. Venues with one venue-wide rate are unaffected: they
+        // hand back the same numbers whatever the class is.
+        const marketFees = publishedFees(slug, market.assetClass) ?? fees;
+        const feeBps = marketFees.makerBps + marketFees.takerBps;
+        appliedFees.set(market.assetClass ?? "", marketFees);
         const costOf = (legBps: number) => (2 * fillNotionalUsd * (legBps + feeBps)) / 10_000;
         const cycleCostUsd = costOf(quote.median.legBps);
         const feeCostUsd = (2 * fillNotionalUsd * feeBps) / 10_000;
@@ -265,7 +276,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         costBasis: observations > 1 ? "24h-median" : "latest-snapshot",
         // The schedule actually applied, so the UI can name it without knowing
         // which protocols exist.
-        feeSchedule: [{ venue: protocolName(slug) ?? slug, makerBps: fees.makerBps, takerBps: fees.takerBps }],
+        feeSchedule: [...appliedFees.entries()]
+          .sort((a, b) => b[1].takerBps - a[1].takerBps)
+          .map(([assetClass, schedule]) => ({
+            venue: protocolName(slug) ?? slug,
+            makerBps: schedule.makerBps,
+            takerBps: schedule.takerBps,
+            assetClass: assetClassLabel(assetClass),
+          })),
         tradfiOnly,
         grouped,
         bands,

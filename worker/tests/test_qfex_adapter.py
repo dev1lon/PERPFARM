@@ -33,6 +33,24 @@ CONTRACTS = {
             "funding_rate": "0",
         },
         {
+            "ticker_id": "EUR-USD",
+            "base_currency": "EUR",
+            "target_currency": "USD",
+            "last_price": "1.0842",
+            "product_type": "Perpetual",
+            "open_interest_usd": "412000",
+            "funding_rate": "0",
+        },
+        {
+            "ticker_id": "ADBE-USD",
+            "base_currency": "ADBE",
+            "target_currency": "USD",
+            "last_price": "412.10",
+            "product_type": "Perpetual",
+            "open_interest_usd": "9000",
+            "funding_rate": "0",
+        },
+        {
             "ticker_id": "GOLD-DEC26",
             "base_currency": "GOLD",
             "target_currency": "USD",
@@ -40,6 +58,16 @@ CONTRACTS = {
             "open_interest_usd": "1000",
             "funding_rate": "0",
         },
+    ]
+}
+#: `/refdata` carries what `/md/contracts` does not: the venue's own status
+#: and asset class per symbol. Both change what we do with the market -- an
+#: INACTIVE one must stop being collected, and the class sets the fee.
+REFDATA = {
+    "data": [
+        {"symbol": "AAPL-USD", "status": "ACTIVE", "product_category": "EQUITY"},
+        {"symbol": "EUR-USD", "status": "ACTIVE", "product_category": "FX"},
+        {"symbol": "ADBE-USD", "status": "INACTIVE", "product_category": "EQUITY"},
     ]
 }
 BOOK = {
@@ -55,6 +83,8 @@ class _StubAdapter(QfexAdapter):
     def _get(self, path):  # type: ignore[override]
         if path == "/md/contracts":
             return CONTRACTS
+        if path == "/refdata":
+            return REFDATA
         if path.startswith("/md/orderbook/"):
             return BOOK
         raise AssertionError(f"unexpected request {path}")
@@ -68,6 +98,26 @@ def test_only_perpetuals_are_listed():
 
     assert "AAPL-USD" in symbols
     assert "GOLD-DEC26" not in symbols
+
+
+def test_the_venue_decides_which_markets_are_still_listed():
+    """QFEX publishes ACTIVE / INACTIVE / DELISTED, and 29 of its 193 symbols
+    are not ACTIVE. Collecting a retired one fails every hour forever."""
+
+    by_symbol = {market.symbol: market for market in _StubAdapter().get_markets()}
+
+    assert by_symbol["AAPL-USD"].is_active is True
+    assert by_symbol["ADBE-USD"].is_active is False
+
+
+def test_each_market_carries_the_class_that_sets_its_fee():
+    """QFEX charges 0.10% taker on a stock and 0.02% on an FX pair, so the
+    class is read from the venue rather than guessed from the ticker."""
+
+    by_symbol = {market.symbol: market for market in _StubAdapter().get_markets()}
+
+    assert by_symbol["AAPL-USD"].asset_class == "EQUITY"
+    assert by_symbol["EUR-USD"].asset_class == "FX"
 
 
 def test_open_interest_is_taken_as_published_in_usd():
@@ -107,10 +157,12 @@ def test_an_unknown_market_never_reaches_the_network():
 
 
 def test_fees_are_the_entry_tier_for_single_stocks():
-    """QFEX prices by asset class and our model carries one pair per venue, so
-    it carries the class this venue actually is -- and the dearest one. Indices
-    and commodities pay 0.02%/0.05%, FX 0.01%/0.02%, so those are priced above
-    what they cost rather than below."""
+    """The venue-level pair is the single-stock tier -- 170 of the 193 markets.
+
+    It is the fallback, not the whole story: each market carries its own class
+    and is priced from the per-class table (ASSET_CLASS_FEES in the pricing
+    jobs and on the site), so indices and commodities pay 0.02%/0.05% and FX
+    0.01%/0.02% rather than the stock rate."""
 
     fees = _StubAdapter().get_fees()
 

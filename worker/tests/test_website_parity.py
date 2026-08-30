@@ -74,6 +74,24 @@ def _website_published_fees() -> dict[str, tuple[float, float]]:
     }
 
 
+def _website_asset_class_fees() -> dict[str, dict[str, tuple[float, float]]]:
+    """The per-class schedules the site prices with, e.g. QFEX's four rates."""
+
+    body = _object_literal(_source("venue-fees.ts"), "ASSET_CLASS_FEES")
+    schedules: dict[str, dict[str, tuple[float, float]]] = {}
+    for slug, classes in re.findall(r"(\w+):\s*\{((?:[^{}]|\{[^{}]*\})*)\}", body):
+        entries = re.findall(
+            r"(\w+):\s*\{\s*makerBps:\s*([^,]+),\s*takerBps:\s*([^}]+)\}", classes
+        )
+        if not entries:
+            continue
+        schedules[slug] = {
+            asset_class: (_evaluate(maker, {}), _evaluate(taker, {}))
+            for asset_class, maker, taker in entries
+        }
+    return schedules
+
+
 def _website_oi_display_factors() -> dict[str, float]:
     body = _object_literal(_source("route-model.ts"), "OI_DISPLAY_FACTOR")
     return {slug: _evaluate(value, {}) for slug, value in re.findall(r"(\w+):\s*([\d_.]+)", body)}
@@ -105,6 +123,36 @@ def test_published_fee_fallbacks_match_the_website():
     for slug, (maker, taker) in job.PUBLISHED_FEES.items():
         assert maker == pytest.approx(website[slug][0]), f"{slug}: maker fee differs from the website"
         assert taker == pytest.approx(website[slug][1]), f"{slug}: taker fee differs from the website"
+
+
+def test_asset_class_fees_match_the_website():
+    """QFEX charges by instrument class, so both sides must charge the same one.
+
+    Pricing an FX pair at the single-stock rate is a fivefold error, and it is
+    exactly the kind that hides: the table still renders, just with the wrong
+    number under most of its rows.
+    """
+    website = _website_asset_class_fees()
+
+    assert set(job.ASSET_CLASS_FEES) == set(website)
+    for slug, by_class in job.ASSET_CLASS_FEES.items():
+        assert set(by_class) == set(website[slug]), f"{slug}: different asset classes are priced"
+        for asset_class, (maker, taker) in by_class.items():
+            expected = website[slug][asset_class]
+            assert maker == pytest.approx(expected[0]), f"{slug}/{asset_class}: maker fee differs"
+            assert taker == pytest.approx(expected[1]), f"{slug}/{asset_class}: taker fee differs"
+
+
+def test_asset_class_fee_lookup_falls_back_to_the_venue_rate():
+    """An unseen class is priced at the venue's headline rate, never as free."""
+
+    assert job.published_fees("qfex", "FX") == (1.0, 2.0)
+    assert job.published_fees("qfex", "fx") == (1.0, 2.0)
+    assert job.published_fees("qfex", "CRYPTO") == job.PUBLISHED_FEES["qfex"]
+    assert job.published_fees("qfex", None) == job.PUBLISHED_FEES["qfex"]
+    # A venue with one rate ignores the class rather than losing its schedule.
+    assert job.published_fees("risex", "EQUITY") == job.PUBLISHED_FEES["risex"]
+    assert job.published_fees("nowhere", "EQUITY") is None
 
 
 def test_open_interest_display_factor_matches_the_website():

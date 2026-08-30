@@ -199,6 +199,9 @@ export type VenueMarket = {
   volume24hUsd: number | null;
   /** As stored by the adapter, before any per-protocol display convention. */
   openInterestUsd: number | null;
+  /** The venue's own instrument class, where it publishes one. It sets the
+   *  fee on venues that price by class (QFEX), and is null everywhere else. */
+  assetClass: string | null;
   /** Which leg rests its limit orders: the side that is cheaper to cross. */
   firstLimitSide: "long" | "short";
   /** The 24h window, newest first, already priced at the fill size. */
@@ -211,6 +214,7 @@ type VenueMarketRow = ImpactSnapshot & {
   rn: number;
   volume_24h_usd: string | number | null;
   open_interest_usd: string | number | null;
+  asset_class: string | null;
 };
 
 /**
@@ -227,7 +231,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
     getPool().query<VenueMarketRow>(
       `WITH v AS (SELECT id FROM venues WHERE slug = $3),
      ranked AS (
-       SELECT m.symbol_canonical AS pair, b.ts,
+       SELECT m.symbol_canonical AS pair, m.asset_class, b.ts,
               b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
               to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
               row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
@@ -244,7 +248,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
        WHERE m.venue_id = (SELECT id FROM v) AND m.is_active = true
        ORDER BY s.market_id, s.ts DESC
      )
-     SELECT ranked.pair, ranked.ts, ranked.rn,
+     SELECT ranked.pair, ranked.asset_class, ranked.ts, ranked.rn,
             ranked.spread_bps, ranked.impact_bps_10k, ranked.impact_bps_50k,
             ranked.impact_bps_100k, ranked.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd
@@ -272,6 +276,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
       bookTs: row.ts,
       volume24hUsd: asNumber(row.volume_24h_usd),
       openInterestUsd: asNumber(row.open_interest_usd),
+      assetClass: row.asset_class,
       firstLimitSide: quoteCurveMarketSide(row.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? "long",
       samples: [sample],
     });

@@ -72,7 +72,7 @@ export interface RankingResponse {
   /** Cross-protocol only: the hedge leg's own, lower OI floor. */
   hedgeMinOpenInterestUsd?: number;
   /** The fee schedule the API actually applied, per venue on the route. */
-  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number }>;
+  feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number; assetClass?: string | null }>;
 }
 
 /**
@@ -193,8 +193,16 @@ function feeTip(locale: Locale, data: RankingResponse): string {
   const charging = schedule.filter((entry) => entry.makerBps > 0 || entry.takerBps > 0);
   const free = schedule.filter((entry) => entry.makerBps === 0 && entry.takerBps === 0);
   const bps = (value: number) => `${Number(value.toFixed(2))} bps`;
+  // A protocol that prices by instrument class sends one entry per class it
+  // charged in this table, so the note reads "QFEX stocks ... ; QFEX FX ..."
+  // instead of quoting one rate most of the rows never paid. Which protocols
+  // do that is a fact about their data, not a sentence in this component.
   const charged = charging
-    .map((entry) => `${protocolName(entry.venue) ?? entry.venue} ${bps(entry.makerBps)} maker / ${bps(entry.takerBps)} taker`)
+    .map((entry) => {
+      const name = protocolName(entry.venue) ?? entry.venue;
+      const label = entry.assetClass ? `${name} ${entry.assetClass}` : name;
+      return `${label} ${bps(entry.makerBps)} maker / ${bps(entry.takerBps)} taker`;
+    })
     .join("; ");
   const freeNames = free.map((entry) => protocolName(entry.venue) ?? entry.venue).join(", ");
 
