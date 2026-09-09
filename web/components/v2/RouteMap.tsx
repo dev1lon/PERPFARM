@@ -74,6 +74,11 @@ export function RouteMap({
   blue = false,
   showSideLabels = true,
   showVenueLabels = true,
+  costLabel,
+  rangeLabel,
+  longOrders,
+  shortOrders,
+  costFraction,
 }: {
   mode?: "network" | "result" | "checkpoints";
   pair?: string;
@@ -86,6 +91,25 @@ export function RouteMap({
   showSideLabels?: boolean;
   /** Hide venue names when the visual is used as a purely abstract route. */
   showVenueLabels?: boolean;
+  /** The cycle cost, printed at the altitude the route actually flies. */
+  costLabel?: string;
+  /** The route's own 24-hour cost range, printed as the band the arc sits in. */
+  rangeLabel?: string;
+  /** Order type each leg opens with ("MARKET" / "LIMIT"), under its venue. */
+  longOrders?: string;
+  shortOrders?: string;
+  /**
+   * Where this cost sits inside that 24-hour range: 0 at the cheap end of the
+   * day, 1 at the dear end.
+   *
+   * THIS is what stops the model being decoration. The arc used to lift by a
+   * constant, so every route drew the same picture and the drawing said
+   * nothing the table did not already say. Bound to the reading, a route
+   * priced at the cheap end of its own day flies high and clear, and one at
+   * the dear end is dragged toward the ground -- so no two routes look alike,
+   * and the shape is legible before the number is read.
+   */
+  costFraction?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -103,7 +127,18 @@ export function RouteMap({
     Object.assign(overlay.style, { position: "absolute", inset: "0", pointerEvents: "none", overflow: "hidden" });
     host.appendChild(overlay);
 
-    function label(text: string, kind: "idle" | "side" | "pair" | "ck" | "fund"): HTMLDivElement {
+    // The scene's labels are HTML over the canvas, so they use the page's own
+    // faces. They used to name 'Plus Jakarta Sans' and 'JetBrains Mono'
+    // literally; neither is loaded any more, so every label in here was
+    // silently falling back to whatever the reader's OS offered while the rest
+    // of the page was set in Fira.
+    const BODY_FACE = "var(--font-body), ui-sans-serif, system-ui, sans-serif";
+    const CHART_FACE = "var(--font-chart), ui-sans-serif, system-ui, sans-serif";
+
+    function label(
+      text: string,
+      kind: "idle" | "side" | "pair" | "ck" | "fund" | "cost" | "sub",
+    ): HTMLDivElement {
       const el = document.createElement("div");
       el.textContent = text;
       const base: Partial<CSSStyleDeclaration> = {
@@ -111,15 +146,34 @@ export function RouteMap({
         left: "0",
         top: "0",
         whiteSpace: "nowrap",
-        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+        fontFamily: BODY_FACE,
         transition: "opacity 220ms ease, color 220ms ease",
         transform: "translate(-50%,-50%)",
         willChange: "transform",
       };
+      // The cycle cost at decision height: the one figure the drawing exists
+      // to deliver, so it is the only thing in the scene wearing the accent.
+      if (kind === "cost")
+        Object.assign(base, {
+          fontFamily: CHART_FACE,
+          fontSize: "17px",
+          fontWeight: "600",
+          fontVariantNumeric: "tabular-nums slashed-zero",
+          color: "var(--accent)",
+        });
+      // What each leg does on entry, under its venue name.
+      if (kind === "sub")
+        Object.assign(base, {
+          fontFamily: CHART_FACE,
+          fontSize: "10px",
+          fontWeight: "600",
+          letterSpacing: "0.14em",
+          color: "var(--text-dim)",
+        });
       if (kind === "idle") Object.assign(base, { fontSize: "11px", fontWeight: "500", color: "#8b96ad" });
       if (kind === "side")
         Object.assign(base, {
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: CHART_FACE,
           fontSize: "10px",
           fontWeight: "500",
           letterSpacing: "0.14em",
@@ -131,7 +185,7 @@ export function RouteMap({
         });
       if (kind === "pair")
         Object.assign(base, {
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: CHART_FACE,
           fontSize: "11px",
           fontWeight: "500",
           letterSpacing: "0.08em",
@@ -143,7 +197,7 @@ export function RouteMap({
         });
       if (kind === "ck")
         Object.assign(base, {
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: CHART_FACE,
           fontSize: "10px",
           fontWeight: "500",
           letterSpacing: "0.1em",
@@ -155,7 +209,7 @@ export function RouteMap({
         });
       if (kind === "fund")
         Object.assign(base, {
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: CHART_FACE,
           fontSize: "10px",
           fontWeight: "500",
           letterSpacing: "0.14em",
@@ -361,8 +415,21 @@ export function RouteMap({
     let curve: THREE.CubicBezierCurve3 | null = null;
     let curveDirty = true;
 
+    // Altitude carries the reading. A route priced at the cheap end of its own
+    // 24-hour range flies near the ceiling; one at the dear end is dragged
+    // toward the ground. Outside the result view, and whenever the caller has
+    // no range to place the cost in, the old constant stands -- a shape that
+    // means nothing is better than a shape that means something untrue.
+    const CEILING = 1.28;
+    const FLOOR = 0.52;
+    const fraction =
+      typeof costFraction === "number" && Number.isFinite(costFraction)
+        ? Math.min(1, Math.max(0, costFraction))
+        : null;
+    const resultLift = fraction === null ? 0.95 : CEILING - (CEILING - FLOOR) * fraction;
+
     function buildCurve(pa: THREE.Vector3, pb: THREE.Vector3) {
-      const lift = result ? 0.95 : 1.15;
+      const lift = result ? resultLift : 1.15;
       curve = new THREE.CubicBezierCurve3(
         pa.clone(),
         pa.clone().lerp(pb, 0.3).add(new THREE.Vector3(0, lift, result ? 0.5 : 0.9)),
@@ -387,6 +454,21 @@ export function RouteMap({
     if (longBadge) Object.assign(longBadge.style, { color: blue ? "#9dc0ff" : "#7ff0c6", borderColor: blue ? "rgba(77,141,255,0.5)" : "rgba(53,211,153,0.5)" });
     if (shortBadge) Object.assign(shortBadge.style, { color: blue ? "#9dc0ff" : "#f5a3a0", borderColor: blue ? "rgba(77,141,255,0.5)" : "rgba(229,100,95,0.5)" });
     const midLabel = result ? label(pair, "pair") : null;
+
+    // The figures the drawing exists to deliver. Each is created only when the
+    // caller actually has it, so a route with no 24-hour history draws no band
+    // label rather than an empty one.
+    const costTag = result && costLabel ? label(costLabel, "cost") : null;
+    const longSub = result && longOrders ? label(longOrders, "sub") : null;
+    const shortSub = result && shortOrders ? label(shortOrders, "sub") : null;
+    // The range is fixed to the panel's top-left rather than tracked to a point
+    // in the scene: it describes the whole band the arc sits inside, not any
+    // one place on it.
+    let rangeTag: HTMLDivElement | null = null;
+    if (result && rangeLabel) {
+      rangeTag = label(rangeLabel, "sub");
+      Object.assign(rangeTag.style, { transform: "none", left: "14px", top: "12px" });
+    }
 
     // ---- interaction (network only) ----
     const coreList = nodes.map((n) => n.core); // reused for the hover raycast
@@ -594,6 +676,12 @@ export function RouteMap({
       const sp = drag && drag.which === "short" && dragPos ? dragPos : shortRec.core.position;
       if (longBadge) place(longBadge, lp, -30, w, h);
       if (shortBadge) place(shortBadge, sp, -30, w, h);
+      // What each leg opens with, under its venue name. Both labels are
+      // centred on their offset, and the venue name measures ~18px tall, so
+      // the gap is (60 - 22) - 18/2 - 12/2 = 23px of clear air. Measured, not
+      // guessed: at +44 the two boxes overlapped by nine pixels.
+      if (longSub) place(longSub, lp, 60, w, h);
+      if (shortSub) place(shortSub, sp, 60, w, h);
 
       // travelling pulse + optional pair label at the apex
       let mx = 0;
@@ -610,6 +698,15 @@ export function RouteMap({
           mw = midLabel.offsetWidth;
           mh = midLabel.offsetHeight;
           midLabel.style.transform = `translate(-50%,-50%) translate(${mx.toFixed(1)}px, ${my.toFixed(1)}px)`;
+        }
+        // Decision height: the cost printed where the track actually flies, so
+        // the figure and the altitude that encodes it are read as one thing.
+        // Taken at t=0.62 rather than the apex so it never sits under the pair.
+        if (costTag) {
+          v.copy(curve.getPoint(0.62)).project(camera);
+          const cx = (v.x * 0.5 + 0.5) * w + 30;
+          const cy = (-v.y * 0.5 + 0.5) * h;
+          costTag.style.transform = `translate(-50%,-50%) translate(${cx.toFixed(1)}px, ${cy.toFixed(1)}px)`;
         }
       }
 
@@ -667,7 +764,20 @@ export function RouteMap({
       canvas.remove();
       overlay.remove();
     };
-  }, [mode, pair, longLabel, shortLabel, blue, showSideLabels, showVenueLabels]);
+  }, [
+    mode,
+    pair,
+    longLabel,
+    shortLabel,
+    blue,
+    showSideLabels,
+    showVenueLabels,
+    costLabel,
+    rangeLabel,
+    longOrders,
+    shortOrders,
+    costFraction,
+  ]);
 
   return <div ref={hostRef} style={{ position: "relative", width: "100%", height }} />;
 }

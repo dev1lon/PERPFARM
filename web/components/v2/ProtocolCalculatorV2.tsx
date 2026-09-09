@@ -182,6 +182,23 @@ type Status = "idle" | "running" | "loaded" | "error";
 const compactUsd = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(v);
 
+/**
+ * Where this cost sits inside the route's own 24-hour range: 0 at the cheap
+ * end of its day, 1 at the dear end.
+ *
+ * Deliberately the route's OWN range and not a comparison with other pairs --
+ * $4 is cheap for one instrument and dear for another, and the question the
+ * drawing answers is "is now a good time for THIS route", which only its own
+ * day can answer. A flat range (one observation, or a market that did not move)
+ * returns undefined, and the arc falls back to its neutral height rather than
+ * claiming the route is at either extreme.
+ */
+function costFractionOf(pair: PairRanking): number | undefined {
+  const span = pair.costRangeHighUsd - pair.costRangeLowUsd;
+  if (!Number.isFinite(span) || span <= 0) return undefined;
+  return (pair.cycleCostUsd - pair.costRangeLowUsd) / span;
+}
+
 function orders(firstLimitSide: "long" | "short") {
   const longLimitFirst = firstLimitSide === "long";
   return {
@@ -963,9 +980,30 @@ export function RouteResults({
               )}
             </div>
           </div>
-          {/* The 3D route is decorative; phones skip it to save space + battery. */}
-          <div className="hidden border-t border-border lg:block lg:border-l lg:border-t-0" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
-            <RouteMap mode="result" pair={best.pair} longLabel={legsOf(best).longName} shortLabel={legsOf(best).shortName} height={360} />
+          {/* The route drawing, carrying its own figures. This very comment used
+              to call it decorative, and it was: a constant arc, a pair name, and
+              nothing a reader could act on. It now prints the cycle cost at the
+              altitude the track flies, the route's own 24-hour cost band, and
+              what each leg opens with -- and the altitude itself is bound to
+              where this cost sits inside that band, so the shape says "cheap for
+              today" or "dear for today" before any number is read.
+
+              Phones still skip it: the same figures are already stacked in the
+              panel beside it, and a WebGL scene is a poor use of their battery
+              to repeat them. */}
+          <div className="hidden border-t border-border bg-surface-1 lg:block lg:border-l lg:border-t-0">
+            <RouteMap
+              mode="result"
+              pair={best.pair}
+              longLabel={legsOf(best).longName}
+              shortLabel={legsOf(best).shortName}
+              height={360}
+              costLabel={formatUsd(best.cycleCostUsd)}
+              rangeLabel={`24H ${formatUsd(best.costRangeLowUsd)}-${formatUsd(best.costRangeHighUsd)}`}
+              longOrders={orders(best.firstLimitSide).entry.split(" / ")[0]}
+              shortOrders={orders(best.firstLimitSide).entry.split(" / ")[1]}
+              costFraction={costFractionOf(best)}
+            />
           </div>
         </div>
       </div>
