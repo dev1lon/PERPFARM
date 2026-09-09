@@ -87,6 +87,8 @@ const COMMODITY = new Set([
   // Polymarket spells the two crude benchmarks out; Variational calls the same
   // contracts CL and BZ.
   "BRENTOIL", "WTIOIL",
+  // Nado's spelling of the same crude contract.
+  "WTI",
 ]);
 
 /**

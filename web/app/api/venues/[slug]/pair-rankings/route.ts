@@ -93,6 +93,15 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
     competition: null,
     isEligible: isTradfiMarket,
   },
+  nado: {
+    defaultAccountVolumeUsd: 20_000,
+    // Nado documents Points, Referrals and Trading Competitions, but publishes
+    // no points-per-volume emission and no competition window we can verify,
+    // so nothing is claimed here. A competition is named only once its dates
+    // are read off the venue.
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
 };
 
 type PairRanking = {

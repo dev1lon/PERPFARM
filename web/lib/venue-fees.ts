@@ -46,6 +46,12 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   risex: { makerBps: 1.0, takerBps: 3.0 },
   qfex: { makerBps: 5.0, takerBps: 10.0 },
   entropy: { makerBps: 3.0, takerBps: 9.0 },
+  // Base tier. Nado's schedule is volume-tiered and the tier table is
+  // published as an image, so 3.5 bps is the taker rate its own worked example
+  // uses; maker rebates are described as a benefit of HIGHER tiers, so the
+  // base-tier maker is not paid rather than credited a rebate we cannot read.
+  // docs.nado.xyz/core/fees-and-rebates
+  nado: { makerBps: 0.0, takerBps: 3.5 },
 };
 
 /**

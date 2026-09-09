@@ -25,6 +25,10 @@ const READY_VENUE_SLUGS = [
   "risex",
   "polymarket",
   "entropy",
+  // Nado: a CLOB on Ink L2, so its impact is a real book walk rather than an
+  // interpolated quote curve. Funding is quoted daily and settled hourly --
+  // both confirmed against the live API, see worker/perpfarm/adapters/nado.py.
+  "nado",
 ] as const;
 
 /** A protocol whose data path is verified -- the only kind that can be priced. */

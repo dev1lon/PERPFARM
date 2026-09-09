@@ -66,7 +66,7 @@ REGISTRY: list[VenueRegistration] = [
     _real("variational", "Variational", VariationalAdapter, api_status="live"),
     _real("extended", "Extended", ExtendedAdapter),
     _real("pacifica", "Pacifica", PacificaAdapter),
-    _real("nado", "Nado", NadoAdapter),
+    _real("nado", "Nado", NadoAdapter, api_status="live"),
     _real("txflow", "TxFlow", TxflowAdapter),
     _real("tradexyz", "Tradexyz", TradexyzAdapter),
     _real("hotstuff", "HotStuff", HotStuffAdapter),
