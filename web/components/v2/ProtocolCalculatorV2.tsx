@@ -10,6 +10,61 @@ import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
+import type { InstrumentClass } from "@/lib/tradfi";
+
+/** "all", or one market class. */
+export type ClassFilter = InstrumentClass | "all";
+
+/** The order classes are offered in: the two biggest sets a perp DEX lists,
+ *  then the rest of the TradFi shelf. */
+const CLASS_ORDER: InstrumentClass[] = ["crypto", "equity", "index", "commodity", "fx", "prelisting"];
+
+export const ASSET_CLASS_LABEL: Record<InstrumentClass, { en: string; ru: string }> = {
+  equity: { en: "Stock", ru: "Акция" },
+  index: { en: "Index", ru: "Индекс" },
+  commodity: { en: "Commodity", ru: "Сырьё" },
+  fx: { en: "FX", ru: "Валюта" },
+  prelisting: { en: "Pre-IPO", ru: "Pre-IPO" },
+  crypto: { en: "Crypto", ru: "Крипта" },
+};
+
+const ASSET_CLASS_TITLE: Record<InstrumentClass, string> = {
+  equity: "Single stock — a TradFi market, cheaper to execute and worth more points",
+  index: "Index or sector ETF — a TradFi market, cheaper to execute and worth more points",
+  commodity: "Commodity or metal — a TradFi market, cheaper to execute and worth more points",
+  fx: "Currency pair — a TradFi market, cheaper to execute and worth more points",
+  prelisting: "Pre-IPO company — a TradFi market, cheaper to execute and worth more points",
+  crypto: "Crypto market — not part of the TradFi competition set",
+};
+
+/**
+ * What the instrument is, in one word.
+ *
+ * The row used to carry a single "TradFi" tag, which answered a narrower
+ * question than the reader was asking: gold, a currency pair, an index and a
+ * single stock all got the same word, and the entire crypto side of the table
+ * got no word at all, so absence had to be read as a class. Naming every row
+ * lets the column be scanned for a KIND of market, which is how a farmer picks
+ * what to trade when execution cost is close.
+ *
+ * One neutral treatment for every class: six hues would each have to mean
+ * something, and none of them would.
+ */
+export function AssetClassBadge({ assetClass, locale }: { assetClass?: InstrumentClass; locale: Locale }) {
+  // An older cached answer carries no class. Printing nothing is right: this
+  // badge states what an instrument IS, and guessing is the one thing the page
+  // never does with a figure it was not given.
+  if (!assetClass) return null;
+  const label = ASSET_CLASS_LABEL[assetClass];
+  return (
+    <span
+      title={ASSET_CLASS_TITLE[assetClass]}
+      className="whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 font-mono-num text-[10px] text-text-muted"
+    >
+      {tr(locale, label.en, label.ru)}
+    </span>
+  );
+}
 
 /**
  * How far the two venues' prices drift apart while the hedge is open.
@@ -24,6 +79,10 @@ export type SpreadRisk = "low" | "medium" | "high" | "unknown";
 
 export interface PairRanking {
   pair: string;
+  /** What the instrument is. Optional so an answer cached before the class
+   *  shipped still renders -- such a row shows no class rather than being
+   *  mislabelled crypto. */
+  assetClass?: InstrumentClass;
   openInterestUsd: number;
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
@@ -100,7 +159,7 @@ function StaleDataNotice({ data }: { data: RankingResponse }) {
   if (down.length === 0) return null;
   const names = down.join(", ");
   return (
-    <div className="mt-5 flex gap-3.5 rounded-[14px] border border-warning/40 bg-warning/[0.07] px-4 py-3.5">
+    <div className="mt-5 flex gap-3.5 rounded-none border border-warning/40 bg-warning/[0.07] px-4 py-3.5">
       <span className="mt-0.5 flex-none font-mono-num text-[13px] text-warning">!</span>
       <div className="text-[13px] leading-[1.6] text-text-primary">
         <span className="font-semibold">
@@ -160,7 +219,7 @@ function SpreadRiskBadge({ risk }: { risk: SpreadRisk }) {
   if (risk === "unknown") return null;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border px-2.5 py-1 text-[11px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
     >
       <span className={`h-[5px] w-[5px] rounded-full ${SPREAD_RISK_DOT[risk]}`} />
       {spreadRiskLabel(locale, risk)}
@@ -282,7 +341,7 @@ function CostTile({ label, value, tip, signed = false }: { label: string; value:
         : { amount: formatUsd(0), tone: "text-text-primary" }
     : null;
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-[10px] border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between">
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-none border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between">
       <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-muted">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
@@ -342,7 +401,7 @@ function HedgeDropdown({
         aria-expanded={open}
         className="pf-transition flex h-[50px] w-full items-center gap-2.5 rounded-xl border border-border bg-surface-2 px-3.5 text-left hover:border-text-muted/40"
       >
-        {sel && <ProtocolMark slug={sel.slug} name={sel.name} size={26} radius={8} />}
+        {sel && <ProtocolMark slug={sel.slug} name={sel.name} size={26} radius={0} />}
         <span className="text-[15px] font-semibold text-text-primary">{sel?.name ?? tr(locale, "Select", "Выбрать")}</span>
         <span className="ml-auto text-[11px] text-text-muted">▾</span>
       </button>
@@ -360,7 +419,7 @@ function HedgeDropdown({
               }}
               className={`pf-transition flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left hover:border-text-muted/35 hover:bg-surface-2 ${o.slug === value ? "border-accent/40 bg-accent/[0.09]" : "border-transparent"}`}
             >
-              <ProtocolMark slug={o.slug} name={o.name} size={22} radius={7} />
+              <ProtocolMark slug={o.slug} name={o.name} size={22} radius={0} />
               <span className={`text-[14px] ${o.slug === value ? "text-accent" : "text-text-primary"}`}>{o.name}</span>
             </button>
           ))}
@@ -392,12 +451,13 @@ export function ProtocolCalculatorV2({
 
   const [hedge, setHedge] = useState<string>(venueSlug);
   const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
-  const [tradfiOnly, setTradfiOnly] = useState(false);
+  /** Which kind of market the table shows. Client-side: see the note where the
+   *  "Only TradFi" switch used to be. */
+  const [classFilter, setClassFilter] = useState<ClassFilter>("all");
 
   const [status, setStatus] = useState<Status>("idle");
   const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
   const [ranHedge, setRanHedge] = useState<string>(venueSlug);
-  const [appliedTradfiOnly, setAppliedTradfiOnly] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [data, setData] = useState<RankingResponse | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -416,7 +476,10 @@ export function ProtocolCalculatorV2({
   useEffect(() => {
     if (status !== "loaded" || notionalUsd == null || ranHedge !== venueSlug) return;
     let active = true;
-    fetch(`/api/venues/${venueSlug}/pair-rankings?accountVolumeUsd=${notionalUsd}&tradfiOnly=${appliedTradfiOnly}`)
+    // Always the whole answer: the market class is a property of each row, not
+    // of the request, so one scan returns everything and the strip decides what
+    // is shown.
+    fetch(`/api/venues/${venueSlug}/pair-rankings?accountVolumeUsd=${notionalUsd}&tradfiOnly=false`)
       .then(async (r) => {
         if (r.ok) return r.json() as Promise<RankingResponse>;
         const payload = await r.json().catch(() => null) as { error?: string } | null;
@@ -436,7 +499,7 @@ export function ProtocolCalculatorV2({
     return () => {
       active = false;
     };
-  }, [status, notionalUsd, appliedTradfiOnly, ranHedge, locale, venueSlug]);
+  }, [status, notionalUsd, ranHedge, locale, venueSlug]);
 
   function run() {
     if (!validVolume) {
@@ -453,7 +516,6 @@ export function ProtocolCalculatorV2({
     timer.current = window.setTimeout(() => {
       setNotionalUsd(requested);
       setRanHedge(hedge);
-      setAppliedTradfiOnly(tradfiOnly);
       setStatus("loaded");
     }, 900);
   }
@@ -477,12 +539,12 @@ export function ProtocolCalculatorV2({
   return (
     <div className="mt-10">
       {/* calculator bar */}
-      <div className="rounded-[20px] border border-border bg-surface-1 px-7 py-6">
+      <div className="rounded-none border border-border bg-surface-1 px-7 py-6">
         <div className="grid items-end gap-5 lg:grid-cols-[1fr_1fr_1fr_132px]">
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{isTxFlow ? tr(locale, "Trade on", "Торгуем на") : tr(locale, "Farm points on", "Фармим поинты на")}</div>
             <div className="flex h-[50px] items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/10 px-3.5">
-              <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={8} />
+              <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={0} />
               <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
               <span className="ml-auto font-mono-num text-[10px] tracking-[0.08em] text-accent">SELECTED</span>
             </div>
@@ -526,27 +588,20 @@ export function ProtocolCalculatorV2({
               <span className="font-mono-num text-text-primary">{formatUsd((validVolume ? requested : 0) * 2, { decimals: 0 })}</span>{" "}
               {tr(locale, "across two accounts.", "на два аккаунта.")}
             </div>
-            {(
-              <button
-                type="button"
-                role="switch"
-                aria-checked={tradfiOnly}
-                onClick={() => setTradfiOnly((v) => !v)}
-                className="flex items-center gap-2.5"
-              >
-                <span className={`pf-transition relative inline-flex h-5 w-9 shrink-0 items-center rounded-full ${tradfiOnly ? "bg-accent" : "border border-border bg-surface-2"}`}>
-                  <span className={`pf-transition inline-block h-4 w-4 rounded-full bg-white ${tradfiOnly ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-                </span>
-                <span className="text-[13px] text-text-muted">{tr(locale, "Only TradFi", "Только TradFi")}</span>
-              </button>
-            )}
+            {/* The "Only TradFi" switch stood here. It asked the reader to think
+                in the boundary the data happened to be organised around rather
+                than in the market they want to farm, and it was a QUERY
+                PARAMETER, so changing your mind about it re-ran the whole scan.
+                The market-class strip under the table replaced it: the class
+                travels on every row, so filtering is instant and the answer the
+                scan produced never changes underneath it. */}
           </div>
         </div>
       </div>
 
       {/* states */}
       {status === "idle" && (
-        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-[20px] border border-dashed border-border bg-bg px-8 py-13 text-center">
+        <div className="mt-5 flex flex-col items-center gap-2.5 rounded-none border border-dashed border-border bg-bg px-8 py-13 text-center">
           <div className="text-[17px] font-semibold text-text-primary">{tr(locale, "Your route appears here", "Ваш маршрут появится здесь")}</div>
           <div className="max-w-[460px] text-[14px] text-text-muted">
             {tr(locale, "Choose where to hedge, enter your volume and press Run. PerpFarm scans every eligible market and returns the cheapest route.", "Выберите, где хеджировать, введите объём и нажмите Run. PerpFarm просканирует все eligible-рынки и вернёт самый дешёвый маршрут.")}
@@ -560,8 +615,8 @@ export function ProtocolCalculatorV2({
           fetch continues after the scan animation, and a gap here reads as an
           empty result. */}
       {(status === "running" || (status === "loaded" && ranHedge === venueSlug && !data) || (status === "loaded" && ranHedge !== venueSlug && crossLoading)) && (
-        <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14">
-          <div className="h-0.5 w-52 overflow-hidden rounded bg-white/10">
+        <div className="mt-5 flex flex-col items-center gap-4 rounded-none border border-accent/25 bg-bg px-8 py-14">
+          <div className="h-0.5 w-52 overflow-hidden rounded-none bg-white/10">
             <div className="pf-scan h-full w-1/3 bg-accent" />
           </div>
           <div className="font-mono-num text-[13px] text-accent">
@@ -584,6 +639,8 @@ export function ProtocolCalculatorV2({
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
+          classFilter={classFilter}
+          setClassFilter={setClassFilter}
           oiFilter={activeFilter}
           setOiFilter={setOiFilter}
         />
@@ -598,7 +655,6 @@ export function ProtocolCalculatorV2({
             homeName={homeName}
             hedgeName={hedgeName}
             accountVolumeUsd={notionalUsd}
-            tradfiOnly={appliedTradfiOnly}
             suppressLoading
             onLoadingChange={setCrossLoading}
           />
@@ -685,6 +741,8 @@ export function RouteResults({
   grouped,
   oiFilter,
   setOiFilter,
+  classFilter = "all",
+  setClassFilter,
 }: {
   data: RankingResponse | null;
   top: PairRanking[];
@@ -702,6 +760,8 @@ export function RouteResults({
   grouped: boolean;
   oiFilter: BandKey;
   setOiFilter: (v: BandKey) => void;
+  classFilter?: ClassFilter;
+  setClassFilter?: (v: ClassFilter) => void;
 }) {
   const locale = useLocale();
   const shortSlug = hedgeSlug ?? homeSlug;
@@ -736,8 +796,18 @@ export function RouteResults({
   };
 
   const PAGE_SIZE = 10;
+  // Which classes this answer contains, and how many rows each holds. Counted
+  // over the whole answer, never the current page: the strip has to say what
+  // choosing a class would give you, not what is on screen now.
+  const classCounts = new Map<InstrumentClass, number>();
+  for (const pair of top) {
+    if (!pair.assetClass) continue;
+    classCounts.set(pair.assetClass, (classCounts.get(pair.assetClass) ?? 0) + 1);
+  }
+  const offeredClasses = CLASS_ORDER.filter((name) => (classCounts.get(name) ?? 0) > 0);
+  const byClass = classFilter === "all" ? top : top.filter((pair) => pair.assetClass === classFilter);
   const needle = query.trim().toUpperCase();
-  const matches = needle === "" ? top : top.filter((pair) => pair.pair.toUpperCase().includes(needle));
+  const matches = needle === "" ? byClass : byClass.filter((pair) => pair.pair.toUpperCase().includes(needle));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   // A filter or a search can shorten the list under the current page.
   const safePage = Math.min(page, pageCount - 1);
@@ -779,7 +849,7 @@ export function RouteResults({
   }, [oiFilter]);
 
   if (!data || !best) {
-    return <div className="pf-skeleton mt-5 h-80 rounded-[20px] border border-border bg-surface-1" />;
+    return <div className="pf-skeleton mt-5 h-80 rounded-none border border-border bg-surface-1" />;
   }
   // Eligibility only means something while a competition is running — once it
   // ends the flag would claim a benefit that no longer exists.
@@ -808,22 +878,22 @@ export function RouteResults({
       <StaleDataNotice data={data} />
 
       {/* recommended route */}
-      <div className="pf-rise mt-5 overflow-hidden rounded-[20px] border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
+      <div className="pf-rise mt-5 overflow-hidden rounded-none border border-accent/30" style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--accent) 11%, transparent), var(--surface-1) 62%)" }}>
         <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-6 py-4">
             <div className="shrink-0 font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендованный маршрут")}</div>
             {best.spreadRisk ? <SpreadRiskBadge risk={best.spreadRisk} /> : null}
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:hidden">
-              <span className="h-[5px] w-[5px] rounded-full bg-positive" />
-              TradFi
-            </span>
-            {best.competitionEligible && (
-              <span className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive sm:inline-flex">
-                <span className="h-[5px] w-[5px] rounded-full bg-positive" />
-                TradFi
-              </span>
-            )}
+            {/* The plated pair says what kind of market it is, so the reader
+                need not find its row in the table below to learn whether the
+                route they are handed is a stock or a token.
+
+                There were two pills here: one shown only on phones that printed
+                "TradFi" for EVERY pair regardless of eligibility, and one shown
+                only from `sm` up that checked the flag. A phone was told gold
+                and Dogecoin were both TradFi. One badge now, one answer, and it
+                is the instrument's real class. */}
+            <AssetClassBadge assetClass={best.assetClass} locale={locale} />
             {showEligible && best.competitionEligible && (
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                 {tr(locale, "Competition eligible", "Eligible для конкурса")}
               </span>
@@ -833,24 +903,24 @@ export function RouteResults({
           <div className="px-6 py-6">
             <div className="flex flex-wrap items-center gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
+              <span className="rounded-none border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
             </div>
-            <div className="my-4 overflow-hidden rounded-[14px] border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+            <div className="my-4 overflow-hidden rounded-none border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
               <RecommendedRouteDiagram longName={legsOf(best).longName} shortName={legsOf(best).shortName} />
             </div>
             <div className="grid grid-cols-2 gap-3 pt-5">
-              <div className="flex flex-col gap-2.5 rounded-[14px] border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
+              <div className="flex flex-col gap-2.5 rounded-none border border-positive/25 p-4" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug={legsOf(best).longSlug} name={legsOf(best).longName} size={26} radius={8} />
+                  <ProtocolMark slug={legsOf(best).longSlug} name={legsOf(best).longName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).longName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
               </div>
-              <div className="flex flex-col gap-2.5 rounded-[14px] border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
+              <div className="flex flex-col gap-2.5 rounded-none border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                 <div className="flex items-center gap-2.5">
-                  <ProtocolMark slug={legsOf(best).shortSlug} name={legsOf(best).shortName} size={26} radius={8} />
+                  <ProtocolMark slug={legsOf(best).shortSlug} name={legsOf(best).shortName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).shortName}</div>
                 </div>
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
@@ -911,25 +981,60 @@ export function RouteResults({
                     `${matches.length} ${pluralEn(matches.length, "match", "matches")}`,
                     `${matches.length} ${pluralRu(matches.length, "совпадение", "совпадения", "совпадений")}`,
                   )
-                : oiFilter === "all"
-                  ? tr(
-                      locale,
-                      `${matches.length} eligible ${pluralEn(matches.length, "pair", "pairs")}`,
-                      `${matches.length} ${pluralRu(matches.length, "подходящая пара", "подходящие пары", "подходящих пар")}`,
-                    )
-                  : tr(
-                      locale,
-                      `${matches.length} cheapest ${pluralEn(matches.length, "pair", "pairs")}`,
-                      `${matches.length} ${pluralRu(matches.length, "самая дешёвая пара", "самые дешёвые пары", "самых дешёвых пар")}`,
-                    )}
+                : classFilter !== "all"
+                  ? /* "Eligible" is a claim about the whole answer -- these
+                       markets cleared the volume and open-interest floors. The
+                       same word over a filtered number would say only nine
+                       markets qualified, when nine is how many of the
+                       qualifying markets are commodities. */
+                    `${matches.length} · ${tr(locale, ASSET_CLASS_LABEL[classFilter].en, ASSET_CLASS_LABEL[classFilter].ru)}`
+                  : oiFilter === "all"
+                    ? tr(
+                        locale,
+                        `${matches.length} eligible ${pluralEn(matches.length, "pair", "pairs")}`,
+                        `${matches.length} ${pluralRu(matches.length, "подходящая пара", "подходящие пары", "подходящих пар")}`,
+                      )
+                    : tr(
+                        locale,
+                        `${matches.length} cheapest ${pluralEn(matches.length, "pair", "pairs")}`,
+                        `${matches.length} ${pluralRu(matches.length, "самая дешёвая пара", "самые дешёвые пары", "самых дешёвых пар")}`,
+                      )}
               <InfoTip text={eligibilityTip(locale, data, homeName)} />
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Market class. Only classes this answer contains are offered: a
+                venue that lists no crypto is never asked about crypto, and a
+                segment that could only ever return nothing is not a choice.
+                Each carries its count, so the reader knows the size of what
+                they are switching to before switching. */}
+            {setClassFilter && offeredClasses.length > 1 && (
+              <div className="flex flex-wrap gap-0.5 rounded-lg border border-border p-[3px]">
+                {(["all", ...offeredClasses] as ClassFilter[]).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => {
+                      setExpanded(null);
+                      setShowAllMobile(false);
+                      setPage(0);
+                      setClassFilter(k);
+                    }}
+                    aria-pressed={classFilter === k}
+                    className={`pf-transition rounded-none px-3 py-1.5 text-[12px] font-semibold ${classFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                  >
+                    {k === "all" ? tr(locale, "All", "Все") : tr(locale, ASSET_CLASS_LABEL[k].en, ASSET_CLASS_LABEL[k].ru)}
+                    <span className="pl-1.5 font-mono-num opacity-60">
+                      {k === "all" ? top.length : classCounts.get(k) ?? 0}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             {/* The shell shows the focus state, so the input suppresses its own
                 inset ring (see .pf-inline-input in globals.css). */}
-            <label className="pf-transition flex h-[34px] items-center gap-2 rounded-[10px] border border-border bg-bg px-3 focus-within:border-accent/50">
+            <label className="pf-transition flex h-[34px] items-center gap-2 rounded-none border border-border bg-bg px-3 focus-within:border-accent/50">
               <span aria-hidden className="font-mono-num text-[12px] text-text-dim">⌕</span>
               <input
                 type="search"
@@ -941,7 +1046,7 @@ export function RouteResults({
               />
             </label>
             {grouped && (
-              <div ref={filterRowRef} className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
+              <div ref={filterRowRef} className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]">
                 {(["all", "high", "medium", "low"] as BandKey[]).map((k) => {
                   // A band the answer has no pairs in is DISABLED rather than
                   // dropped: the row keeps its width, so it cannot reflow
@@ -958,7 +1063,7 @@ export function RouteResults({
                       aria-disabled={!available}
                       title={available ? undefined : tr(locale, "No pairs in this open-interest band", "В этой полосе открытого интереса нет пар")}
                       onClick={() => changeFilter(k)}
-                      className={`pf-transition rounded-[7px] px-3 py-1.5 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                      className={`pf-transition rounded-none px-3 py-1.5 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                     >
                       {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
                     </button>
@@ -996,7 +1101,7 @@ export function RouteResults({
               const o = p.entryOrders && p.exitOrders ? { entry: p.entryOrders, exit: p.exitOrders } : orders(p.firstLimitSide);
               const open = expanded === p.pair;
               return (
-                <div key={p.pair} className={`overflow-hidden rounded-[14px] border border-border bg-bg ${index >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
+                <div key={p.pair} className={`overflow-hidden rounded-none border border-border bg-bg ${index >= 5 && !showAllMobile ? "hidden lg:block" : ""}`}>
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : p.pair)}
@@ -1009,25 +1114,18 @@ export function RouteResults({
                       <div className="flex items-center gap-1.5">
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
-                        {p.competitionEligible && (
-                          <span
-                            title={tr(locale, "TradFi market — cheaper to execute and pays more points", "TradFi рынок — дешевле в исполнении и даёт больше поинтов")}
-                            className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive"
-                          >
-                            TradFi
-                          </span>
-                        )}
+                        <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {showEligible && p.competitionEligible && (
-                          <span title="Competition eligible" className="rounded-[5px] border border-accent/40 px-1.5 py-0.5 font-mono-num text-[9px] text-accent">CE</span>
+                          <span title="Competition eligible" className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={7} />
+                        <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={0} />
                         <span className="text-[13px] text-text-primary">{legsOf(p).longName}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={7} />
+                        <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={0} />
                         <span className="text-[13px] text-text-primary">{legsOf(p).shortName}</span>
                       </div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
@@ -1042,11 +1140,9 @@ export function RouteResults({
                         <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
-                        {p.competitionEligible && (
-                          <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">TradFi</span>
-                        )}
+                        <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {showEligible && p.competitionEligible && (
-                          <span className="rounded-[5px] border border-positive/30 px-1.5 py-0.5 font-mono-num text-[9px] text-positive">CE</span>
+                          <span className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
                         <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
                         <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
@@ -1064,7 +1160,7 @@ export function RouteResults({
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
                         {p.spreadRisk ? <SpreadRiskBadge risk={p.spreadRisk} /> : null}
                         {showEligible && p.competitionEligible && (
-                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
                             {tr(locale, "Competition eligible", "Eligible для конкурса")}
                           </span>
@@ -1072,18 +1168,18 @@ export function RouteResults({
                       </div>
                       {/* LONG / SHORT legs (compact recommended-route view, no 3D) */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-2 rounded-[12px] border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
+                        <div className="flex flex-col gap-2 rounded-none border border-positive/25 p-3.5" style={{ background: "color-mix(in srgb, var(--positive) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={7} />
+                            <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).longName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
                         </div>
-                        <div className="flex flex-col gap-2 rounded-[12px] border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
+                        <div className="flex flex-col gap-2 rounded-none border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
                           <div className="flex items-center gap-2">
-                            <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={7} />
+                            <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).shortName}</span>
                           </div>
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
@@ -1144,7 +1240,7 @@ export function RouteResults({
 
 
             {matches.length === 0 && (
-              <div className="rounded-[14px] border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
+              <div className="rounded-none border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
                 {tr(
                   locale,
                   `No eligible pair matches "${query.trim()}". It may be listed but below the liquidity floor for this size.`,
@@ -1159,7 +1255,7 @@ export function RouteResults({
                   type="button"
                   onClick={() => goToPage(safePage - 1)}
                   disabled={safePage === 0}
-                  className="pf-transition flex items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pf-transition flex items-center gap-2.5 rounded-none border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {/* The glyph sits on the text baseline by default, which reads
                       as slightly low; leading-none centres it against the word. */}
@@ -1177,7 +1273,7 @@ export function RouteResults({
                   type="button"
                   onClick={() => goToPage(safePage + 1)}
                   disabled={safePage >= pageCount - 1}
-                  className="pf-transition flex items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pf-transition flex items-center gap-2.5 rounded-none border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50 hover:bg-surface-1 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {tr(locale, "Next", "Вперёд")}
                   <span aria-hidden className="text-[14px] leading-none">→</span>

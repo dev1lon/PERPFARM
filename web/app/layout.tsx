@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Fira_Sans, Fira_Sans_Condensed } from "next/font/google";
 import { LocaleProvider, LOCALE_INIT_SCRIPT } from "@/components/LocaleProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
@@ -9,16 +9,27 @@ import "./globals.css";
 // guard keeps it out of the production bundle entirely.
 import { Agentation } from "agentation";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+/**
+ * One family, two cuts.
+ *
+ * The condensed cut carries every figure: narrowness buys column width that no
+ * proportional face gives back, which is what a table of a hundred costs needs.
+ * Fira specifically because it sets Cyrillic -- the interface is English-only
+ * today, but the strings for both languages are still in the source, and a face
+ * without those glyphs falls back mid-sentence to whatever the OS has.
+ */
+const firaSans = Fira_Sans({
+  variable: "--font-body",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+/** Reached through `.font-mono-num`. Despite that class name, kept so hundreds
+ *  of existing call sites did not need a sweep, there is no monospace here. */
+const firaSansCondensed = Fira_Sans_Condensed({
+  variable: "--font-chart",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -36,7 +47,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${firaSans.variable} ${firaSansCondensed.variable} h-full`}
     >
       <body className="pf-v2 min-h-full flex flex-col bg-bg text-text-primary antialiased">
         {/* Applies the stored theme before content paints (no flash). */}

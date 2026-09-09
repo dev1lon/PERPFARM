@@ -155,7 +155,7 @@ function variational(locale: Locale): ProtocolPageConfig {
   return {
     slug: "variational",
     name: "Variational",
-    tradeUrl: "https://omni.variational.io/?ref=OMNI6VEMG0I8",
+    tradeUrl: "https://omni.variational.io/?ref=OMNIDEVILON",
     twitterUrl: "https://x.com/variational_io",
     docsUrl: "https://docs.variational.io/omni",
     heroMetrics: [

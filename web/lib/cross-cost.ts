@@ -22,7 +22,7 @@ import {
   minOpenInterestUsd,
   oiBandsFor,
 } from "@/lib/route-model";
-import { isTradfiMarket } from "@/lib/tradfi";
+import { instrumentClass, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
@@ -45,6 +45,9 @@ type VenueMarketRow = {
 
 export type CrossPair = {
   pair: string;
+  /** What the instrument is. See lib/tradfi.ts -- the venue's own class where
+   *  it publishes one, our curated map otherwise, crypto when neither knows. */
+  assetClass: InstrumentClass;
   oiAUsd: number;
   oiBUsd: number;
   /** Gross OI of the protocol the user started the calculator on. */
@@ -539,6 +542,10 @@ export async function computeCrossRankings(
 
     candidates.push({
       pair: sym,
+      // The farmed venue's class first; the hedge venue answers only when the
+      // farmed one publishes nothing. One instrument must not change class
+      // depending on which side of the route the reader started from.
+      assetClass: instrumentClass(sym, ra.asset_class ?? rb.asset_class),
       spreadBreakoutShare: rating?.share ?? null,
       spreadRisk: rating?.risk ?? "unknown",
       makerVenue,

@@ -1,14 +1,18 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
-import { RouteResults, selectRecommendedPair, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
-import { isTradfiMarket } from "@/lib/tradfi";
+import { RouteResults, selectRecommendedPair, type ClassFilter, type PairRanking, type RankingResponse } from "@/components/v2/ProtocolCalculatorV2";
+import { isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 import { protocolName } from "@/lib/venue-status";
 import { resolveBandFilter } from "@/lib/route-model";
 
 type CrossPair = {
-  pair: string; oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
+  pair: string;
+  /** Optional so an answer served before the class shipped still parses; that
+   *  row then prints no class rather than guessing one. */
+  assetClass?: InstrumentClass;
+  oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number | null; cycleCostUsd: number;
@@ -43,6 +47,9 @@ export function CrossPairRankings({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [oiFilter, setOiFilter] = useState<CrossBandKey>("all");
+  // Its own filter state, not the same-venue table's: the two tables hold
+  // different answers, and a class present in one need not exist in the other.
+  const [classFilter, setClassFilter] = useState<ClassFilter>("all");
 
   useEffect(() => {
     let active = true;
@@ -73,6 +80,10 @@ export function CrossPairRankings({
     return {
       pair: pair.pair,
       openInterestUsd: pair.mainOiUsd,
+      // Classified server-side, where the venue's own `asset_class` is in hand.
+      // Recomputing it here from the ticker alone would silently disagree with
+      // the same-venue table for any market a venue classifies itself.
+      assetClass: pair.assetClass,
       competitionEligible: isTradfiMarket(pair.pair),
       firstLimitSide: (longIsMaker ? "long" : "short") as "long" | "short",
       cycleCostUsd: pair.cycleCostUsd,
@@ -109,7 +120,7 @@ export function CrossPairRankings({
     // relationship the code does not have.
   }, [response, activeFilter]);
 
-  if (!response && !error) return suppressLoading ? null : <div className="mt-5 flex flex-col items-center gap-4 rounded-[20px] border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
+  if (!response && !error) return suppressLoading ? null : <div className="mt-5 flex flex-col items-center gap-4 rounded-none border border-accent/25 bg-bg px-8 py-14"><div className="h-0.5 w-52 overflow-hidden rounded-none bg-white/10"><div className="pf-scan h-full w-1/3 bg-accent" /></div><div className="font-mono-num text-[13px] text-accent">{tr(locale, "Pricing the cheapest routes…", "Считаем самые дешёвые маршруты…")}</div></div>;
   // The red box means THIS COMPARISON found nothing -- not that the tab the
   // reader is on is empty. It used to cover both, so choosing a band with no
   // pairs replaced the entire block, tabs included, and the only way back was
@@ -134,5 +145,5 @@ export function CrossPairRankings({
     pairs: response.pairs ? mapPairs(response.pairs) : undefined,
   };
   const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug);
-  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} />;
+  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} classFilter={classFilter} setClassFilter={setClassFilter} />;
 }

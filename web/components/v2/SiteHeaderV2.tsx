@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -52,7 +52,7 @@ export function SiteHeaderV2() {
                 aria-label={tr(locale, "Menu", "Меню")}
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
-                className="pf-transition flex h-8 w-8 items-center justify-center rounded-[9px] border border-border text-text-muted hover:border-text-muted/50 hover:text-text-primary"
+                className="pf-transition flex h-8 w-8 items-center justify-center rounded-none border border-border text-text-muted hover:border-text-muted/50 hover:text-text-primary"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
                   {open ? <path d="M18 6 6 18M6 6l12 12" /> : <path d="M3 6h18M3 12h18M3 18h18" />}

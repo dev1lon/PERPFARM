@@ -12,7 +12,7 @@ import {
   quantizeAccountVolumeUsd,
   snapshotsAreFresh,
 } from "@/lib/route-model";
-import { TRADFI_TICKERS, isTradfiMarket } from "@/lib/tradfi";
+import { TRADFI_TICKERS, instrumentClass, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
@@ -98,6 +98,15 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
 type PairRanking = {
   pair: string;
   openInterestUsd: number;
+  /**
+   * What the instrument is -- equity, index, commodity, fx, prelisting, crypto.
+   *
+   * A different answer from `competitionEligible`, which says only whether the
+   * market sits inside the venue's TradFi set. The table badged that boundary
+   * and nothing else, so a row was either "TradFi" or bare, and gold, a
+   * currency pair and a single stock all read as the same word.
+   */
+  assetClass: InstrumentClass;
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   quoteAsOf: string;
@@ -212,6 +221,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return {
           pair: market.pair,
           openInterestUsd,
+          // The venue's own class first, our curated map second -- the same rule
+          // the fee lookup above follows: the venue is the authority on what its
+          // own listing is.
+          assetClass: instrumentClass(market.pair, market.assetClass),
           competitionEligible: eligible,
           firstLimitSide: market.firstLimitSide,
           quoteAsOf: market.bookTs,
