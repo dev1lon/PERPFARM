@@ -236,7 +236,7 @@ function SpreadRiskBadge({ risk }: { risk: SpreadRisk }) {
   if (risk === "unknown") return null;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border px-2.5 py-1 text-[11px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border px-2.5 py-1 text-[13px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
     >
       <span className={`h-[5px] w-[5px] rounded-full ${SPREAD_RISK_DOT[risk]}`} />
       {spreadRiskLabel(locale, risk)}
@@ -920,7 +920,12 @@ export function RouteResults({
           <div className="px-6 py-6">
             <div className="flex flex-wrap items-center gap-3.5">
               <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
-              <span className="rounded-none border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{bestRuleLabel}</span>
+              {/* Set like the spread-risk badge beside it: same size, same
+                  weight, same face. It was the same 11px, but in the CONDENSED
+                  cut at normal weight, which reads a size smaller than its
+                  neighbour -- two badges on one row disagreeing about how big a
+                  badge is. The condensed cut is for figures; this is a phrase. */}
+              <span className="rounded-none border border-accent/35 bg-accent/[0.09] px-3 py-1.5 text-[13px] font-semibold text-accent">{bestRuleLabel}</span>
             </div>
             <div className="my-4 overflow-hidden rounded-none border border-border lg:hidden" style={{ background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
               <RecommendedRouteDiagram longName={legsOf(best).longName} shortName={legsOf(best).shortName} />
@@ -1060,7 +1065,7 @@ export function RouteResults({
                       setClassFilter(k);
                     }}
                     aria-pressed={classFilter === k}
-                    className={`pf-transition rounded-none px-3 py-1.5 text-[12px] font-semibold ${classFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                    className={`pf-transition rounded-none px-3 py-1.5 text-[13px] font-semibold ${classFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                   >
                     {k === "all" ? tr(locale, "All", "Все") : tr(locale, ASSET_CLASS_LABEL[k].en, ASSET_CLASS_LABEL[k].ru)}
                     <span className="pl-1.5 font-mono-num opacity-60">
@@ -1101,7 +1106,7 @@ export function RouteResults({
                       aria-disabled={!available}
                       title={available ? undefined : tr(locale, "No pairs in this open-interest band", "В этой полосе открытого интереса нет пар")}
                       onClick={() => changeFilter(k)}
-                      className={`pf-transition rounded-none px-3 py-1.5 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                      className={`pf-transition rounded-none px-3 py-1.5 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                     >
                       {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
                     </button>
