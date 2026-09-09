@@ -16,7 +16,7 @@ type StepProps = {
 
 function Step({ number, title, body, children }: StepProps) {
   return (
-    <section className="grid items-center gap-7 rounded-[20px] border border-border bg-surface-1 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-10">
+    <section className="grid items-center gap-7 rounded-none border border-border bg-surface-1 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-10">
       <div className="flex flex-col gap-3.5">
         <div className="font-mono-num text-[12px] tracking-[0.12em] text-accent">{number}</div>
         <h2 className="text-[26px] font-bold tracking-[-0.02em] text-text-primary sm:text-[28px]">{title}</h2>
@@ -29,8 +29,8 @@ function Step({ number, title, body, children }: StepProps) {
 
 function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; selected?: boolean }) {
   return (
-    <div className={`flex items-center gap-3 rounded-[14px] border px-4 py-3.5 ${selected ? "border-accent/45 bg-accent/[0.09]" : "border-border bg-surface-2"}`}>
-      <ProtocolMark slug={slug} name={name} size={32} radius={10} />
+    <div className={`flex items-center gap-3 rounded-none border px-4 py-3.5 ${selected ? "border-accent/45 bg-accent/[0.09]" : "border-border bg-surface-2"}`}>
+      <ProtocolMark slug={slug} name={name} size={32} radius={0} />
       <div className="min-w-0 flex-1 text-[15px] font-semibold text-text-primary">{name}</div>
       {selected ? <span className="font-mono-num text-[10px] tracking-[0.1em] text-accent">SELECTED</span> : null}
     </div>
@@ -39,7 +39,7 @@ function ProtocolChoice({ slug, name, selected }: { slug: string; name: string; 
 
 function HedgeDiagram() {
   return (
-    <div className="rounded-[16px] border border-border bg-surface-2 p-4 sm:p-5">
+    <div className="rounded-none border border-border bg-surface-2 p-4 sm:p-5">
       <svg viewBox="24 0 392 132" className="h-[142px] w-full" aria-hidden>
         <path d="M64 84 C 150 84, 150 34, 220 34 S 290 84, 376 84" fill="none" stroke="#4d8dff" strokeWidth="2" />
         <circle cx="220" cy="34" r="4.5" fill="#bcd6ff" /><rect x="196" y="8" width="48" height="19" rx="6" fill="rgba(10,16,30,0.9)" stroke="rgba(255,255,255,0.12)" />
@@ -57,13 +57,13 @@ function HedgeDiagram() {
 /** Desktop-only neutral route visual for the intro: blue route geometry only,
  * without position-side labels that belong to the calculator itself. */
 function BlueRouteModel() {
-  return <div className="hidden overflow-hidden rounded-[20px] border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block"><RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} blue showSideLabels={false} showVenueLabels={false} /></div>;
+  return <div className="hidden overflow-hidden rounded-none border border-border bg-[linear-gradient(180deg,#10162a,#0a0e18)] lg:block"><RouteMap mode="result" pair="XAU" longLabel="Variational" shortLabel="TxFlow" height={360} blue showSideLabels={false} showVenueLabels={false} /></div>;
 }
 
 function VolumePreview() {
   const locale = useLocale();
   return (
-    <div className="flex flex-col gap-3 rounded-[16px] border border-white/[0.09] bg-[#161d2d] p-5 sm:p-6">
+    <div className="flex flex-col gap-3 rounded-none border border-white/[0.09] bg-[#161d2d] p-5 sm:p-6">
       <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Volume per account", "Объём на аккаунт")}</div>
       <div className="flex h-[54px] items-center gap-2 rounded-xl border border-accent bg-[#111827] px-4 shadow-[0_0_0_3px_rgba(77,141,255,0.16)]"><span className="font-mono-num text-[16px] text-text-dim">$</span><span className="flex-1 font-mono-num text-[20px] text-text-primary">20,000</span><span className="font-mono-num text-[12px] text-text-dim">USDC</span></div>
       <div className="flex items-center justify-between rounded-xl bg-white/[0.045] px-4 py-3.5"><span className="text-[13px] text-text-muted">{tr(locale, "Full hedge cycle", "Полный хедж-цикл")}</span><span className="font-mono-num text-[18px] text-text-primary">$40,000</span></div>
@@ -75,10 +75,10 @@ function VolumePreview() {
 function CalculationPreview() {
   const locale = useLocale();
   return (
-    <div className="overflow-hidden rounded-[16px] border border-accent/30 bg-[linear-gradient(150deg,rgba(77,141,255,0.11),rgba(11,16,25,0.9)_60%)]">
-      <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><span className="font-mono-num text-[10px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендуемый маршрут")}</span><span className="inline-flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2 py-1 text-[10px] font-semibold text-positive"><span className="h-1 w-1 rounded-full bg-positive" />{tr(locale, "Competition eligible", "Подходит для конкурса")}</span></div>
+    <div className="overflow-hidden rounded-none border border-accent/30 bg-[linear-gradient(150deg,rgba(77,141,255,0.11),rgba(11,16,25,0.9)_60%)]">
+      <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><span className="font-mono-num text-[10px] uppercase tracking-[0.12em] text-accent">{tr(locale, "Recommended route", "Рекомендуемый маршрут")}</span><span className="inline-flex items-center gap-1.5 rounded-none border border-positive/30 bg-positive/10 px-2 py-1 text-[10px] font-semibold text-positive"><span className="h-1 w-1 rounded-none bg-positive" />{tr(locale, "Competition eligible", "Подходит для конкурса")}</span></div>
       <div className="p-4">
-        <div className="flex flex-wrap items-center gap-2 pb-3.5"><span className="font-mono-num text-[30px] text-text-primary">XAU</span><span className="rounded-full border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{tr(locale, "Cheapest medium OI", "Самый дешёвый средний OI")}</span></div>
+        <div className="flex flex-wrap items-center gap-2 pb-3.5"><span className="font-mono-num text-[30px] text-text-primary">XAU</span><span className="rounded-none border border-accent/35 bg-accent/[0.09] px-3 py-1.5 font-mono-num text-[11px] tracking-[0.04em] text-accent">{tr(locale, "Cheapest medium OI", "Самый дешёвый средний OI")}</span></div>
         <div className="grid grid-cols-2 gap-2.5"><div className="rounded-xl border border-positive/25 bg-positive/[0.06] p-3"><div className="font-mono-num text-[10px] tracking-[0.14em] text-positive">LONG</div><div className="mt-1.5 text-[14px] font-semibold text-text-primary">Variational</div></div><div className="rounded-xl border border-negative/25 bg-negative/[0.06] p-3"><div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div><div className="mt-1.5 text-[14px] font-semibold text-text-primary">TxFlow</div></div></div>
         <div className="grid grid-cols-2 gap-3 pt-3.5"><div><div className="text-[11px] text-text-muted">{tr(locale, "Holding window", "Период удержания")}</div><div className="mt-1 font-mono-num text-[16px] text-text-primary">12–24h</div></div><div><div className="text-[11px] text-text-muted">{tr(locale, "Execution cost", "Стоимость исполнения")}</div><div className="mt-1 font-mono-num text-[16px] text-positive">$18.40</div></div></div>
       </div>
@@ -107,7 +107,7 @@ function Limits() {
 
 function InlineFooter() {
   const locale = useLocale();
-  return <footer className="mt-12 flex items-center gap-2.5 border-t border-border pb-16 pt-7"><Image src="/icon.svg" alt="" aria-hidden width={22} height={22} className="h-[22px] w-[22px] rounded-[7px]" /><span className="text-[13px] text-text-muted">{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span></footer>;
+  return <footer className="mt-12 flex items-center gap-2.5 border-t border-border pb-16 pt-7"><Image src="/icon.svg" alt="" aria-hidden width={22} height={22} className="h-[22px] w-[22px] rounded-none" /><span className="text-[13px] text-text-muted">{tr(locale, "Estimates from public data · Not financial advice", "Оценки по публичным данным · Не финансовый совет")}</span></footer>;
 }
 
 export function HowItWorksV2() {
@@ -117,7 +117,7 @@ export function HowItWorksV2() {
       <SiteHeaderV2 />
       <main className="mx-auto max-w-[1240px] px-5 pb-2 sm:px-10">
         <section className="py-14 sm:py-[72px] lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:pb-[60px]">
-          <div className="flex flex-col items-start gap-5.5"><div className="font-mono-num text-[11px] tracking-[0.16em] text-accent">{tr(locale, "START HERE", "НАЧНИТЕ ЗДЕСЬ")}</div><h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.032em] text-text-primary sm:text-[56px]">{tr(locale, "How PerpFarm works", "Как работает PerpFarm")}</h1><p className="max-w-[470px] text-[17px] leading-[1.62] text-text-muted">{tr(locale, "PerpFarm helps you plan a lower-cost route for farming perp points before you trade.", "PerpFarm помогает спланировать менее затратный путь к perp-поинтам до сделки.")}</p><div className="flex max-w-[500px] gap-3.5 rounded-2xl border border-border bg-surface-1 px-5 py-[18px]"><span className="w-[3px] shrink-0 rounded-full bg-accent" /><p className="text-[14px] leading-[1.62] text-text-muted">{tr(locale, "A hedge uses equal notional exposure on both sides of one market. This reduces directional price exposure while we measure execution costs.", "Хедж использует равный номинальный объём с обеих сторон одного рынка. Так снижается направленный ценовой риск, а PerpFarm измеряет затраты исполнения.")}</p></div></div>
+          <div className="flex flex-col items-start gap-5.5"><div className="font-mono-num text-[11px] tracking-[0.16em] text-accent">{tr(locale, "START HERE", "НАЧНИТЕ ЗДЕСЬ")}</div><h1 className="text-[44px] font-bold leading-[1.05] tracking-[-0.032em] text-text-primary sm:text-[56px]">{tr(locale, "How PerpFarm works", "Как работает PerpFarm")}</h1><p className="max-w-[470px] text-[17px] leading-[1.62] text-text-muted">{tr(locale, "PerpFarm helps you plan a lower-cost route for farming perp points before you trade.", "PerpFarm помогает спланировать менее затратный путь к perp-поинтам до сделки.")}</p><div className="flex max-w-[500px] gap-3.5 rounded-2xl border border-border bg-surface-1 px-5 py-[18px]"><span className="w-[3px] shrink-0 rounded-none bg-accent" /><p className="text-[14px] leading-[1.62] text-text-muted">{tr(locale, "A hedge uses equal notional exposure on both sides of one market. This reduces directional price exposure while we measure execution costs.", "Хедж использует равный номинальный объём с обеих сторон одного рынка. Так снижается направленный ценовой риск, а PerpFarm измеряет затраты исполнения.")}</p></div></div>
           <BlueRouteModel />
         </section>
         <div className="flex flex-col gap-4">
@@ -127,7 +127,7 @@ export function HowItWorksV2() {
           <Step number={tr(locale, "STEP 04", "ШАГ 04")} title={tr(locale, "Run the route", "Запустите расчёт")} body={tr(locale, "PerpFarm compares eligible markets and shows lower-cost routes with LONG, SHORT, entry, exit, funding and estimated execution cost.", "PerpFarm сравнивает подходящие рынки и показывает маршруты с меньшей стоимостью: LONG, SHORT, вход, выход, фандинг и оценку исполнения.")}><CalculationPreview /></Step>
         </div>
         <Limits />
-        <section className="mt-14 flex flex-col items-start justify-between gap-6 rounded-[20px] border border-accent/25 bg-[linear-gradient(120deg,rgba(77,141,255,0.10),rgba(11,16,25,0.6)_60%)] p-6 sm:flex-row sm:items-center sm:p-8"><div><h2 className="text-[24px] font-bold tracking-[-0.02em] text-text-primary">{tr(locale, "Ready to plan a route?", "Готовы спланировать маршрут?")}</h2><p className="mt-1.5 text-[15px] text-text-muted">{tr(locale, "Start with the protocol whose points you want.", "Начните с протокола, чьи поинты вам нужны.")}</p></div><Link href="/#protocols" className="pf-transition inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_26px_rgba(77,141,255,0.28)] hover:bg-accent-hover">{tr(locale, "Choose a protocol", "Выбрать протокол")}<span className="font-mono-num text-[13px]">→</span></Link></section>
+        <section className="mt-14 flex flex-col items-start justify-between gap-6 rounded-none border border-accent/25 bg-[linear-gradient(120deg,rgba(77,141,255,0.10),rgba(11,16,25,0.6)_60%)] p-6 sm:flex-row sm:items-center sm:p-8"><div><h2 className="text-[24px] font-bold tracking-[-0.02em] text-text-primary">{tr(locale, "Ready to plan a route?", "Готовы спланировать маршрут?")}</h2><p className="mt-1.5 text-[15px] text-text-muted">{tr(locale, "Start with the protocol whose points you want.", "Начните с протокола, чьи поинты вам нужны.")}</p></div><Link href="/#protocols" className="pf-transition inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_26px_rgba(77,141,255,0.28)] hover:bg-accent-hover">{tr(locale, "Choose a protocol", "Выбрать протокол")}<span className="font-mono-num text-[13px]">→</span></Link></section>
         <InlineFooter />
       </main>
     </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { tr, useLocale } from "@/components/LocaleProvider";
@@ -42,7 +42,7 @@ function Hero() {
 function HedgeRouteCard() {
   const locale = useLocale();
   return (
-    <div className="mb-4 overflow-hidden rounded-[20px] border" style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
+    <div className="mb-4 overflow-hidden rounded-none border" style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}>
       <div className="flex items-center justify-between gap-4 px-5 py-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="font-mono-num text-[11px] uppercase tracking-[0.1em]" style={{ color: "#8b96ad" }}>
           {tr(locale, "Hedge route", "Хедж-маршрут")}
@@ -95,7 +95,7 @@ function Approach() {
       />
       <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((s) => (
-          <div key={s.n} className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-6">
+          <div key={s.n} className="flex flex-col gap-3 rounded-none border border-border bg-surface-1 p-6">
             <div className="font-mono-num text-[11px] text-accent">{s.n}</div>
             <div className="text-[16px] font-semibold text-text-primary">{s.title}</div>
             <div className="text-[14px] leading-[1.62] text-text-muted">{s.body}</div>
@@ -133,7 +133,7 @@ function InputRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[18px] border border-border bg-surface-1 p-6 sm:p-7">
+    <div className="rounded-none border border-border bg-surface-1 p-6 sm:p-7">
       <div className="grid gap-4 lg:grid-cols-[minmax(180px,232px)_1fr] lg:gap-9">
         <div className="flex items-start gap-3">
           <span className="font-mono-num text-[11px] leading-[1.75] text-accent">{index}</span>
@@ -159,7 +159,7 @@ function InputCards() {
   const order = (label: string, tone: "long" | "short") => (
     <span
       key={label}
-      className={`rounded-[9px] border px-3 py-2 font-mono-num text-[11px] ${
+      className={`rounded-none border px-3 py-2 font-mono-num text-[11px] ${
         tone === "long"
           ? "border-positive/20 bg-positive/[0.06] text-positive"
           : "border-negative/20 bg-negative/[0.06] text-negative"
@@ -224,7 +224,7 @@ function InputCards() {
               "Опубликованные комиссии могут быть нулевыми, а исполнение всё равно стоит. PerpFarm добавляет полспреда и quote impact на ваш размер — по медиане за 24ч с типичным диапазоном.",
             )}
           </p>
-          <div className="flex max-w-[420px] items-center justify-between gap-4 rounded-[10px] bg-surface-2 px-3.5 py-3">
+          <div className="flex max-w-[420px] items-center justify-between gap-4 rounded-none bg-surface-2 px-3.5 py-3">
             <span className="text-[12px] text-text-muted">{tr(locale, "Published fee", "Комиссия")}</span>
             <span className="font-mono-num text-[13px] text-text-dim">$0.00</span>
             <span className="text-[12px] text-text-muted">{tr(locale, "Real cost", "Реальная")}</span>
@@ -319,7 +319,7 @@ function CostModel() {
   const locale = useLocale();
   const step = (label: string, tone: "long" | "short") => (
     <span
-      className={`rounded-[11px] border px-3.5 py-2.5 font-mono-num text-[13px] ${
+      className={`rounded-none border px-3.5 py-2.5 font-mono-num text-[13px] ${
         tone === "long"
           ? "border-positive/25 bg-positive/[0.06] text-positive"
           : "border-negative/25 bg-negative/[0.06] text-negative"
@@ -340,7 +340,7 @@ function CostModel() {
         )}
       />
       <HedgeRouteCard />
-      <div className="rounded-[20px] border border-accent/20 p-6 sm:p-8" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--surface-1) 55%)" }}>
+      <div className="rounded-none border border-accent/20 p-6 sm:p-8" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), var(--surface-1) 55%)" }}>
         <div className="font-mono-num text-[11px] uppercase tracking-[0.1em] text-accent">
           {tr(locale, "Full hedge-cycle cost =", "Полная стоимость хедж-цикла =")}
         </div>
@@ -353,7 +353,7 @@ function CostModel() {
           <span className="font-mono-num text-[16px] text-text-dim">+</span>
           {step(tr(locale, "SHORT exit", "Выход SHORT"), "short")}
           <span className="font-mono-num text-[16px] text-text-dim">+</span>
-          <span className="rounded-[11px] border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 font-mono-num text-[13px] text-warning">
+          <span className="rounded-none border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 font-mono-num text-[13px] text-warning">
             {tr(locale, "funding · 12h", "фандинг · 12ч")}
           </span>
         </div>
@@ -367,7 +367,7 @@ function CostModel() {
         </div>
 
         <div className="mt-5 grid gap-3.5 md:grid-cols-3">
-          <div className="rounded-[14px] bg-surface-2 p-4">
+          <div className="rounded-none bg-surface-2 p-4">
             <div className="text-[15px] font-semibold text-text-primary">{tr(locale, "Your volume", "Ваш объём")}</div>
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
@@ -377,7 +377,7 @@ function CostModel() {
               )}
             </p>
           </div>
-          <div className="rounded-[14px] bg-surface-2 p-4">
+          <div className="rounded-none bg-surface-2 p-4">
             <div className="text-[15px] font-semibold text-text-primary">{tr(locale, "Execution cost", "Стоимость исполнения")}</div>
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
@@ -387,7 +387,7 @@ function CostModel() {
               )}
             </p>
           </div>
-          <div className="rounded-[14px] bg-surface-2 p-4">
+          <div className="rounded-none bg-surface-2 p-4">
             <div className="text-[15px] font-semibold text-text-primary">{tr(locale, "Typical 24h cost range", "Типичный диапазон стоимости за 24ч")}</div>
             <p className="pt-2 text-[14px] leading-[1.65] text-text-muted">
               {tr(
@@ -406,7 +406,7 @@ function CostModel() {
 function DataBasis() {
   const locale = useLocale();
   const item = (label: string) => (
-    <div className="whitespace-nowrap rounded-[10px] border border-border bg-surface-2 px-3.5 py-2.5 text-[13px] text-text-primary">
+    <div className="whitespace-nowrap rounded-none border border-border bg-surface-2 px-3.5 py-2.5 text-[13px] text-text-primary">
       {label}
     </div>
   );
@@ -421,7 +421,7 @@ function DataBasis() {
           "Все числа берутся из сохранённых снимков рынка, а не из живого запроса в момент нажатия «Рассчитать». Сборщик записывает каждый протокол раз в час; расчёт читает двенадцать таких часов — каждый второй за последние 24, — а диапазон стоимости это их средняя половина.",
         )}
       />
-      <div className="overflow-hidden rounded-[20px] border border-border bg-surface-1">
+      <div className="overflow-hidden rounded-none border border-border bg-surface-1">
         <div className="grid md:grid-cols-[1.35fr_1fr]">
           <div className="p-6 sm:p-7 md:border-r md:border-border">
             <div className="flex items-center justify-between gap-4">
@@ -468,7 +468,7 @@ function DataBasis() {
       {/* Spread risk is explained here and nowhere else. It used to live in a
           hover tooltip on the badge itself, which is the wrong place for four
           sentences: it is a property of the route, not a footnote on a word. */}
-      <div className="mt-4 rounded-[16px] border border-border bg-surface-1 p-6 sm:p-7">
+      <div className="mt-4 rounded-none border border-border bg-surface-1 p-6 sm:p-7">
         <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Spread risk", "Риск расхождения")}</h3>
         <p className="pt-2 text-[14px] leading-[1.62] text-text-muted">
           {tr(
@@ -493,7 +493,7 @@ function DataBasis() {
         </p>
       </div>
 
-      <div className="mt-4 flex gap-4 rounded-[16px] border border-warning/20 bg-surface-1 px-5 py-4">
+      <div className="mt-4 flex gap-4 rounded-none border border-warning/20 bg-surface-1 px-5 py-4">
         <span className="w-[3px] flex-none rounded-full bg-warning" />
         <p className="text-[14px] leading-[1.62] text-text-muted">
           {tr(
@@ -519,7 +519,7 @@ export function MethodologyV2() {
         <CostModel />
         <DataBasis />
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-5 rounded-[20px] border border-accent/20 px-8 py-8 sm:flex-row sm:items-center" style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}>
+        <div className="mt-14 flex flex-col items-start justify-between gap-5 rounded-none border border-accent/20 px-8 py-8 sm:flex-row sm:items-center" style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}>
           <div className="flex flex-col gap-2">
             <div className="text-[24px] font-bold tracking-[-0.02em] text-text-primary">{tr(locale, "See the model applied", "Смотрите модель в действии")}</div>
             <div className="text-[15px] text-text-muted">{tr(locale, "Every protocol page applies this calculation to current market data.", "Каждая страница протокола применяет этот расчёт к текущим рыночным данным.")}</div>

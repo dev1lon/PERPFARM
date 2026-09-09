@@ -12,16 +12,27 @@ function subscribe(onChange: () => void): () => void {
   return () => window.removeEventListener(LOCALE_EVENT, onChange);
 }
 
+/**
+ * English only, for now.
+ *
+ * The Russian STRINGS stay where they are -- every `tr(locale, en, ru)` call in
+ * the tree still carries both, so switching the language back on is this
+ * function and the header control, not a re-translation. What is gone is the
+ * choice: a reader who had picked Russian before must not be stranded in a
+ * language whose switch no longer exists, so a stored "ru" is ignored.
+ */
 function getSnapshot(): Locale {
-  return document.documentElement.dataset.locale === "ru" ? "ru" : "en";
+  return "en";
 }
 
 function getServerSnapshot(): Locale {
   return "en";
 }
 
+/** Pins the document to English and clears a language stored by an earlier
+ *  visit, so nothing downstream reads a locale the interface no longer offers. */
 export const LOCALE_INIT_SCRIPT =
-  "try{var l=localStorage.getItem('pf-locale');if(l==='ru'||l==='en'){document.documentElement.dataset.locale=l;document.documentElement.lang=l;}}catch(e){}";
+  "try{document.documentElement.dataset.locale='en';document.documentElement.lang='en';localStorage.removeItem('pf-locale');}catch(e){}";
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

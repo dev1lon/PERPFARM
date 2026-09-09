@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
@@ -74,14 +74,14 @@ export function MarketActivityV2({
   ];
 
   const tab = (active: boolean) =>
-    `pf-transition rounded-[7px] px-3.5 py-1.5 text-[13px] font-semibold ${active ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`;
+    `pf-transition rounded-none px-3.5 py-1.5 text-[13px] font-semibold ${active ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`;
 
   return (
     <div className="mt-11">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
         <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Market activity", "Активность рынка")}</h2>
         <div className="flex items-center gap-2.5">
-          <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
+          <div className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]">
             {metrics.map((m) => (
               <button
                 key={m.key}
@@ -106,7 +106,7 @@ export function MarketActivityV2({
           {/* Unavailable ranges disable rather than disappear, so the row
               cannot reflow when the metric changes. */}
           {(
-            <div className="flex gap-0.5 rounded-[10px] border border-border bg-bg p-[3px]">
+            <div className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]">
               {([30, 90, 180] as Range[]).map((d) => (
                 (() => {
                   const available = hasObservedRange(rawSeries, d);
@@ -117,7 +117,7 @@ export function MarketActivityV2({
                       disabled={!available}
                       aria-disabled={!available}
                       onClick={() => setRangeDays(d)}
-                      className={`pf-transition rounded-[7px] px-3 py-1.5 font-mono-num text-[12px] disabled:cursor-not-allowed disabled:opacity-35 ${rangeDays === d ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                      className={`pf-transition rounded-none px-3 py-1.5 font-mono-num text-[12px] disabled:cursor-not-allowed disabled:opacity-35 ${rangeDays === d ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                     >
                       {d === 30 ? "30D" : d === 90 ? "3M" : "6M"}
                     </button>
@@ -129,7 +129,7 @@ export function MarketActivityV2({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-border bg-surface-1 px-6 pb-5 pt-5">
+      <div className="rounded-none border border-border bg-surface-1 px-6 pb-5 pt-5">
         <div className="flex items-baseline gap-3.5 pb-4">
           <div className="font-mono-num text-[28px] text-text-primary">{isUsers ? compactCount(latest) : compactUsd(latest)}</div>
           {delta !== null && (

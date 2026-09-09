@@ -111,7 +111,7 @@ function Hero({ config }: { config: ProtocolPageConfig }) {
       </div>
       <div className="flex flex-col items-start justify-between gap-6 border-b border-border pb-6 sm:flex-row sm:items-end">
         <div className="flex items-center gap-4">
-          <ProtocolMark slug={config.slug} name={config.name} size={52} radius={14} />
+          <ProtocolMark slug={config.slug} name={config.name} size={52} radius={0} />
           <div className="flex flex-col gap-2">
             <h1 className="text-[32px] font-bold tracking-[-0.022em] text-text-primary">{config.name}</h1>
             <div className="flex items-center gap-3.5">
@@ -135,7 +135,7 @@ function Hero({ config }: { config: ProtocolPageConfig }) {
         </div>
         <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:gap-2.5">
           {config.heroMetrics.map((metric) => (
-            <div key={metric.label} className="flex min-w-0 flex-col gap-1.5 rounded-[12px] border border-border bg-surface-1 px-3 py-2.5 sm:rounded-[14px] sm:px-4 sm:py-3.5">
+            <div key={metric.label} className="flex min-w-0 flex-col gap-1.5 rounded-none border border-border bg-surface-1 px-3 py-2.5 sm:rounded-none sm:px-4 sm:py-3.5">
               <div className="flex min-h-[26px] items-start gap-1.5 text-[10px] font-medium leading-[1.3] text-text-muted sm:min-h-0 sm:items-center sm:text-[11px]">
                 {metric.label}
                 {metric.tip ? <InfoTip text={metric.tip} /> : null}
@@ -160,7 +160,7 @@ function GuidancePanel({ config }: { config: ProtocolPageConfig }) {
   const { guidance } = config;
   return (
     <section
-      className="mt-11 rounded-[20px] border p-6 sm:p-[30px]"
+      className="mt-11 rounded-none border p-6 sm:p-[30px]"
       style={{ borderColor: "rgba(77,141,255,0.2)", background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), var(--surface-1) 60%)" }}
     >
       <div className="font-mono-num text-[11px] uppercase tracking-[0.12em] text-accent">{guidance.kicker}</div>
@@ -169,9 +169,9 @@ function GuidancePanel({ config }: { config: ProtocolPageConfig }) {
       {guidance.priorities.length === 0 ? null : (
       <div className="grid gap-3 pt-5 sm:grid-cols-2">
         {guidance.priorities.map((priority) => (
-          <div key={priority.label} className={`rounded-[18px] border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}>
+          <div key={priority.label} className={`rounded-none border p-5 ${priority.primary ? "border-accent/45 bg-surface-2" : "border-border bg-bg/45"}`}>
             <div className="flex items-center gap-3">
-              <span className={`rounded-full px-2.5 py-1 font-mono-num text-[11px] font-semibold uppercase tracking-[0.04em] ${priority.primary ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}>
+              <span className={`rounded-none px-2.5 py-1 font-mono-num text-[11px] font-semibold uppercase tracking-[0.04em] ${priority.primary ? "bg-accent text-white" : "bg-surface-2 text-text-primary"}`}>
                 {priority.label}
               </span>
               <span className="text-[13px] text-text-muted">{priority.kicker}</span>
@@ -226,12 +226,12 @@ function HedgeCard({
 }) {
   const partner = protocolName(partnerSlug) ?? homeName;
   return (
-    <div className="relative flex h-full flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="relative flex h-full flex-col gap-3.5 rounded-none border border-border bg-surface-1 p-[22px]">
       {tip ? <div className="absolute right-4 top-4"><InfoTip text={tip} /></div> : null}
       <div className="flex items-center gap-1.5 text-[16px] font-semibold text-text-primary">
-        <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={7} />
+        <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={0} />
         <span>{homeName} ×</span>
-        <ProtocolMark slug={partnerSlug} name={partner} size={22} radius={7} />
+        <ProtocolMark slug={partnerSlug} name={partner} size={22} radius={0} />
         {linked ? (
           <Link href={`/${partnerSlug}`} className="pf-transition hover:text-accent">
             <span className="underline decoration-accent/70 underline-offset-4">{partner}</span>
@@ -246,7 +246,7 @@ function HedgeCard({
         {tags.map(([text, tone]) => (
           <span
             key={text}
-            className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+            className={`whitespace-nowrap rounded-none border px-2.5 py-1 text-[11px] font-semibold ${
               tone === "ok"
                 ? "border-positive/30 bg-positive/10 text-positive"
                 : tone === "warn"
@@ -373,7 +373,7 @@ function UnlockLadder({
   const usd = (value: number) =>
     value >= 1_000_000 ? `$${Math.round(value / 1_000_000)}M` : `$${(value / 1_000).toFixed(0)}K`;
   return (
-    <div className="flex flex-col gap-2 rounded-[12px] bg-surface-2 px-3.5 py-3">
+    <div className="flex flex-col gap-2 rounded-none bg-surface-2 px-3.5 py-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[11px] uppercase tracking-[0.1em] text-text-dim">
           {tr(locale, "Combined volume", "Общий объём")}
@@ -409,13 +409,13 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
 
   if (activity.kind === "campaign" && live) {
     return (
-      <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+      <div className="flex flex-col gap-4 rounded-none border border-border bg-surface-1 p-[22px]">
         {/* The badge belongs to the SECTION, not to the campaign name: it says
             "this protocol has something running", which is the same claim the
             empty state makes below and on every other protocol. */}
         <div className="flex items-center justify-between gap-3">
           <div className="text-[17px] font-semibold text-text-primary">{title}</div>
-          <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
+          <span className="inline-flex flex-none items-center gap-1.5 rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
             <span className="h-[5px] w-[5px] rounded-full bg-positive" />
             {tr(locale, "Active", "Активно")}
           </span>
@@ -428,7 +428,7 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
           </div>
           {/* The deadline is the one number here that moves, so it gets a panel
               of its own rather than a line of small print. */}
-          <div className="flex flex-none flex-col items-end gap-1 rounded-[12px] border border-border bg-surface-2 px-4 py-2.5">
+          <div className="flex flex-none flex-col items-end gap-1 rounded-none border border-border bg-surface-2 px-4 py-2.5">
             <span className="text-[10px] uppercase tracking-[0.12em] text-text-dim">
               {tr(locale, "Ends in", "Осталось")}
             </span>
@@ -457,10 +457,10 @@ function ActivityCard({ activity, now }: { activity: ActivityConfig; now: number
   // The heading sits at the top like every other card's: centring the whole
   // column pushed it down and left it out of line with the panel beside it.
   return (
-    <div className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="flex flex-col gap-3 rounded-none border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center justify-between gap-3">
         <div className="text-[17px] font-semibold text-text-primary">{title}</div>
-        <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">
+        <span className="inline-flex flex-none items-center gap-1.5 rounded-none border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">
           <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
           {tr(locale, "Inactive", "Неактивно")}
         </span>
@@ -483,7 +483,7 @@ function PointsCard({ points, now }: { points: PointsConfig; now: number }) {
 
   if (points.kind === "none") {
     return (
-      <div className="flex flex-col gap-3 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+      <div className="flex flex-col gap-3 rounded-none border border-border bg-surface-1 p-[22px]">
         <div className="text-[17px] font-semibold text-text-primary">{title}</div>
         <EmptyNote className="flex-1">{tr(locale, "No points yet", "Поинтов пока нет")}</EmptyNote>
       </div>
@@ -492,7 +492,7 @@ function PointsCard({ points, now }: { points: PointsConfig; now: number }) {
 
   const p = pointsProgress(points, now);
   return (
-    <div className="flex flex-col gap-4 rounded-[18px] border border-border bg-surface-1 p-[22px]">
+    <div className="flex flex-col gap-4 rounded-none border border-border bg-surface-1 p-[22px]">
       <div className="flex items-center justify-between">
         <div className="text-[17px] font-semibold text-text-primary">{title}</div>
         <div className="font-mono-num text-[12px] text-text-dim">{points.seasonLabel}</div>

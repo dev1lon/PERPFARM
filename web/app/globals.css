@@ -80,8 +80,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-jakarta);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-chart);
 
   --color-bg: var(--bg);
   --color-surface-1: var(--surface-1);
@@ -97,11 +97,16 @@
   --color-warning: var(--warning);
   --color-negative: var(--negative);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
+  /* Square corners. The scale is KEPT and zeroed rather than removed, so every
+     `rounded-md` / `rounded-lg` / `rounded-xl` already written across the
+     components resolves to a square corner without a class sweep -- and one
+     line here puts the rounded world back if this test is not kept.
+     `rounded-full` sits outside this scale, so genuine circles stay circles. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
 }
 
 body {
@@ -110,9 +115,15 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Chart lettering: the condensed cut, tabular, with the slashed zero a chart
+   uses so a zero can never be read as a letter. The class name predates the
+   face change and is kept so existing call sites need no sweep -- what it
+   points at is no longer a monospace. */
 .font-mono-num,
 .font-mono-num * {
-  font-family: var(--font-mono), ui-monospace, monospace;
+  font-family: var(--font-mono), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: 0.01em;
 }
 
 * {

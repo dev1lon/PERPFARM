@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
@@ -119,7 +119,7 @@ export function FdvMarketsV2({
         )}
       </div>
 
-      <div className="rounded-[18px] border border-border bg-surface-1 p-4 sm:p-5">
+      <div className="rounded-none border border-border bg-surface-1 p-4 sm:p-5">
         {/* The empty states match the loading skeleton's height, so this panel
             does not jump or collapse depending on which state it lands in. */}
         {!hasMarket && (

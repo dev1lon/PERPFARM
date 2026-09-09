@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { tr, useLocale } from "@/components/LocaleProvider";
@@ -30,7 +30,7 @@ export function ProtocolSoonV2({
         </div>
 
         <div className="flex items-center gap-4 border-b border-border pb-6">
-          <ProtocolMark slug={slug} name={name} size={52} radius={14} />
+          <ProtocolMark slug={slug} name={name} size={52} radius={0} />
           <div className="flex flex-col gap-2">
             <h1 className="text-[32px] font-bold tracking-[-0.022em] text-text-primary">{name}</h1>
             <div className="flex items-center gap-3.5">
@@ -44,7 +44,7 @@ export function ProtocolSoonV2({
           </div>
         </div>
 
-        <div className="mt-6 flex min-h-[16rem] flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed border-border bg-surface-1 p-10 text-center">
+        <div className="mt-6 flex min-h-[16rem] flex-col items-center justify-center gap-3 rounded-none border border-dashed border-border bg-surface-1 p-10 text-center">
           <p className="font-mono-num text-5xl font-semibold tracking-[0.22em] text-text-primary">SOON</p>
           <p className="max-w-md text-[14px] text-text-muted">
             {tr(

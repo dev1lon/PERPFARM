@@ -94,7 +94,7 @@ function StatusBadge({ status }: { status: PointsStatus }) {
   const dot = positive ? "bg-positive" : neutral ? "bg-text-dim" : "bg-warning";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone}`}
+      className={`inline-flex items-center gap-1.5 rounded-none border px-2.5 py-1 text-[11px] font-semibold ${tone}`}
     >
       <span className={`h-[5px] w-[5px] rounded-full ${dot}`} />
       {statusLabel(locale, status)}
@@ -154,7 +154,7 @@ function Hero() {
       {/* The 3D route panel stays a fixed dark "device" in both themes so the
           WebGL scene and its overlay labels always read (like the brand cards). */}
       <div
-        className="overflow-hidden rounded-[20px] border"
+        className="overflow-hidden rounded-none border"
         style={{ borderColor: "rgba(255,255,255,0.08)", background: "linear-gradient(180deg, #10162a, #0a0e18)" }}
       >
         <div
@@ -278,10 +278,10 @@ function HowItWorks() {
       {steps.map((s) => (
         <div
           key={s.n}
-          className="flex flex-col gap-3.5 rounded-[18px] border border-border bg-surface-1 p-6"
+          className="flex flex-col gap-3.5 rounded-none border border-border bg-surface-1 p-6"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-[9px] border border-accent/30 bg-accent/10 font-mono-num text-[12px] text-accent">
+            <span className="flex h-7 w-7 items-center justify-center rounded-none border border-accent/30 bg-accent/10 font-mono-num text-[12px] text-accent">
               {s.n}
             </span>
             <div className="text-[15px] font-semibold text-text-primary">{s.title}</div>
@@ -340,11 +340,11 @@ function ProtocolCard({ p }: { p: HomeProtocol }) {
     <div className="group h-full">
       <Link
         href={`/${p.slug}`}
-        className="flex h-full flex-col gap-[18px] rounded-[18px] border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
+        className="flex h-full flex-col gap-[18px] rounded-none border border-border bg-surface-1 p-[22px] transition-[transform,border-color] duration-200 group-hover:border-accent/40 motion-safe:group-hover:-translate-y-0.5"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <ProtocolMark slug={p.slug} name={p.name} size={38} radius={11} />
+            <ProtocolMark slug={p.slug} name={p.name} size={38} radius={0} />
             <div className="flex flex-col gap-1">
               <div className="text-[17px] font-semibold text-text-primary">{p.name}</div>
               <div className="font-mono-num text-[12px] text-text-muted">
@@ -369,7 +369,7 @@ function RadarTile({ p }: { p: HomeProtocol }) {
       href={`/${p.slug}`}
       className="pf-transition flex items-center gap-2.5 rounded-xl border border-border bg-bg px-3 py-2.5 hover:border-text-muted/40 hover:bg-surface-1"
     >
-      <ProtocolMark slug={p.slug} name={p.name} size={24} radius={7} />
+      <ProtocolMark slug={p.slug} name={p.name} size={24} radius={0} />
       <div className="truncate text-[13px] font-medium text-text-primary">{p.name}</div>
     </Link>
   );
@@ -414,7 +414,7 @@ function Protocols() {
       </div>
 
       {empty ? (
-        <div className="rounded-[18px] border border-border bg-surface-1 px-5 py-10 text-center text-[14px] text-text-muted">
+        <div className="rounded-none border border-border bg-surface-1 px-5 py-10 text-center text-[14px] text-text-muted">
           {tr(locale, "No protocols match your search.", "Ничего не найдено.")}
         </div>
       ) : (
@@ -545,7 +545,7 @@ function InlineFooter() {
   return (
     <div className="mt-[76px] flex flex-col items-start justify-between gap-4 border-t border-border pb-16 pt-7 sm:flex-row sm:items-center">
       <div className="flex items-center gap-2.5">
-        <Image src="/icon.svg" alt="" aria-hidden width={22} height={22} className="h-[22px] w-[22px] rounded-[7px]" />
+        <Image src="/icon.svg" alt="" aria-hidden width={22} height={22} className="h-[22px] w-[22px] rounded-none" />
         <div className="text-[13px] text-text-muted">
           {tr(
             locale,

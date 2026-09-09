@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from "react";
@@ -117,7 +117,7 @@ export function OiCompositionChart({
         </h2>
       </div>
 
-      <div className="rounded-[18px] border border-border bg-surface-1 px-6 pb-5 pt-5">
+      <div className="rounded-none border border-border bg-surface-1 px-6 pb-5 pt-5">
         {!data && !error && <div className="pf-skeleton h-[300px] rounded-xl border border-border bg-surface-2" />}
         {error && (
           <p className="py-16 text-center text-[14px] text-negative">
@@ -147,7 +147,7 @@ export function OiCompositionChart({
               ))}
               {/* Brand mark sits above the plot, opposite the category shares. */}
               <span className="ml-auto flex items-center gap-2 self-center">
-                <Image src="/icon.svg" alt="" aria-hidden width={18} height={18} className="h-[18px] w-[18px] rounded-[5px]" />
+                <Image src="/icon.svg" alt="" aria-hidden width={18} height={18} className="h-[18px] w-[18px] rounded-none" />
                 <span className="text-[13px] font-bold tracking-tight text-text-primary">PerpFarm</span>
               </span>
             </div>
