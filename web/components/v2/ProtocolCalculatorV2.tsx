@@ -1202,8 +1202,10 @@ export function RouteResults({
                 equal sixth, and the range broke onto two lines at the dash. */}
             <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.15fr)_minmax(0,1.45fr)]">
               {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls, tip]) => (
-                <div key={k} className="flex flex-col gap-1.5">
-                  {/* No nowrap on the label: at six columns "Estimated cost ·
+                <div key={k} className="flex flex-col justify-between gap-1.5">
+                  {/* Values share one baseline: a label that wraps to two
+                      lines ("Volume per account") no longer pushes its figure
+                      below its neighbours'. No nowrap on the label: at six columns "Estimated cost ·
                       24h median" overflowed its cell and printed on top of the
                       next label. The VALUE never wraps -- a figure split in
                       two reads as two figures. */}
