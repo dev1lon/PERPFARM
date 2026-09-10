@@ -15,11 +15,11 @@ import {
   FUNDING_HOLD_HOURS,
   snapshotsAreFresh,
   HOURS_PER_YEAR,
+  DEAD_MARKET_OI_USD,
+  DEAD_MARKET_VOLUME_USD,
   MIN_PAIRS_FOR_BANDS,
-  MIN_VOLUME_USD,
-  OI_BANDS,
   displayedOpenInterestUsd,
-  minOpenInterestUsd,
+  isDeadMarket,
   oiBandsFor,
 } from "@/lib/route-model";
 import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, type InstrumentClass } from "@/lib/tradfi";
@@ -83,11 +83,10 @@ export type CrossRankings = {
   fillNotionalUsd: number;
   totalCycleVolumeUsd: number;
   holdHours: number;
-  minVolumeUsd: number;
-  /** The farmed protocol's own OI floor -- what the market you farm must clear. */
-  minOpenInterestUsd: number;
-  /** The hedge only has to be a real market, so it is held to the absolute floor. */
-  hedgeMinOpenInterestUsd: number;
+  /** A leg is dropped only when BOTH its 24h volume and its open interest are
+   *  under these (a dead listing); there are no other liquidity floors. */
+  deadMarketVolumeUsd: number;
+  deadMarketOiUsd: number;
   grouped: boolean;
   bands: CrossBand[];
   /** Every eligible pair, cheapest first -- what the "All" tab pages through. */
@@ -416,7 +415,7 @@ export async function computeCrossRankings(
   // `wildFunding` outlived the filters they belonged to and reported a
   // permanent 0 -- a diagnostic that always says "nothing was dropped here" is
   // worse than no diagnostic, because it gets believed.
-  const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0 };
+  const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, deadMarket: 0 };
   /** Markets on the home venue with no counterpart found on the hedge venue. */
   const unmatched: string[] = [];
   // A swap is another liquidity source for the same pair, not a separate
@@ -466,16 +465,13 @@ export async function computeCrossRankings(
     const costB = venueBps(rb, fillNotionalUsd);
     if (volA === null || volB === null || oiA === null || oiB === null) { drops.noMarketData++; continue; }
     if (costA === null || costB === null) { drops.noFeeOrBook++; continue; }
-    if (volA < MIN_VOLUME_USD || volB < MIN_VOLUME_USD) { drops.thinVolume++; continue; }
-    // Both books must at least be real markets. The main venue alone decides
-    // the displayed OI band and the recommendation category below.
-    // The main leg is held to its own protocol's floor, because that is the
-    // market being farmed. The hedge only has to be a real market, so it is
-    // held to the absolute floor -- a deep hedge venue's higher cutoff must
-    // not delete a perfectly good market on the venue the user chose.
+    // Both legs are held to the same single rule: only a DEAD listing -- near-
+    // zero volume AND near-zero open interest -- is dropped. There are no
+    // per-protocol floors any more; a thin leg is priced, not hidden. The main
+    // venue alone decides the displayed OI band below.
     const displayedOiA = displayedOpenInterestUsd(oiA, slugA);
     const displayedOiB = displayedOpenInterestUsd(oiB, slugB);
-    if (displayedOiA < minOpenInterestUsd(slugA) || displayedOiB < OI_BANDS.low) { drops.thinOi++; continue; }
+    if (isDeadMarket(volA, displayedOiA) || isDeadMarket(volB, displayedOiB)) { drops.deadMarket++; continue; }
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
     // the cheaper: passive on the venue whose maker fee beats what its taker
@@ -613,7 +609,9 @@ export async function computeCrossRankings(
   const bands = [
     bandFrom("high", candidates.filter((p) => p.oiKey > MAIN_OI_BANDS.high)),
     bandFrom("medium", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.medium && p.oiKey <= MAIN_OI_BANDS.high)),
-    bandFrom("low", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.low && p.oiKey < MAIN_OI_BANDS.medium)),
+    // Everything under Medium is Low: the bands sort the table, they no longer
+    // cut markets out of it.
+    bandFrom("low", candidates.filter((p) => p.oiKey < MAIN_OI_BANDS.medium)),
   ].filter((band) => band.pairs.length > 0);
 
   return {
@@ -625,9 +623,8 @@ export async function computeCrossRankings(
     fillNotionalUsd,
     totalCycleVolumeUsd: accountVolumeUsd * 2,
     holdHours: FUNDING_HOLD_HOURS,
-    minVolumeUsd: MIN_VOLUME_USD,
-    minOpenInterestUsd: minOpenInterestUsd(slugA),
-    hedgeMinOpenInterestUsd: OI_BANDS.low,
+    deadMarketVolumeUsd: DEAD_MARKET_VOLUME_USD,
+    deadMarketOiUsd: DEAD_MARKET_OI_USD,
     // Same rule as the same-protocol table: with only a few shared markets the
     // bands are noise -- entropy x qfex shares ONE pair, and splitting it into
     // three tabs offers two that can never fill.

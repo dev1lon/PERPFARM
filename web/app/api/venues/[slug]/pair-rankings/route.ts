@@ -4,10 +4,11 @@ import { UserFacingError, publicMessage } from "@/lib/api-error";
 import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
 import {
   FUNDING_HOLD_HOURS,
+  DEAD_MARKET_OI_USD,
+  DEAD_MARKET_VOLUME_USD,
   MIN_PAIRS_FOR_BANDS,
-  MIN_VOLUME_USD,
   displayedOpenInterestUsd,
-  minOpenInterestUsd,
+  isDeadMarket,
   oiBandFor,
   quantizeAccountVolumeUsd,
   snapshotsAreFresh,
@@ -202,8 +203,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
     const fillNotionalUsd = accountVolumeUsd / 2;
-    const oiFloorUsd = minOpenInterestUsd(slug);
-
     const markets = await loadVenueMarkets(slug, fillNotionalUsd);
 
     let newestBookTs: string | null = null;
@@ -218,11 +217,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         if (tradfiOnly && !eligible) return null;
         const quote = quoteFromSamples(null, market.samples);
         if (quote === null || market.volume24hUsd === null || market.openInterestUsd === null) return null;
-        if (market.volume24hUsd < MIN_VOLUME_USD) return null;
         // Each protocol shows open interest in its own convention (Variational
-        // reports one side of a gross figure) before any threshold is applied.
+        // reports one side of a gross figure) before anything is judged on it.
         const openInterestUsd = Math.round(displayedOpenInterestUsd(market.openInterestUsd, slug));
-        if (openInterestUsd < oiFloorUsd) return null;
+        // Only a dead listing is hidden -- near-zero volume AND near-zero open
+        // interest. A thin market with real open interest stays in the table.
+        if (isDeadMarket(market.volume24hUsd, openInterestUsd)) return null;
 
         // Priced with THIS market's schedule. QFEX charges by instrument class
         // -- five times more on a single stock than on an FX pair -- so a fee
@@ -300,8 +300,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         accountVolumeUsd,
         totalCycleVolumeUsd: accountVolumeUsd * 2,
         holdHours: FUNDING_HOLD_HOURS,
-        minVolumeUsd: MIN_VOLUME_USD,
-        minOpenInterestUsd: oiFloorUsd,
+        deadMarketVolumeUsd: DEAD_MARKET_VOLUME_USD,
+        deadMarketOiUsd: DEAD_MARKET_OI_USD,
         competition: {
           active: competition !== null && now >= competition.startUtc && now < competition.endUtc,
           name: competition?.name ?? "",

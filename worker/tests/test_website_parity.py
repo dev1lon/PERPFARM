@@ -97,22 +97,12 @@ def _website_oi_display_factors() -> dict[str, float]:
     return {slug: _evaluate(value, {}) for slug, value in re.findall(r"(\w+):\s*([\d_.]+)", body)}
 
 
-def _website_min_open_interest() -> dict[str, float]:
+def _website_dead_market_thresholds() -> tuple[float, float]:
     source = _source("route-model.ts")
-    default = re.search(r"low:\s*([\d_]+)", _object_literal(source, "DEFAULT_OI_BANDS"))
-    assert default is not None, "route-model.ts no longer defines a DEFAULT_OI_BANDS floor"
-    default_low = _evaluate(default.group(1), {})
-
-    floors: dict[str, float] = {}
-    entries = re.findall(r"(\w+):\s*(\{[^}]*\}|\w+)", _object_literal(source, "OI_BANDS_BY_VENUE"))
-    for slug, value in entries:
-        if value.strip() == "DEFAULT_OI_BANDS":
-            floors[slug] = default_low
-            continue
-        low = re.search(r"low:\s*([\d_]+)", value)
-        assert low is not None, f"OI_BANDS_BY_VENUE.{slug} has no `low` bound"
-        floors[slug] = _evaluate(low.group(1), {})
-    return floors
+    volume = re.search(r"DEAD_MARKET_VOLUME_USD\s*=\s*([\d_.]+)", source)
+    oi = re.search(r"DEAD_MARKET_OI_USD\s*=\s*([\d_.]+)", source)
+    assert volume is not None and oi is not None, "route-model.ts no longer defines the dead-market thresholds"
+    return _evaluate(volume.group(1), {}), _evaluate(oi.group(1), {})
 
 
 def test_published_fee_fallbacks_match_the_website():
@@ -179,10 +169,25 @@ def test_quote_curve_power_fit_threshold_matches_the_website():
     assert job.POWER_FIT_MIN_SPAN_RATIO == pytest.approx(_evaluate(website.group(1), {}))
 
 
-def test_minimum_open_interest_matches_the_website():
-    """A floor that differs decides that a market exists on one side only."""
-    website = _website_min_open_interest()
+def test_dead_market_thresholds_match_the_website():
+    """A rule that differs decides that a market exists on one side only."""
+    volume, oi = _website_dead_market_thresholds()
 
-    for slug, floor in job.MIN_OPEN_INTEREST_BY_SLUG.items():
-        assert slug in website, f"{slug} has a worker floor but no band table on the website"
-        assert floor == pytest.approx(website[slug]), f"{slug}: minimum open interest differs"
+    assert job.DEAD_MARKET_VOLUME_USD == pytest.approx(volume)
+    assert job.DEAD_MARKET_OI_USD == pytest.approx(oi)
+
+
+def test_only_dead_markets_are_skipped():
+    """Variational's TWT -- $350 of volume, $55k of open interest -- is a real market."""
+
+    def market(volume: float | None, oi: float | None) -> job.Market:
+        return job.Market(
+            venue_id=1, slug="txflow", symbol="TWT", spread_bps=1.0, impact_10k=None, impact_50k=None,
+            impact_100k=None, quote_curve=None, volume_24h_usd=volume, open_interest_usd=oi,
+            maker_bps=None, taker_bps=None,
+        )
+
+    assert job._is_eligible(market(350.0, 55_000.0))
+    assert job._is_eligible(market(5_000.0, 0.0))
+    assert not job._is_eligible(market(0.0, 0.0))
+    assert not job._is_eligible(market(None, 55_000.0))

@@ -23,17 +23,17 @@ from perpfarm.schema import hedge_route_recommendations
 
 
 REFERENCE_VOLUME_USD = 100_000.0
-MIN_VOLUME_USD = 1_000.0
-MIN_OPEN_INTEREST_USD = 10_000.0
+#: A market is skipped only when it is DEAD -- under this 24h volume AND under
+#: this displayed open interest at once. Kept in lockstep with
+#: DEAD_MARKET_VOLUME_USD / DEAD_MARKET_OI_USD in web/lib/route-model.ts; the
+#: per-protocol floors this replaced hid real, thin markets.
+DEAD_MARKET_VOLUME_USD = 100.0
+DEAD_MARKET_OI_USD = 1_000.0
 
 # Per-protocol display convention. Variational's user-side snapshots are
 # confirmed to need the OLP counterparty added; TxFlow has no confirmed
 # adjustment, so its raw OI stays raw.
 OI_DISPLAY_FACTOR: dict[str, float] = {"variational": 2.0, "txflow": 1.0}
-MIN_OPEN_INTEREST_BY_SLUG: dict[str, float] = {
-    "variational": 50_000.0,
-    "txflow": MIN_OPEN_INTEREST_USD,
-}
 
 # Keep these fallbacks in lockstep with web/lib/venue-fees.ts.  A fee-watch
 # row wins; the documented fallback prevents an unknown row from looking free.
@@ -243,21 +243,19 @@ def _displayed_oi(market: Market) -> float | None:
     return market.open_interest_usd * OI_DISPLAY_FACTOR.get(market.slug, 1.0)
 
 
-def _is_eligible(market: Market, *, oi_floor_usd: float) -> bool:
+def _is_eligible(market: Market) -> bool:
+    """Priced unless it has no data, or is dead: near-zero volume AND OI."""
     displayed_oi = _displayed_oi(market)
-    return (
-        market.volume_24h_usd is not None
-        and displayed_oi is not None
-        and market.volume_24h_usd >= MIN_VOLUME_USD
-        and displayed_oi >= oi_floor_usd
-    )
+    if market.volume_24h_usd is None or displayed_oi is None:
+        return False
+    return not (market.volume_24h_usd < DEAD_MARKET_VOLUME_USD and displayed_oi < DEAD_MARKET_OI_USD)
 
 
 def _self_match_cost(markets: list[Market]) -> float | None:
     fill = REFERENCE_VOLUME_USD / 2
     costs = []
     for market in markets:
-        if not _is_eligible(market, oi_floor_usd=MIN_OPEN_INTEREST_BY_SLUG.get(market.slug, MIN_OPEN_INTEREST_USD)):
+        if not _is_eligible(market):
             continue
         bps = _venue_bps(market, fill, cheapest=True)
         if bps is not None:
@@ -274,11 +272,9 @@ def _cross_cost(home: list[Market], partner: list[Market]) -> float | None:
         hedge = partner_by_symbol.get(main.symbol)
         if hedge is None:
             continue
-        if not _is_eligible(main, oi_floor_usd=MIN_OPEN_INTEREST_BY_SLUG.get(main.slug, MIN_OPEN_INTEREST_USD)):
-            continue
-        # The hedge needs a real book, but its own high/medium/low bands must
-        # not remove the market selected on the home protocol.
-        if not _is_eligible(hedge, oi_floor_usd=MIN_OPEN_INTEREST_USD):
+        # Both legs follow the one rule the website applies: only a dead
+        # listing is skipped.
+        if not _is_eligible(main) or not _is_eligible(hedge):
             continue
         main_bps = _venue_bps(main, fill, cheapest=False)
         hedge_bps = _venue_bps(hedge, fill, cheapest=False)

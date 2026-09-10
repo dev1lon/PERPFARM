@@ -180,22 +180,22 @@ function InputCards() {
           <p className={body}>
             {tr(
               locale,
-              "A market is listed only if it can actually be traded at the size you entered. It has to show real turnover over the last 24 hours, and its open interest has to clear the floor set for that protocol.",
-              "Рынок попадает в список, только если на нём реально можно исполнить введённый размер: за последние 24 часа на нём был настоящий оборот, а открытый интерес выше порога, заданного для этого протокола.",
+              "Every market a protocol lists is included, with one exception: a dead market — one with almost no turnover over the last 24 hours AND almost no open interest (under $100 and under $1,000) — is hidden, because there is nothing to price.",
+              "В список попадают все рынки протокола, кроме мёртвых: у которых за последние 24 часа почти нет оборота И почти нет открытого интереса (меньше $100 и меньше $1 000) — там нечего считать.",
             )}
           </p>
           <p className={body}>
             {tr(
               locale,
-              "The floors are per protocol, because venues differ in size by orders of magnitude — one number would filter out everything on a small venue and nothing on a large one. Each protocol's own thresholds are shown on its page, next to the pair count.",
-              "Пороги задаются отдельно для каждого протокола: площадки различаются по размеру на порядки, и одно общее число отсеяло бы на маленькой всё, а на крупной — ничего. Конкретные пороги протокола указаны на его странице, рядом со счётчиком пар.",
+              "A thin market with real open interest stays in the table: low liquidity is a cost the model already prices through spread and depth, not a reason to hide the market. Open interest only sorts markets into the High, Medium and Low tabs, set per protocol because venues differ in size by orders of magnitude.",
+              "Тонкий рынок с реальным открытым интересом остаётся в таблице: низкая ликвидность — это стоимость, которую модель уже учитывает через спред и глубину, а не повод скрывать рынок. Открытый интерес только раскладывает рынки по вкладкам High, Medium и Low, которые заданы для каждого протокола отдельно: площадки различаются по размеру на порядки.",
             )}
           </p>
           <p className={note}>
             {tr(
               locale,
-              "On a cross-protocol route the two legs are held to different bars: the protocol you FARM applies its own floor, while the hedge leg only has to be a real market. The venue you farm sets the standard, not the one you hedge on — which is why the same two protocols can list a slightly different number of pairs depending on which one you start from.",
-              "В кросс-маршруте к ногам разные требования: протокол, который вы ФАРМИТЕ, применяет свой порог, а хедж-ноге достаточно быть настоящим рынком. Планку задаёт площадка, которую вы фармите, а не та, на которой хеджируете, — поэтому те же два протокола могут показать разное число пар в зависимости от того, с какого вы начали.",
+              "On a cross-protocol route both legs follow the same single rule: a route is dropped only if either leg is a dead market. The protocol you farm decides which OI tab the route sits in.",
+              "В кросс-маршруте обе ноги подчиняются одному правилу: маршрут отбрасывается, только если хотя бы одна нога — мёртвый рынок. В какой вкладке OI окажется маршрут, решает протокол, который вы фармите.",
             )}
           </p>
         </InputRow>

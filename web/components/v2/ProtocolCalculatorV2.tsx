@@ -273,8 +273,10 @@ export interface RankingResponse {
   accountVolumeUsd: number;
   totalCycleVolumeUsd: number;
   holdHours: number;
-  minVolumeUsd: number;
-  minOpenInterestUsd: number;
+  /** The one listing rule: a market is hidden only when its 24h volume is under
+   *  `deadMarketVolumeUsd` AND its open interest is under `deadMarketOiUsd`. */
+  deadMarketVolumeUsd: number;
+  deadMarketOiUsd: number;
   competition: { active: boolean; name: string };
   /** Per-protocol live-feed status; a false `live` means the ranking fell back
    *  to saved snapshots for that protocol. */
@@ -287,8 +289,6 @@ export interface RankingResponse {
   /** Every eligible pair, cheapest first. The OI tabs show a curated ten each;
    *  this is what the "All" tab pages through and the ticker search looks in. */
   pairs?: PairRanking[];
-  /** Cross-protocol only: the hedge leg's own, lower OI floor. */
-  hedgeMinOpenInterestUsd?: number;
   /** The fee schedule the API actually applied, per venue on the route. */
   feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number; assetClass?: string | null }>;
 }
@@ -305,8 +305,8 @@ function eligibilityTip(locale: Locale, data: RankingResponse, homeName: string)
   const usd = (value: number) => compactUsd(value);
   return tr(
     locale,
-    `Listed only if the market is tradable at this size: ${usd(data.minVolumeUsd)}+ of 24h volume and ${usd(data.minOpenInterestUsd)}+ open interest on ${homeName}. Full rules on the Methodology page.`,
-    `В списке только рынки, исполнимые на этом размере: объём за 24ч от ${usd(data.minVolumeUsd)} и открытый интерес от ${usd(data.minOpenInterestUsd)} на ${homeName}. Полные правила — на странице «Методология».`,
+    `Every ${homeName} market is listed except dead ones: under ${usd(data.deadMarketVolumeUsd)} of 24h volume AND under ${usd(data.deadMarketOiUsd)} of open interest. Full rules on the Methodology page.`,
+    `В списке все рынки ${homeName}, кроме мёртвых: объём за 24ч меньше ${usd(data.deadMarketVolumeUsd)} И открытый интерес меньше ${usd(data.deadMarketOiUsd)}. Полные правила — на странице «Методология».`,
   );
 }
 
@@ -1577,7 +1577,7 @@ export function RouteResults({
                 {needle !== ""
                   ? tr(
                       locale,
-                      `No eligible pair matches "${query.trim()}". It may be listed but below the liquidity floor for this size.`,
+                      `No eligible pair matches "${query.trim()}". It may not be listed on this protocol, or nobody traded or held it in the last 24 hours.`,
                       `Ни одна подходящая пара не совпала с «${query.trim()}». Возможно, она есть на площадке, но не проходит порог ликвидности для этого размера.`,
                     )
                   : tr(locale, "No pairs match these filters.", "Под эти фильтры не подходит ни одна пара.")}

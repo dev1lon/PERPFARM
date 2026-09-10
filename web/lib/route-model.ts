@@ -24,8 +24,25 @@ export const FUNDING_AVERAGE_WINDOW_HOURS = 24;
 
 export const HOURS_PER_YEAR = 8_760;
 
-/** Below this 24h volume a market is dead, not cheap. */
-export const MIN_VOLUME_USD = 1_000;
+/**
+ * A market is hidden only when it is DEAD: under this 24h volume AND under the
+ * open interest below, both at once.
+ *
+ * There used to be per-protocol floors ($1,000 of volume everywhere, and $10k
+ * to $100k of open interest depending on the venue). They removed real markets
+ * a farmer can use: Variational's TWT turned over $350 in a day with $55k of
+ * open interest -- thin, but open and hedgeable -- and Hibachi's AUD, CAD and
+ * NZD sat at $6-8k of open interest. Liquidity is a cost the table already
+ * prices (spread and depth); it is not a reason to hide a market. The one thing
+ * worth hiding is a listing nobody trades and nobody holds.
+ */
+export const DEAD_MARKET_VOLUME_USD = 100;
+export const DEAD_MARKET_OI_USD = 1_000;
+
+/** True only for a listing with near-zero volume AND near-zero open interest. */
+export function isDeadMarket(volume24hUsd: number, displayedOiUsd: number): boolean {
+  return volume24hUsd < DEAD_MARKET_VOLUME_USD && displayedOiUsd < DEAD_MARKET_OI_USD;
+}
 
 /**
  * Account volumes are priced on a $100 grid.
@@ -95,7 +112,8 @@ export function displayedOpenInterestUsd(rawOiUsd: number, venueSlug: string): n
   return rawOiUsd * oiDisplayFactor(venueSlug);
 }
 
-export type OiBands = { high: number; medium: number; low: number };
+/** Band cutoffs. Nothing sits under a floor any more: below `medium` is Low. */
+export type OiBands = { high: number; medium: number };
 
 /**
  * OI thresholds, in each protocol's displayed convention. Variational's is
@@ -108,14 +126,14 @@ export type OiBands = { high: number; medium: number; low: number };
  * $51k to $410M, TxFlow's $7k to $20M -- so a single set of cutoffs puts every
  * Variational market in one band and makes the filter a no-op there.
  */
-const DEFAULT_OI_BANDS: OiBands = { high: 300_000, medium: 100_000, low: 10_000 };
+const DEFAULT_OI_BANDS: OiBands = { high: 300_000, medium: 100_000 };
 
 const OI_BANDS_BY_VENUE: Record<string, OiBands> = {
   // Set against TxFlow's live book, where $358k is a large TradFi market.
   txflow: DEFAULT_OI_BANDS,
   // Variational is a far deeper venue; these are its previously calibrated
   // cutoffs and are what its "Medium OI" guidance refers to.
-  variational: { high: 20_000_000, medium: 3_000_000, low: 50_000 },
+  variational: { high: 20_000_000, medium: 3_000_000 },
   // Cut at each venue's own terciles, measured from its live book on
   // 2026-08-30. On the TxFlow defaults every QFEX market was "high" -- its
   // book starts where TxFlow's ends -- so Medium and Low were permanently
@@ -123,11 +141,10 @@ const OI_BANDS_BY_VENUE: Record<string, OiBands> = {
   //
   //   QFEX  162 markets, $0-13.7M (p33 $665k, p66 $1.28M) -> 56 / 54 / 41
   //   RiseX  26 markets, $109k-11.2M (p33 $447k, p66 $2.0M)
-  //   Entropy 3 markets, $504k-6.0M -- too few to band, but the floor still
-  //           has to sit under its smallest market rather than at $10k.
-  qfex: { high: 1_250_000, medium: 650_000, low: 50_000 },
-  risex: { high: 2_000_000, medium: 450_000, low: 100_000 },
-  entropy: { high: 3_000_000, medium: 1_000_000, low: 100_000 },
+  //   Entropy 3 markets, $504k-6.0M -- too few to band.
+  qfex: { high: 1_250_000, medium: 650_000 },
+  risex: { high: 2_000_000, medium: 450_000 },
+  entropy: { high: 3_000_000, medium: 1_000_000 },
   // Polymarket Perps is deliberately NOT listed: its book (p33 $62k, p66
   // $265k) sits almost exactly on the default cutoffs, and all three of its
   // bands fill.
@@ -137,23 +154,19 @@ export function oiBandsFor(venueSlug: string): OiBands {
   return OI_BANDS_BY_VENUE[venueSlug] ?? DEFAULT_OI_BANDS;
 }
 
-/** Kept for callers that band a market without knowing its protocol. */
-export const OI_BANDS = DEFAULT_OI_BANDS;
-
-/** No route is recommended below the bottom of a protocol's lowest band. */
-export function minOpenInterestUsd(venueSlug: string): number {
-  return oiBandsFor(venueSlug).low;
-}
-
 export type OiBandKey = "high" | "medium" | "low";
 
-/** Band for a displayed OI figure on a given protocol, or null when under floor. */
-export function oiBandFor(displayedOiUsd: number, venueSlug: string): OiBandKey | null {
+/**
+ * Band for a displayed OI figure on a given protocol.
+ *
+ * Every listed market has one: below Medium is Low. The bands sort the table;
+ * they no longer remove anything (see DEAD_MARKET_VOLUME_USD).
+ */
+export function oiBandFor(displayedOiUsd: number, venueSlug: string): OiBandKey {
   const bands = oiBandsFor(venueSlug);
   if (displayedOiUsd > bands.high) return "high";
   if (displayedOiUsd >= bands.medium) return "medium";
-  if (displayedOiUsd >= bands.low) return "low";
-  return null;
+  return "low";
 }
 
 /**

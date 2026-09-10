@@ -23,8 +23,8 @@ type CrossPair = {
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
   asOf: string; accountVolumeUsd: number; fillNotionalUsd: number; totalCycleVolumeUsd: number;
-  holdHours: number; minVolumeUsd: number; grouped: boolean;
-  minOpenInterestUsd?: number; hedgeMinOpenInterestUsd?: number;
+  holdHours: number; grouped: boolean;
+  deadMarketVolumeUsd?: number; deadMarketOiUsd?: number;
   feeSchedule?: Array<{ venue: string; makerBps: number; takerBps: number; assetClass?: string | null }>;
   costBasis?: "24h-median" | "latest-snapshot";
   sources?: Array<{ venue: string; live: boolean }>;
@@ -131,10 +131,9 @@ export function CrossPairRankings({
   const data: RankingResponse = {
     asOf: response.asOf, fillNotionalUsd: response.fillNotionalUsd, accountVolumeUsd: response.accountVolumeUsd,
     totalCycleVolumeUsd: response.totalCycleVolumeUsd, holdHours: response.holdHours,
-    minVolumeUsd: response.minVolumeUsd,
-    // The farmed protocol's floor; the hedge's own (lower) floor is stated beside it.
-    minOpenInterestUsd: response.minOpenInterestUsd ?? 0,
-    hedgeMinOpenInterestUsd: response.hedgeMinOpenInterestUsd,
+    // The one listing rule, the same on both legs: only a dead market is hidden.
+    deadMarketVolumeUsd: response.deadMarketVolumeUsd ?? 100,
+    deadMarketOiUsd: response.deadMarketOiUsd ?? 1_000,
     feeSchedule: response.feeSchedule,
     competition: { active: false, name: "" },
     // Same vocabulary as the other calculators: the API says what the number is.
