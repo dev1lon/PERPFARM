@@ -10,10 +10,11 @@
 #
 # The S&P 500 is the counter-example: it is listed at two scales and the ticker
 # does not say which. Polymarket's SP500, trade.xyz's SP500 and QFEX's US500-USD
-# trade the full index (~7,600) and are merged below; Variational's US500 and
-# the SPY perps trade a tenth of it (~760) and are never merged with them --
-# that would invent a permanent 90% "divergence" and price a hedge that does
-# not hedge. (worker/tests/test_symbol_overrides_scale.py guards this.)
+# trade the full index (~7,600) and are merged as SP500; Variational's US500 is
+# the SPDR S&P 500 ETF itself (~760) and is merged with the SPY perps. The two
+# groups are never merged with each other -- that would invent a permanent 90%
+# "divergence" and price a hedge that does not hedge.
+# (worker/tests/test_symbol_overrides_scale.py guards this.)
 
 overrides:
   - venue: venue_alpha
@@ -91,9 +92,7 @@ overrides:
   # NAME and confirmed on PRICE from the same collection hour (quoted), so each
   # merge is one instrument at one scale and each split is two instruments that
   # had shared a ticker. Near-identical prices on DIFFERENT instruments are left
-  # apart on purpose: Variational US500 (758.31) vs SPY (758.13-758.30) is an
-  # index at a tenth against an ETF; trade.xyz XYZ100 (29,132.50) is its own
-  # basket, not the Nasdaq-100; XAUT is tokenised gold, not spot.
+  # apart on purpose: XAUT is tokenised gold, not spot gold.
   # ---------------------------------------------------------------------------
 
   # One ticker, two instruments.
@@ -107,11 +106,16 @@ overrides:
   - venue: qfex
     symbol: BEAM-USD
     symbol_canonical: BEAM-USD
-  # US500: QFEX's contract is the full index (7,589.25), Variational's is a
-  # tenth of it (758.31). QFEX's joins SP500 (Polymarket 7,590.25, xyz 7,588.15).
+  # US500: QFEX's contract is the full index (7,589.25) and joins SP500
+  # (Polymarket 7,590.25, xyz 7,588.15). Variational's US500 is not an index at
+  # all: its own feed names it "State Street SPDR S&P 500 ETF Trust", and it
+  # trades with the SPY perps (758.31 vs 758.13-758.30), so it joins SPY.
   - venue: qfex
     symbol: US500-USD
     symbol_canonical: SP500
+  - venue: variational
+    symbol: US500
+    symbol_canonical: SPY
 
   # Same instrument, different spelling.
   - venue: qfex # 505.21 vs Variational BRKB 505.92
