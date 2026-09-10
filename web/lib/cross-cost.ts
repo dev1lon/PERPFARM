@@ -506,7 +506,10 @@ export async function computeCrossRankings(
     // shown as a gain or a loss depending on where you clicked.
     const rateA = fA ?? 0;
     const rateB = fB ?? 0;
-    const longFirst = rateA <= rateB;
+    // Equal rates (both unknown, or genuinely level) used to make the page's
+    // own protocol the long every time, so one trade printed opposite
+    // directions depending on which page asked. A tie goes to a fixed order.
+    const longFirst = rateA < rateB || (rateA === rateB && slugA < slugB);
     const longVenue = longFirst ? slugA : slugB;
     const shortVenue = longFirst ? slugB : slugA;
     const fundingUsd = fA === null || fB === null

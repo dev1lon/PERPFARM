@@ -103,6 +103,12 @@ function classFilterLabel(locale: Locale, filter: ClassFilter): string {
   return tr(locale, ASSET_CLASS_LABEL[filter].en, ASSET_CLASS_LABEL[filter].ru);
 }
 
+/** Whether a selection holds every class this answer has pairs in. */
+function coversEveryClass(selected: ClassFilter[], options: Array<{ key: ClassFilter; count: number }>): boolean {
+  const offered = options.filter((option) => option.count > 0);
+  return offered.length > 0 && offered.every((option) => selected.includes(option.key));
+}
+
 /**
  * The market filter: one compact button that opens a checklist.
  *
@@ -148,8 +154,11 @@ export function MarketFilterMenu({
     };
   }, [open]);
 
+  // Ticking every class that has pairs is the same answer as ticking none, so
+  // it reads the same way instead of "5 markets".
+  const coversAll = coversEveryClass(selected, options);
   const summary =
-    selected.length === 0
+    selected.length === 0 || coversAll
       ? tr(locale, "All markets", "Все рынки")
       : selected.length <= 2
         ? selected.map((key) => classFilterLabel(locale, key)).join(", ")
@@ -173,11 +182,13 @@ export function MarketFilterMenu({
       {open && (
         // A transient overlay, so it may carry a shadow: it sits in front of
         // the table rather than being printed on it.
-        <div className="absolute right-0 z-30 mt-1 w-[240px] rounded-none border border-border bg-surface-1 p-1.5 shadow-lg">
+        // Anchored to the button's left edge: on a phone the button sits at the
+        // left of the screen, and a right-anchored panel ran off it.
+        <div className="absolute left-0 z-30 mt-1 w-[240px] rounded-none border border-border bg-surface-1 p-1.5 shadow-lg">
           <button
             type="button"
             onClick={() => onChange([])}
-            className={`pf-transition flex w-full items-center justify-between px-2.5 py-2 text-left text-[13px] font-semibold ${selected.length === 0 ? "text-text-primary" : "text-text-muted hover:bg-surface-2 hover:text-text-primary"}`}
+            className={`pf-transition flex w-full items-center justify-between px-2.5 py-2 text-left text-[13px] font-semibold ${selected.length === 0 || coversAll ? "text-text-primary" : "text-text-muted hover:bg-surface-2 hover:text-text-primary"}`}
           >
             {tr(locale, "All markets", "Все рынки")}
             <span className="font-mono-num text-text-dim">{options.reduce((sum, option) => sum + option.count, 0)}</span>
@@ -1005,12 +1016,20 @@ export function RouteResults({
   // Variational is one of the two legs -- elsewhere it could never match.
   const offersSwaps = homeSlug === "variational" || hedgeSlug === "variational";
   // Several classes can be ticked, and a row shows when it matches ANY of
-  // them. "Only swaps" then narrows whatever the classes left.
+  // them. "Only swaps" then narrows whatever the classes left. Every class
+  // ticked is no class filter at all, so it reads and filters as "all".
+  const activeClasses = coversEveryClass(classFilters, marketOptions) ? [] : classFilters;
   const byClass = top.filter(
     (pair) =>
-      (classFilters.length === 0 || (pair.assetClass !== undefined && classFilters.includes(pair.assetClass))) &&
+      (activeClasses.length === 0 || (pair.assetClass !== undefined && activeClasses.includes(pair.assetClass))) &&
       (!swapsOnly || isSwap(pair.pair)),
   );
+  // The heading names at most two selections; past that a list of classes
+  // wrapped the title onto two lines and pushed the controls out of line.
+  const filterLabels = [
+    ...activeClasses.map((key) => classFilterLabel(locale, key)),
+    ...(swapsOnly ? [tr(locale, "Swaps", "Свопы")] : []),
+  ];
   const needle = query.trim().toUpperCase();
   const matches = needle === "" ? byClass : byClass.filter((pair) => pair.pair.toUpperCase().includes(needle));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
@@ -1205,25 +1224,31 @@ export function RouteResults({
 
       {/* 10 cheapest pairs */}
       <div className="pt-11">
-        <div className="flex flex-col items-start gap-2.5 pb-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col items-start gap-2">
-            <h2 className="flex items-center gap-2 text-[22px] font-bold tracking-[-0.018em] text-text-primary">
+        {/* Side by side only from `xl`: below it the four controls and the
+            title do not fit one line, and squeezing them broke "High OI" and
+            the title in two. */}
+        <div className="flex flex-col items-start gap-2.5 pb-4 xl:flex-row xl:items-end xl:justify-between xl:gap-6">
+          <div className="flex shrink-0 flex-col items-start gap-2">
+            <h2 className="flex items-center gap-2 whitespace-nowrap text-[22px] font-bold tracking-[-0.018em] text-text-primary">
               {needle !== ""
                 ? tr(
                     locale,
                     `${matches.length} ${pluralEn(matches.length, "match", "matches")}`,
                     `${matches.length} ${pluralRu(matches.length, "совпадение", "совпадения", "совпадений")}`,
                   )
-                : classFilters.length > 0 || swapsOnly
+                : filterLabels.length > 0
                   ? /* "Eligible" is a claim about the whole answer -- these
                        markets cleared the volume and open-interest floors. The
                        same word over a filtered number would say only nine
                        markets qualified, when nine is how many of the
                        qualifying markets are commodities. */
-                    `${matches.length} · ${[
-                      ...classFilters.map((key) => classFilterLabel(locale, key)),
-                      ...(swapsOnly ? [tr(locale, "Swaps", "Свопы")] : []),
-                    ].join(", ")}`
+                    filterLabels.length <= 2
+                    ? `${matches.length} · ${filterLabels.join(", ")}`
+                    : tr(
+                        locale,
+                        `${matches.length} ${pluralEn(matches.length, "pair", "pairs")} · ${activeClasses.length} markets${swapsOnly ? " · Swaps" : ""}`,
+                        `${matches.length} ${pluralRu(matches.length, "пара", "пары", "пар")} · ${activeClasses.length} рынка${swapsOnly ? " · Свопы" : ""}`,
+                      )
                   : oiFilter === "all"
                     ? tr(
                         locale,
@@ -1239,9 +1264,7 @@ export function RouteResults({
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
-          {/* One line from `lg` up: the market strip used to wrap, which
-              dropped the open-interest tabs onto a second row under it. */}
-          <div className="flex flex-wrap items-center gap-2.5 lg:flex-nowrap">
+          <div className="flex flex-wrap items-center gap-2.5 xl:flex-nowrap">
             {setClassFilters && (
               <MarketFilterMenu
                 locale={locale}
@@ -1304,7 +1327,7 @@ export function RouteResults({
                       aria-disabled={!available}
                       title={available ? undefined : tr(locale, "No pairs in this open-interest band", "В этой полосе открытого интереса нет пар")}
                       onClick={() => changeFilter(k)}
-                      className={`pf-transition rounded-none px-3 py-1.5 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
+                      className={`pf-transition whitespace-nowrap rounded-none px-3 py-1.5 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${oiFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                     >
                       {k === "all" ? tr(locale, "All", "Все") : k === "high" ? "High OI" : k === "medium" ? "Medium OI" : "Low OI"}
                     </button>
@@ -1488,11 +1511,30 @@ export function RouteResults({
 
 
             {matches.length === 0 && (
-              <div className="rounded-none border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
-                {tr(
-                  locale,
-                  `No eligible pair matches "${query.trim()}". It may be listed but below the liquidity floor for this size.`,
-                  `Ни одна подходящая пара не совпала с «${query.trim()}». Возможно, она есть на площадке, но не проходит порог ликвидности для этого размера.`,
+              <div className="flex flex-col items-center gap-3 rounded-none border border-dashed border-border bg-surface-1 px-5 py-8 text-center text-[14px] text-text-muted">
+                {/* Empty because of the search, or because of the filters. The
+                    search sentence used to cover both, so ticking Crypto with
+                    "Only swaps" printed: No eligible pair matches "". */}
+                {needle !== ""
+                  ? tr(
+                      locale,
+                      `No eligible pair matches "${query.trim()}". It may be listed but below the liquidity floor for this size.`,
+                      `Ни одна подходящая пара не совпала с «${query.trim()}». Возможно, она есть на площадке, но не проходит порог ликвидности для этого размера.`,
+                    )
+                  : tr(locale, "No pairs match these filters.", "Под эти фильтры не подходит ни одна пара.")}
+                {needle === "" && (setClassFilters || setSwapsOnly) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpanded(null);
+                      setPage(0);
+                      setClassFilters?.([]);
+                      setSwapsOnly?.(false);
+                    }}
+                    className="pf-transition rounded-none border border-border px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:border-accent/50"
+                  >
+                    {tr(locale, "Clear filters", "Сбросить фильтры")}
+                  </button>
                 )}
               </div>
             )}
