@@ -860,7 +860,12 @@ export function ProtocolCalculatorV2({
 /** Which criteria actually selected the recommended pair. */
 export type BestRule = "swap-low-oi" | "medium-tradfi" | "medium" | "tradfi" | "cheapest";
 
-type RecommendationPolicy = { preferMediumOi: boolean; preferTradfi: boolean };
+type RecommendationPolicy = {
+  preferMediumOi: boolean;
+  preferTradfi: boolean;
+  /** Recommend the swap with the least open interest whenever the answer holds one. */
+  preferLowOiSwap?: boolean;
+};
 
 // This is intentionally a protocol-owned policy, not a hedge-venue setting.
 // It is kept in code while the requested CMS remains only a future plan.
@@ -871,7 +876,9 @@ type RecommendationPolicy = { preferMediumOi: boolean; preferTradfi: boolean };
 const DEFAULT_RECOMMENDATION_POLICY: RecommendationPolicy = { preferMediumOi: false, preferTradfi: true };
 
 const RECOMMENDATION_POLICY: Record<string, RecommendationPolicy> = {
-  variational: { preferMediumOi: true, preferTradfi: true },
+  // The Swaps Trading Competition counts swap volume only, so Variational's
+  // page recommends a swap first -- on its own and on its cross routes.
+  variational: { preferMediumOi: true, preferTradfi: true, preferLowOiSwap: true },
   // TxFlow has not announced points mechanics. Its current guidance is
   // therefore eligible trading volume on the venue it focuses on (TradFi),
   // rather than importing Variational's Medium-OI points rule.
@@ -907,12 +914,13 @@ export function selectRecommendedPair(
   allPairs?: PairRanking[],
 ): [PairRanking | undefined, BestRule] {
   const everything = bands.flatMap((band) => band.pairs);
-  // Swaps come first whenever the answer holds one (Variational on either
-  // leg): the Swaps Trading Competition counts swap volume only. With five swap
-  // markets there is no cost race worth running, so the pick is the one with
-  // the LEAST open interest; a tie goes to the cheaper route.
+  // Swaps come first only where the home protocol's policy says so
+  // (Variational). With five swap markets there is no cost race worth running,
+  // so the pick is the one with the LEAST open interest; a tie goes to the
+  // cheaper route. Every other page -- TxFlow included, even hedged on
+  // Variational -- never picks a swap: the filter below keeps perps only.
   const swaps = (allPairs ?? everything).filter((pair) => isSwap(pair.pair));
-  if (swaps.length > 0) {
+  if (RECOMMENDATION_POLICY[homeSlug]?.preferLowOiSwap && swaps.length > 0) {
     const leastOi = [...swaps].sort(
       (a, b) => a.openInterestUsd - b.openInterestUsd || a.cycleCostUsd - b.cycleCostUsd,
     )[0];
