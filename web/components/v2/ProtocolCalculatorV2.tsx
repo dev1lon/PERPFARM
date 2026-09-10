@@ -160,8 +160,8 @@ export function MarketFilterMenu({
   const summary =
     selected.length === 0 || coversAll
       ? tr(locale, "All markets", "Все рынки")
-      : selected.length <= 2
-        ? selected.map((key) => classFilterLabel(locale, key)).join(", ")
+      : selected.length === 1
+        ? classFilterLabel(locale, selected[0])
         : tr(locale, `${selected.length} markets`, `${selected.length} рынка`);
   const toggle = (key: ClassFilter) =>
     onChange(selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]);
@@ -173,11 +173,13 @@ export function MarketFilterMenu({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="pf-transition flex h-[34px] items-center gap-2 rounded-none border border-border bg-bg px-3 text-[13px] font-semibold text-text-primary hover:border-text-muted/40"
+        // Fixed width: the button used to size to its summary, so ticking a
+        // class resized it and the panel under it jumped sideways.
+        className="pf-transition flex h-[34px] w-[200px] items-center gap-2 rounded-none border border-border bg-bg px-3 text-[13px] font-semibold text-text-primary hover:border-text-muted/40"
       >
-        <span className="text-text-muted">{tr(locale, "Markets", "Рынки")}:</span>
-        <span className="max-w-[180px] truncate">{summary}</span>
-        <span aria-hidden className="text-[10px] text-text-dim">{open ? "▲" : "▼"}</span>
+        <span className="shrink-0 text-text-muted">{tr(locale, "Markets", "Рынки")}:</span>
+        <span className="min-w-0 flex-1 truncate text-left">{summary}</span>
+        <span aria-hidden className="shrink-0 text-[10px] text-text-dim">{open ? "▲" : "▼"}</span>
       </button>
       {open && (
         // A transient overlay, so it may carry a shadow: it sits in front of
