@@ -1063,10 +1063,30 @@ export function RouteResults({
   const rowsRef = useRef<HTMLDivElement>(null);
   const [fullPageHeight, setFullPageHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
-    if (expanded === null && visible.length === PAGE_SIZE && rowsRef.current) {
-      setFullPageHeight(rowsRef.current.getBoundingClientRect().height);
+    const el = rowsRef.current;
+    if (expanded === null && visible.length === PAGE_SIZE && el) {
+      // Measured with the held height lifted. Measuring an element that still
+      // carried the last hold could only ever return that hold or more, so on
+      // a phone "Show all 10" then "Show fewer" kept ten cards' height under
+      // five cards -- a screen of empty space above the next section.
+      const held = el.style.minHeight;
+      el.style.minHeight = "";
+      const height = el.getBoundingClientRect().height;
+      el.style.minHeight = held;
+      setFullPageHeight(height);
     }
-  }, [expanded, visible.length, oiFilter, showAllMobile, needle]);
+    // `fullPageHeight` is here so a hold released by a resize is measured
+    // again at the new width straight away. It cannot loop: the measurement is
+    // taken without the hold, so a second pass sets the same number and React
+    // skips the render.
+  }, [expanded, visible.length, oiFilter, showAllMobile, needle, fullPageHeight]);
+  useEffect(() => {
+    // A new width reflows every card (rotation, a resized window), so the held
+    // height no longer describes a page; drop it rather than keep a stale one.
+    const release = () => setFullPageHeight(null);
+    window.addEventListener("resize", release);
+    return () => window.removeEventListener("resize", release);
+  }, []);
   useLayoutEffect(() => {
     if (anchorTop.current === null) return;
     const next = filterRowRef.current?.getBoundingClientRect().top;
