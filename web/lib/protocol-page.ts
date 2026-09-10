@@ -148,8 +148,11 @@ function txflowTierLine(): string {
     .join(" · ");
 }
 
-const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 6, 17, 0, 0, 0);
-const VARIATIONAL_COMPETITION_END_UTC = Date.UTC(2026, 6, 31, 0, 0, 0);
+/** Variational Swaps Trading Competition: 2026-09-10 00:00 UTC to 2026-09-24
+ *  00:00 UTC, per omni.variational.io/competition and
+ *  docs.variational.io/omni/trading-competition. Months are 0-based here. */
+const VARIATIONAL_COMPETITION_START_UTC = Date.UTC(2026, 8, 10, 0, 0, 0);
+const VARIATIONAL_COMPETITION_END_UTC = Date.UTC(2026, 8, 24, 0, 0, 0);
 
 function variational(locale: Locale): ProtocolPageConfig {
   return {
@@ -256,22 +259,27 @@ function variational(locale: Locale): ProtocolPageConfig {
     },
     activity: {
       kind: "campaign",
-      name: "TradFi Trading Competition #5",
+      // Only what the venue states. The previous (TradFi) competitions paid an
+      // extra 20,000 points; nothing on the swaps competition's page or docs
+      // says this one does, so no points are claimed for it. The docs phrase
+      // the 250k floor as "on TradFi markets", but the competition page itself
+      // says swap volume, and it is the competition's own page -- that wins.
+      name: "Swaps Trading Competition",
       startUtc: VARIATIONAL_COMPETITION_START_UTC,
       endUtc: VARIATIONAL_COMPETITION_END_UTC,
-      meta: `2026-07-17 → 2026-07-31 · $20,000 ${tr(locale, "prizes", "призы")}`,
+      meta: `2026-09-10 → 2026-09-24 · 20,000 USDC ${tr(locale, "prizes", "призы")}`,
       body: tr(
         locale,
-        "Joining is effectively required for max points: at the end of every competition an extra 20,000 points are handed out by trading volume on eligible assets (currently TradFi). Score: TradFi PnL × √TradFi volume.",
-        "Участие фактически обязательно для максимума поинтов: в конце каждого турнира дополнительно раздаётся 20 000 поинтов по объёму торгов на eligible-активах (сейчас TradFi). Score: TradFi PnL × √TradFi volume.",
+        "Swap markets only — perps do not count. Score = swap PnL × √swap volume. Ranking needs at least 250,000 USDC of swap volume in the window; the top 20 are paid.",
+        "Засчитываются только свопы — перпы не считаются. Score = PnL по свопам × √объём по свопам. Для места в рейтинге нужно от 250 000 USDC объёма по свопам за время турнира; призы получают топ-20.",
       ),
       eligibleLabel: tr(locale, "Eligible", "Eligible"),
-      eligibleValue: tr(locale, "all TradFi markets", "все TradFi-рынки"),
-      rulesUrl: "https://docs.variational.io/omni/trading-competition",
+      eligibleValue: tr(locale, "swap markets only", "только свопы"),
+      rulesUrl: "https://omni.variational.io/competition",
       endedNote: tr(
         locale,
-        "The last competition ended on 2026-07-31; its 20,000-point distribution is already counted in the total.",
-        "Последний турнир завершился 31.07.2026 — его раздача 20 000 поинтов уже учтена в общем количестве.",
+        "The Swaps Trading Competition ended on 2026-09-24.",
+        "Турнир по свопам завершился 24.09.2026.",
       ),
     },
     points: {

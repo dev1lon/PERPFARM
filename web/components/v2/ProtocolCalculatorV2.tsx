@@ -10,7 +10,7 @@ import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
-import { isSwap, type InstrumentClass } from "@/lib/tradfi";
+import { isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 
 /** "all", one market class, or "swap" -- the instrument type, which cuts
  *  across classes (a gold swap is still a commodity). */
@@ -795,11 +795,15 @@ export function selectRecommendedPair(
   // The primary venue, never the hedge, decides this set. Execution cost is a
   // tie-breaker only within that home-venue strategy.
   const preferred = policy.preferMediumOi ? medium : all;
-  const preferredTradfi = cheapestOf(preferred.filter((pair) => pair.competitionEligible));
+  // TradFi is asked of the INSTRUMENT, not of the competition flag. They used to
+  // coincide (the competitions counted TradFi), so the flag doubled as "is
+  // TradFi"; once a competition counts swaps instead, reading the flag here
+  // would silently stop the page preferring TradFi pairs at all.
+  const preferredTradfi = cheapestOf(preferred.filter((pair) => isTradfiMarket(pair.pair)));
   if (preferredTradfi) return [preferredTradfi, policy.preferMediumOi ? "medium-tradfi" : "tradfi"];
   const preferredAny = cheapestOf(preferred);
   if (preferredAny) return [preferredAny, policy.preferMediumOi ? "medium" : "cheapest"];
-  const tradfi = cheapestOf(all.filter((pair) => pair.competitionEligible));
+  const tradfi = cheapestOf(all.filter((pair) => isTradfiMarket(pair.pair)));
   if (tradfi) return [tradfi, "tradfi"];
   return [cheapestOf(all), "cheapest"];
 }

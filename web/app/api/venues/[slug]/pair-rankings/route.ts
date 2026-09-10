@@ -12,7 +12,7 @@ import {
   quantizeAccountVolumeUsd,
   snapshotsAreFresh,
 } from "@/lib/route-model";
-import { TRADFI_TICKERS, instrumentClass, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
+import { instrumentClass, isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
@@ -58,11 +58,14 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
   variational: {
     defaultAccountVolumeUsd: 100_000,
     competition: {
-      name: "TradFi Trading Competition #5",
-      startUtc: Date.UTC(2026, 6, 17, 0, 0, 0),
-      endUtc: Date.UTC(2026, 6, 31, 0, 0, 0),
+      name: "Swaps Trading Competition",
+      startUtc: Date.UTC(2026, 8, 10, 0, 0, 0),
+      endUtc: Date.UTC(2026, 8, 24, 0, 0, 0),
     },
-    isEligible: (pair) => TRADFI_TICKERS.has(pair),
+    // "Only swap markets count toward scoring" (docs.variational.io/omni/
+    // trading-competition). The previous competitions counted TradFi markets;
+    // this one counts swaps and nothing else, so the CE mark follows it.
+    isEligible: isSwap,
   },
   txflow: {
     defaultAccountVolumeUsd: 20_000,
