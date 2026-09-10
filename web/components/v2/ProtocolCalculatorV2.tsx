@@ -631,6 +631,11 @@ export function ProtocolCalculatorV2({
   // labelled "Variational" by the fallback side of that ternary.
   const homeName = protocolName(venueSlug) ?? venueSlug;
   const allHedgeOptions = [
+    // The page's own protocol, for a same-venue hedge. `otherVenues` is built
+    // WITHOUT it, and only Variational and TxFlow were listed by hand, so every
+    // other protocol page (QFEX, Polymarket, ...) could not pick itself and the
+    // select showed "Select" over a same-venue default it could not display.
+    { slug: venueSlug, name: homeName },
     { slug: "variational", name: "Variational" },
     { slug: "txflow", name: "TxFlow" },
     ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
