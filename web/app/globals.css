@@ -115,15 +115,9 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Chart lettering: the condensed cut, tabular, with the slashed zero a chart
-   uses so a zero can never be read as a letter. The class name predates the
-   face change and is kept so existing call sites need no sweep -- what it
-   points at is no longer a monospace. */
 .font-mono-num,
 .font-mono-num * {
-  font-family: var(--font-mono), ui-sans-serif, system-ui, sans-serif;
-  font-variant-numeric: tabular-nums slashed-zero;
-  letter-spacing: 0.01em;
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
 * {

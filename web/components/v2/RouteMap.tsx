@@ -127,13 +127,11 @@ export function RouteMap({
     Object.assign(overlay.style, { position: "absolute", inset: "0", pointerEvents: "none", overflow: "hidden" });
     host.appendChild(overlay);
 
-    // The scene's labels are HTML over the canvas, so they use the page's own
-    // faces. They used to name 'Plus Jakarta Sans' and 'JetBrains Mono'
-    // literally; neither is loaded any more, so every label in here was
-    // silently falling back to whatever the reader's OS offered while the rest
-    // of the page was set in Fira.
+    // The scene's labels are HTML over the canvas, so they read the page's own
+    // font slots rather than naming a family: whatever layout.tsx loads into
+    // them, the labels match the rest of the page.
     const BODY_FACE = "var(--font-body), ui-sans-serif, system-ui, sans-serif";
-    const CHART_FACE = "var(--font-chart), ui-sans-serif, system-ui, sans-serif";
+    const CHART_FACE = "var(--font-chart), ui-monospace, monospace";
 
     function label(
       text: string,

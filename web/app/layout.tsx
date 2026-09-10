@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fira_Sans, Fira_Sans_Condensed } from "next/font/google";
+import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { LocaleProvider, LOCALE_INIT_SCRIPT } from "@/components/LocaleProvider";
 import { SiteFooter } from "@/components/SiteFooter";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
@@ -10,26 +10,22 @@ import "./globals.css";
 import { Agentation } from "agentation";
 
 /**
- * One family, two cuts.
- *
- * The condensed cut carries every figure: narrowness buys column width that no
- * proportional face gives back, which is what a table of a hundred costs needs.
- * Fira specifically because it sets Cyrillic -- the interface is English-only
- * today, but the strings for both languages are still in the source, and a face
- * without those glyphs falls back mid-sentence to whatever the OS has.
+ * Plus Jakarta Sans for text, JetBrains Mono for figures -- the faces the site
+ * shipped with, restored after a Fira trial. They load into the `--font-body`
+ * and `--font-chart` slots that trial introduced, so globals.css and the route
+ * model's canvas lettering keep reading the same variables.
  */
-const firaSans = Fira_Sans({
+const jakarta = Plus_Jakarta_Sans({
   variable: "--font-body",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-/** Reached through `.font-mono-num`. Despite that class name, kept so hundreds
- *  of existing call sites did not need a sweep, there is no monospace here. */
-const firaSansCondensed = Fira_Sans_Condensed({
+/** Reached through `.font-mono-num`. */
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-chart",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -47,7 +43,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${firaSans.variable} ${firaSansCondensed.variable} h-full`}
+      className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="pf-v2 min-h-full flex flex-col bg-bg text-text-primary antialiased">
         {/* Applies the stored theme before content paints (no flash). */}
