@@ -22,7 +22,7 @@ import {
   minOpenInterestUsd,
   oiBandsFor,
 } from "@/lib/route-model";
-import { instrumentClass, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
+import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
@@ -406,6 +406,10 @@ export async function computeCrossRankings(
 
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
+  // Per venue, the tickers that were actually priced. Not the row key: a swap
+  // route is keyed by the swap, yet its other leg traded the perp ticker.
+  const pricedA = new Set<string>();
+  const pricedB = new Set<string>();
   // Why pairs get dropped, so a strict filter can never silently empty the list.
   // Only counters that something actually increments. `noFunding` and
   // `wildFunding` outlived the filters they belonged to and reported a
@@ -414,22 +418,45 @@ export async function computeCrossRankings(
   const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, thinVolume: 0, thinOi: 0 };
   /** Markets on the home venue with no counterpart found on the hedge venue. */
   const unmatched: string[] = [];
-  for (const [sym, ra] of A) {
+  // A swap is another liquidity source for the same pair, not a separate
+  // market: Variational's XAUS is XAU. Index the hedge venue's swaps by the pair
+  // they stand in for, so a home perp can also be hedged against a swap.
+  const swapsOnB = new Map<string, Array<[string, VenueMarketRow]>>();
+  for (const [symB, row] of B) {
+    const underlying = swapUnderlying(symB);
+    if (underlying === null) continue;
+    swapsOnB.set(underlying, [...(swapsOnB.get(underlying) ?? []), [symB, row]]);
+  }
+  for (const [symA, ra] of A) {
     // The home protocol is the thing being farmed. A hedge leg must be
     // tradeable, but it never changes the home market's category or OI band.
-    if (tradfiOnly && !isTradfiMarket(sym)) continue;
+    if (tradfiOnly && !isTradfiMarket(symA)) continue;
     // Counted BEFORE the intersection. This used to be counted after, which
     // made `considered` the size of the already-matched set and hid the
     // largest silent loss of all: the two venues spell some instruments
     // differently (Variational "SKHY" vs TxFlow "SKHYNIX"), so the same
     // company never matches and simply vanishes from the comparison.
     drops.considered++;
-    const rb = B.get(sym); // only pairs listed on BOTH venues can be hedged
-    if (!rb) {
+    // Every way this home market can be hedged on the other venue: the same
+    // ticker; the underlying pair when the home market is itself a swap; and
+    // any swap the hedge venue lists on this pair. Each becomes its own row,
+    // so the perp route and the swap route on one pair can be compared.
+    const hedges: Array<[string, VenueMarketRow]> = [];
+    const direct = B.get(symA);
+    if (direct) hedges.push([symA, direct]);
+    const homeUnderlying = swapUnderlying(symA);
+    const viaUnderlying = homeUnderlying === null ? undefined : B.get(homeUnderlying);
+    if (homeUnderlying !== null && viaUnderlying) hedges.push([homeUnderlying, viaUnderlying]);
+    for (const hedge of swapsOnB.get(symA) ?? []) hedges.push(hedge);
+    if (hedges.length === 0) {
       drops.notListedOnBoth++;
-      if (unmatched.length < 40) unmatched.push(sym);
+      if (unmatched.length < 40) unmatched.push(symA);
       continue;
     }
+    for (const [symB, rb] of hedges) {
+    // A row is keyed by the swap whenever one leg is a swap, so it cannot
+    // collide with the perp route on the same pair and still reads as a swap.
+    const sym = isSwap(symB) ? symB : symA;
     const volA = asNumber(ra.volume_24h_usd);
     const volB = asNumber(rb.volume_24h_usd);
     const oiA = asNumber(ra.open_interest_usd);
@@ -513,8 +540,9 @@ export async function computeCrossRankings(
       ? routeOf(costA, costB, { legBps: costB.taker - costB.takerFee, spreadBps: costB.spreadBps * 2, impactBps: costB.impactBps, markPrice: null })
       : routeOf(costB, costA, { legBps: costA.taker - costA.takerFee, spreadBps: costA.spreadBps * 2, impactBps: costA.impactBps, markPrice: null });
 
-    const historyA = histA.get(sym) ?? [];
-    const historyB = histB.get(sym) ?? [];
+    // Each leg's own history: a swap leg and a perp leg are different tickers.
+    const historyA = histA.get(symA) ?? [];
+    const historyB = histB.get(symB) ?? [];
     const routeSamples: RouteSample[] = [];
     for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
       const a = historyA[i]!;
@@ -538,8 +566,13 @@ export async function computeCrossRankings(
     const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
-    const rating = ratings.get(sym);
+    // Drift ratings are stored per identical ticker on both venues; a swap
+    // leg against a perp leg has none yet, so it reads "unknown" rather than
+    // borrowing the perp pair's rating.
+    const rating = symA === symB ? ratings.get(symA) : undefined;
 
+    pricedA.add(symA);
+    pricedB.add(symB);
     candidates.push({
       pair: sym,
       // The farmed venue's class first; the hedge venue answers only when the
@@ -566,13 +599,13 @@ export async function computeCrossRankings(
       costRangeHighUsd,
       oiKey: displayedOiA,
     });
+    }
   }
 
   // Bands always come from the main (farm) protocol -- both the OI value and
   // the thresholds. What the hedge venue considers a big market is irrelevant
   // to which band the market the user is farming belongs in.
   const MAIN_OI_BANDS = oiBandsFor(slugA);
-  const pricedPairs = new Set(candidates.map((candidate) => candidate.pair));
   const bands = [
     bandFrom("high", candidates.filter((p) => p.oiKey > MAIN_OI_BANDS.high)),
     bandFrom("medium", candidates.filter((p) => p.oiKey >= MAIN_OI_BANDS.medium && p.oiKey <= MAIN_OI_BANDS.high)),
@@ -604,8 +637,8 @@ export async function computeCrossRankings(
     bands,
     pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
     feeSchedule: [
-      ...schedulesOf(slugA, A, pricedPairs),
-      ...schedulesOf(slugB, B, pricedPairs),
+      ...schedulesOf(slugA, A, pricedA),
+      ...schedulesOf(slugB, B, pricedB),
     ],
   };
 }

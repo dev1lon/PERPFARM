@@ -196,8 +196,29 @@ export function isTradfiMarket(symbol: string): boolean {
  * more swap markets (XPT, XPD, COPP, UKOIL, TWI, EURUSD) than the feed lists
  * today; their tickers are added when they appear, not guessed ahead of it.
  */
-const SWAP = new Set(["US100S", "US500S", "USOILP", "XAGS", "XAUS"]);
+/**
+ * Swap ticker -> the pair it is a liquidity variant of.
+ *
+ * A swap is not a separate market to farm; it is another way to take the same
+ * exposure, filled from a different liquidity source. So XAUS is XAU, and a
+ * cross-protocol route has to be able to hedge a Variational gold swap against
+ * another venue's XAU perp -- matching by exact ticker hid every such route.
+ * The target is spelled as the other venues spell the underlying; WTI crude is
+ * CL because that is Variational's own perp ticker for it.
+ */
+const SWAP_UNDERLYING = new Map<string, string>([
+  ["XAUS", "XAU"],
+  ["XAGS", "XAG"],
+  ["US100S", "US100"],
+  ["US500S", "US500"],
+  ["USOILP", "CL"],
+]);
 
 export function isSwap(symbol: string): boolean {
-  return SWAP.has(symbol);
+  return SWAP_UNDERLYING.has(symbol);
+}
+
+/** The pair a swap stands in for, or null when the symbol is not a swap. */
+export function swapUnderlying(symbol: string): string | null {
+  return SWAP_UNDERLYING.get(symbol) ?? null;
 }

@@ -14,7 +14,7 @@ import { isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 
 /** "all", one market class, or "swap" -- the instrument type, which cuts
  *  across classes (a gold swap is still a commodity). */
-export type ClassFilter = InstrumentClass | "all" | "swap";
+export type ClassFilter = InstrumentClass;
 
 /** The order classes are offered in: the two biggest sets a perp DEX lists,
  *  then the rest of the TradFi shelf. */
@@ -99,11 +99,116 @@ function swapFundingTip(locale: Locale): string {
   );
 }
 
-/** One label for every segment of the market strip, including "Swaps". */
 function classFilterLabel(locale: Locale, filter: ClassFilter): string {
-  if (filter === "all") return tr(locale, "All", "Все");
-  if (filter === "swap") return tr(locale, "Swaps", "Свопы");
   return tr(locale, ASSET_CLASS_LABEL[filter].en, ASSET_CLASS_LABEL[filter].ru);
+}
+
+/**
+ * The market filter: one compact button that opens a checklist.
+ *
+ * It replaced a strip of one-choice pills. Seven pills plus the search field
+ * pushed the open-interest tabs onto a second line, and a strip can only say
+ * "this one" -- a farmer comparing stocks with commodities needs "these".
+ * Several can be ticked; none ticked means every market.
+ *
+ * Swaps are not in this list. They are an instrument type that exists on
+ * Variational only, so they get their own toggle beside it (see RouteResults)
+ * instead of an option that is empty on every other protocol.
+ *
+ * Every option stays listed, counts included, and an option this answer holds
+ * no rows for is disabled rather than hidden, so the list never reflows between
+ * two scans and a missing kind of market reads as empty, not absent.
+ */
+export function MarketFilterMenu({
+  locale,
+  options,
+  selected,
+  onChange,
+}: {
+  locale: Locale;
+  options: Array<{ key: ClassFilter; count: number }>;
+  selected: ClassFilter[];
+  onChange: (next: ClassFilter[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const summary =
+    selected.length === 0
+      ? tr(locale, "All markets", "Все рынки")
+      : selected.length <= 2
+        ? selected.map((key) => classFilterLabel(locale, key)).join(", ")
+        : tr(locale, `${selected.length} markets`, `${selected.length} рынка`);
+  const toggle = (key: ClassFilter) =>
+    onChange(selected.includes(key) ? selected.filter((item) => item !== key) : [...selected, key]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="pf-transition flex h-[34px] items-center gap-2 rounded-none border border-border bg-bg px-3 text-[13px] font-semibold text-text-primary hover:border-text-muted/40"
+      >
+        <span className="text-text-muted">{tr(locale, "Markets", "Рынки")}:</span>
+        <span className="max-w-[180px] truncate">{summary}</span>
+        <span aria-hidden className="text-[10px] text-text-dim">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        // A transient overlay, so it may carry a shadow: it sits in front of
+        // the table rather than being printed on it.
+        <div className="absolute right-0 z-30 mt-1 w-[240px] rounded-none border border-border bg-surface-1 p-1.5 shadow-lg">
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            className={`pf-transition flex w-full items-center justify-between px-2.5 py-2 text-left text-[13px] font-semibold ${selected.length === 0 ? "text-text-primary" : "text-text-muted hover:bg-surface-2 hover:text-text-primary"}`}
+          >
+            {tr(locale, "All markets", "Все рынки")}
+            <span className="font-mono-num text-text-dim">{options.reduce((sum, option) => sum + option.count, 0)}</span>
+          </button>
+          <div className="my-1 border-t border-border" />
+          {options.map(({ key, count }) => {
+            const disabled = count === 0;
+            return (
+              <label
+                key={key}
+                title={disabled ? tr(locale, "No pairs of this kind in this answer", "В этом ответе нет пар такого типа") : undefined}
+                className={`flex items-center justify-between gap-3 px-2.5 py-2 text-[13px] font-semibold ${disabled ? "cursor-not-allowed text-text-dim opacity-50" : "cursor-pointer text-text-primary hover:bg-surface-2"}`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(key)}
+                    disabled={disabled}
+                    onChange={() => toggle(key)}
+                    className="h-3.5 w-3.5 accent-[var(--accent)]"
+                  />
+                  {classFilterLabel(locale, key)}
+                </span>
+                <span className="font-mono-num text-text-dim">{count}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -247,7 +352,9 @@ function orders(firstLimitSide: "long" | "short") {
   };
 }
 
-const GRID = "grid-cols-[40px_130px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
+// The pair cell holds the ticker plus up to three marks (class, Swap, CE);
+// at 130px "USOILP Commodity Swap CE" ran over the open-interest column.
+const GRID = "grid-cols-[40px_280px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
 
 
 const SPREAD_RISK_TONE: Record<Exclude<SpreadRisk, "unknown">, string> = {
@@ -523,7 +630,8 @@ export function ProtocolCalculatorV2({
   const [accountVolumeInput, setAccountVolumeInput] = useState("20000");
   /** Which kind of market the table shows. Client-side: see the note where the
    *  "Only TradFi" switch used to be. */
-  const [classFilter, setClassFilter] = useState<ClassFilter>("all");
+  const [classFilters, setClassFilters] = useState<ClassFilter[]>([]);
+  const [swapsOnly, setSwapsOnly] = useState(false);
 
   const [status, setStatus] = useState<Status>("idle");
   const [notionalUsd, setNotionalUsd] = useState<number | null>(null);
@@ -709,8 +817,10 @@ export function ProtocolCalculatorV2({
           expanded={expanded}
           setExpanded={setExpanded}
           grouped={grouped}
-          classFilter={classFilter}
-          setClassFilter={setClassFilter}
+          classFilters={classFilters}
+          setClassFilters={setClassFilters}
+          swapsOnly={swapsOnly}
+          setSwapsOnly={setSwapsOnly}
           oiFilter={activeFilter}
           setOiFilter={setOiFilter}
         />
@@ -822,8 +932,10 @@ export function RouteResults({
   grouped,
   oiFilter,
   setOiFilter,
-  classFilter = "all",
-  setClassFilter,
+  classFilters = [],
+  setClassFilters,
+  swapsOnly = false,
+  setSwapsOnly,
 }: {
   data: RankingResponse | null;
   top: PairRanking[];
@@ -841,8 +953,10 @@ export function RouteResults({
   grouped: boolean;
   oiFilter: BandKey;
   setOiFilter: (v: BandKey) => void;
-  classFilter?: ClassFilter;
-  setClassFilter?: (v: ClassFilter) => void;
+  classFilters?: ClassFilter[];
+  setClassFilters?: (v: ClassFilter[]) => void;
+  swapsOnly?: boolean;
+  setSwapsOnly?: (v: boolean) => void;
 }) {
   const locale = useLocale();
   const shortSlug = hedgeSlug ?? homeSlug;
@@ -885,14 +999,18 @@ export function RouteResults({
     if (!pair.assetClass) continue;
     classCounts.set(pair.assetClass, (classCounts.get(pair.assetClass) ?? 0) + 1);
   }
-  const offeredClasses = CLASS_ORDER.filter((name) => (classCounts.get(name) ?? 0) > 0);
   const swapCount = top.filter((pair) => isSwap(pair.pair)).length;
-  const byClass =
-    classFilter === "all"
-      ? top
-      : classFilter === "swap"
-        ? top.filter((pair) => isSwap(pair.pair))
-        : top.filter((pair) => pair.assetClass === classFilter);
+  const marketOptions = CLASS_ORDER.map((key) => ({ key, count: classCounts.get(key) ?? 0 }));
+  // Swaps exist on Variational only, so the toggle is offered only where
+  // Variational is one of the two legs -- elsewhere it could never match.
+  const offersSwaps = homeSlug === "variational" || hedgeSlug === "variational";
+  // Several classes can be ticked, and a row shows when it matches ANY of
+  // them. "Only swaps" then narrows whatever the classes left.
+  const byClass = top.filter(
+    (pair) =>
+      (classFilters.length === 0 || (pair.assetClass !== undefined && classFilters.includes(pair.assetClass))) &&
+      (!swapsOnly || isSwap(pair.pair)),
+  );
   const needle = query.trim().toUpperCase();
   const matches = needle === "" ? byClass : byClass.filter((pair) => pair.pair.toUpperCase().includes(needle));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
@@ -1096,13 +1214,16 @@ export function RouteResults({
                     `${matches.length} ${pluralEn(matches.length, "match", "matches")}`,
                     `${matches.length} ${pluralRu(matches.length, "совпадение", "совпадения", "совпадений")}`,
                   )
-                : classFilter !== "all"
+                : classFilters.length > 0 || swapsOnly
                   ? /* "Eligible" is a claim about the whole answer -- these
                        markets cleared the volume and open-interest floors. The
                        same word over a filtered number would say only nine
                        markets qualified, when nine is how many of the
                        qualifying markets are commodities. */
-                    `${matches.length} · ${classFilterLabel(locale, classFilter)}`
+                    `${matches.length} · ${[
+                      ...classFilters.map((key) => classFilterLabel(locale, key)),
+                      ...(swapsOnly ? [tr(locale, "Swaps", "Свопы")] : []),
+                    ].join(", ")}`
                   : oiFilter === "all"
                     ? tr(
                         locale,
@@ -1118,36 +1239,39 @@ export function RouteResults({
             </h2>
             <div className="font-mono-num text-[12px] text-text-dim">{tr(locale, "Market data updated", "Данные обновлены")} {formatUtcDateTime(data.asOf)}</div>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Market class. Only classes this answer contains are offered: a
-                venue that lists no crypto is never asked about crypto, and a
-                segment that could only ever return nothing is not a choice.
-                Each carries its count, so the reader knows the size of what
-                they are switching to before switching. */}
-            {setClassFilter && (offeredClasses.length > 1 || swapCount > 0) && (
-              <div className="flex flex-wrap gap-0.5 rounded-lg border border-border p-[3px]">
-                {/* "Swaps" sits after the classes: it is an instrument type that
-                    cuts across them, offered only when the answer holds one. */}
-                {(["all", ...offeredClasses, ...(swapCount > 0 ? ["swap"] : [])] as ClassFilter[]).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => {
-                      setExpanded(null);
-                      setShowAllMobile(false);
-                      setPage(0);
-                      setClassFilter(k);
-                    }}
-                    aria-pressed={classFilter === k}
-                    className={`pf-transition rounded-none px-3 py-1.5 text-[13px] font-semibold ${classFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
-                  >
-                    {classFilterLabel(locale, k)}
-                    <span className="pl-1.5 font-mono-num opacity-60">
-                      {k === "all" ? top.length : k === "swap" ? swapCount : classCounts.get(k) ?? 0}
-                    </span>
-                  </button>
-                ))}
-              </div>
+          {/* One line from `lg` up: the market strip used to wrap, which
+              dropped the open-interest tabs onto a second row under it. */}
+          <div className="flex flex-wrap items-center gap-2.5 lg:flex-nowrap">
+            {setClassFilters && (
+              <MarketFilterMenu
+                locale={locale}
+                options={marketOptions}
+                selected={classFilters}
+                onChange={(next) => {
+                  setExpanded(null);
+                  setShowAllMobile(false);
+                  setPage(0);
+                  setClassFilters(next);
+                }}
+              />
+            )}
+            {setSwapsOnly && offersSwaps && (
+              <button
+                type="button"
+                aria-pressed={swapsOnly}
+                disabled={swapCount === 0 && !swapsOnly}
+                title={swapCount === 0 ? tr(locale, "No swaps in this answer", "В этом ответе нет свопов") : undefined}
+                onClick={() => {
+                  setExpanded(null);
+                  setShowAllMobile(false);
+                  setPage(0);
+                  setSwapsOnly(!swapsOnly);
+                }}
+                className={`pf-transition flex h-[34px] items-center gap-2 whitespace-nowrap rounded-none border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${swapsOnly ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg text-text-muted hover:text-text-primary"}`}
+              >
+                {tr(locale, "Only swaps", "Только свопы")}
+                <span className="font-mono-num opacity-70">{swapCount}</span>
+              </button>
             )}
             {/* The shell shows the focus state, so the input suppresses its own
                 inset ring (see .pf-inline-input in globals.css). */}

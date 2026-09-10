@@ -49,7 +49,8 @@ export function CrossPairRankings({
   const [oiFilter, setOiFilter] = useState<CrossBandKey>("all");
   // Its own filter state, not the same-venue table's: the two tables hold
   // different answers, and a class present in one need not exist in the other.
-  const [classFilter, setClassFilter] = useState<ClassFilter>("all");
+  const [classFilters, setClassFilters] = useState<ClassFilter[]>([]);
+  const [swapsOnly, setSwapsOnly] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -145,5 +146,5 @@ export function CrossPairRankings({
     pairs: response.pairs ? mapPairs(response.pairs) : undefined,
   };
   const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug);
-  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} classFilter={classFilter} setClassFilter={setClassFilter} />;
+  return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} classFilters={classFilters} setClassFilters={setClassFilters} swapsOnly={swapsOnly} setSwapsOnly={setSwapsOnly} />;
 }
