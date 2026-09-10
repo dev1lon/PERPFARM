@@ -8,11 +8,12 @@
 # the spread-risk job compares marks across, so two contracts merged under one
 # name are compared mark to mark as if their prices should agree.
 #
-# SP500 and US500 are the counter-example and are deliberately NOT mapped:
-# both track the S&P 500, but Polymarket's SP500 trades near $7,700 while
-# QFEX's US500 trades near $770 -- a tenth of the index. Merging them would
-# invent a permanent 90% "divergence" between the venues and price a hedge
-# that does not hedge.
+# The S&P 500 is the counter-example: it is listed at two scales and the ticker
+# does not say which. Polymarket's SP500, trade.xyz's SP500 and QFEX's US500-USD
+# trade the full index (~7,600) and are merged below; Variational's US500 and
+# the SPY perps trade a tenth of it (~760) and are never merged with them --
+# that would invent a permanent 90% "divergence" and price a hedge that does
+# not hedge. (worker/tests/test_symbol_overrides_scale.py guards this.)
 
 overrides:
   - venue: venue_alpha
@@ -84,3 +85,123 @@ overrides:
   - venue: qfex
     symbol: SIVE-SEK
     symbol_canonical: SIVE-SEK
+
+  # ---------------------------------------------------------------------------
+  # Cross-protocol reconciliation, 2026-09-10. Every entry below was matched on
+  # NAME and confirmed on PRICE from the same collection hour (quoted), so each
+  # merge is one instrument at one scale and each split is two instruments that
+  # had shared a ticker. Near-identical prices on DIFFERENT instruments are left
+  # apart on purpose: Variational US500 (758.31) vs SPY (758.13-758.30) is an
+  # index at a tenth against an ETF; trade.xyz XYZ100 (29,132.50) is its own
+  # basket, not the Nasdaq-100; XAUT is tokenised gold, not spot.
+  # ---------------------------------------------------------------------------
+
+  # One ticker, two instruments.
+  # QNT: Variational's QNT is the Quant token (65.68); trade.xyz's QNT is
+  # pre-IPO Quantinuum (48.96), which Variational lists as QNTX (49.06).
+  - venue: tradexyz
+    symbol: xyz:QNT
+    symbol_canonical: QNTX
+  # BEAM: Variational's BEAM is the Beam token (0.0015); QFEX's is Beam
+  # Therapeutics stock (24.32).
+  - venue: qfex
+    symbol: BEAM-USD
+    symbol_canonical: BEAM-USD
+  # US500: QFEX's contract is the full index (7,589.25), Variational's is a
+  # tenth of it (758.31). QFEX's joins SP500 (Polymarket 7,590.25, xyz 7,588.15).
+  - venue: qfex
+    symbol: US500-USD
+    symbol_canonical: SP500
+
+  # Same instrument, different spelling.
+  - venue: qfex # 505.21 vs Variational BRKB 505.92
+    symbol: BRK.B-USD
+    symbol_canonical: BRKB
+  - venue: polymarket # 29,135.50 vs QFEX US100 29,132.00
+    symbol: NAS100-USD
+    symbol_canonical: US100
+  - venue: polymarket # 4,320.70 vs XAU 4,318-4,331
+    symbol: GOLD-USD
+    symbol_canonical: XAU
+  - venue: qfex # 4,320.95
+    symbol: GOLD-USD
+    symbol_canonical: XAU
+  - venue: polymarket # 63.66 vs XAG 63.65-63.83
+    symbol: SILVER-USD
+    symbol_canonical: XAG
+  - venue: qfex # 63.70
+    symbol: SILVER-USD
+    symbol_canonical: XAG
+  - venue: polymarket # WTI 99.57 vs CL 99.36-99.86
+    symbol: WTIOIL-USD
+    symbol_canonical: CL
+  - venue: nado # WTI 99.33
+    symbol: WTI-PERP_USDT0
+    symbol_canonical: CL
+  - venue: polymarket # 104.22 vs BZ 104.42-104.53
+    symbol: BRENTOIL-USD
+    symbol_canonical: BZ
+  - venue: variational # PUMPFUN 0.003872 vs PUMP 0.003894-0.003925
+    symbol: PUMPFUN
+    symbol_canonical: PUMP
+  # 1,000-unit contracts: Nado and Polymarket write the thousand as a "k",
+  # Variational and TxFlow as "1000". A plain PEPE / SHIB contract (TxFlow) is a
+  # thousandth of the price and stays its own market.
+  - venue: nado # 0.002683 vs 1000BONK 0.002680-0.002689
+    symbol: kBONK-PERP_USDT0
+    symbol_canonical: 1000BONK
+  - venue: nado # 0.003306 vs Variational 1000PEPE 0.003311
+    symbol: kPEPE-PERP_USDT0
+    symbol_canonical: 1000PEPE
+  - venue: polymarket # 0.003304
+    symbol: KPEPE-USD
+    symbol_canonical: 1000PEPE
+  - venue: polymarket # 0.005086 = 1,000 x TxFlow SHIB 0.000005085
+    symbol: KSHIB-USD
+    symbol_canonical: 1000SHIB
+
+  # Currencies by PAIR, the way Nado and the curated FX list already name them.
+  # Hibachi quotes every currency in dollars (EUR 1.16, JPY 0.006478), so CAD
+  # and JPY there are CADUSD / JPYUSD -- inverse to USDCAD / USDJPY. trade.xyz's
+  # JPY is quoted the other way (154.22), matching Nado's USDJPY (154.08).
+  - venue: hibachi
+    symbol: AUD/USDT-P
+    symbol_canonical: AUDUSD
+  - venue: hibachi
+    symbol: EUR/USDT-P
+    symbol_canonical: EURUSD
+  - venue: hibachi
+    symbol: GBP/USDT-P
+    symbol_canonical: GBPUSD
+  - venue: hibachi
+    symbol: NZD/USDT-P
+    symbol_canonical: NZDUSD
+  - venue: hibachi
+    symbol: CAD/USDT-P
+    symbol_canonical: CADUSD
+  - venue: hibachi
+    symbol: JPY/USDT-P
+    symbol_canonical: JPYUSD
+  - venue: tradexyz # 1.16
+    symbol: xyz:EUR
+    symbol_canonical: EURUSD
+  - venue: tradexyz # 1.35
+    symbol: xyz:GBP
+    symbol_canonical: GBPUSD
+  - venue: tradexyz # 154.22 vs Nado USDJPY 154.08
+    symbol: xyz:JPY
+    symbol_canonical: USDJPY
+  # QFEX's FX listings are inactive today; named by pair now so they cannot
+  # come back under a bare currency ticker.
+  - venue: qfex
+    symbol: AUD-USD
+    symbol_canonical: AUDUSD
+  - venue: qfex
+    symbol: EUR-USD
+    symbol_canonical: EURUSD
+  - venue: qfex
+    symbol: GBP-USD
+    symbol_canonical: GBPUSD
+  - venue: qfex
+    symbol: USD-JPY
+    symbol_canonical: USDJPY

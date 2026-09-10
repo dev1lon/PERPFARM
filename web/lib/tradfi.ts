@@ -125,8 +125,11 @@ const COMMODITY = new Set([
  */
 const FX = new Set([
   "AUDUSD", "EURUSD", "GBPUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY",
-  // Hibachi and trade.xyz name a currency by itself against the dollar.
-  "AUD", "CAD", "EUR", "GBP", "JPY", "NZD",
+  // Hibachi quotes CAD and JPY against the dollar the other way round
+  // (CADUSD 0.72, JPYUSD 0.0065), so they are their own pairs, not USDCAD /
+  // USDJPY. Hibachi's and trade.xyz's bare currency tickers are renamed to
+  // these pair names in data/manual/symbol_overrides.yaml.
+  "CADUSD", "JPYUSD",
 ]);
 
 /* Order is for readability only; the sets do not overlap. */
@@ -233,7 +236,10 @@ const SWAP_UNDERLYING = new Map<string, string>([
   ["XAUS", "XAU"],
   ["XAGS", "XAG"],
   ["US100S", "US100"],
-  ["US500S", "US500"],
+  // The FULL S&P 500: US500S trades near 7,590, like SP500 on Polymarket and
+  // trade.xyz and QFEX's US500 -- not Variational's own US500 perp, which
+  // trades at a tenth of the index (~759). Checked 2026-09-10.
+  ["US500S", "SP500"],
   ["USOILP", "CL"],
 ]);
 

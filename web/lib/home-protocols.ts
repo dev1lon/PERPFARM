@@ -35,9 +35,9 @@ export interface HomeProtocol {
 export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
   { slug: "tradexyz", name: "TradeXYZ", status: "records" },
-  { slug: "txflow", name: "TxFlow", season: "Season 0", farmEstimate: "from $29/100k vol", status: "retro" },
+  { slug: "txflow", name: "TxFlow", season: "Season 0", farmEstimate: "from $29/100k volume", status: "retro" },
   { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
-  { slug: "qfex", name: "QFEX", season: "Season 0", farmEstimate: "from $43/100k vol", status: "retro" },
+  { slug: "qfex", name: "QFEX", season: "Season 0", farmEstimate: "from $43/100k volume", status: "retro" },
 ];
 
 /** Tier A — worth farming, one rung down. Same card as Tier S: a protocol
@@ -45,17 +45,19 @@ export const TIER_S: HomeProtocol[] = [
  *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
   { slug: "risex", name: "RiseX", farmEstimate: "$1–2/pt", status: "live" },
-  { slug: "polymarket", name: "Polymarket", farmEstimate: "from $28/100k vol", status: "retro-activity" },
+  { slug: "polymarket", name: "Polymarket", farmEstimate: "from $28/100k volume", status: "retro-activity" },
   // Perps on private-market assets (pre-IPO names), not the crypto majors.
   // Carded like QFEX: a season, retro points expected.
-  { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k vol", status: "retro" },
+  { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k volume", status: "retro" },
+  // Priced since 2026-09-10; Hibachi runs a points programme
+  // (docs.hibachi.xyz/hibachi-rewards/hibachi-points).
+  { slug: "hibachi", name: "Hibachi", farmEstimate: "from $27/100k volume", status: "live" },
 ];
 
 /** Radar — compact tiles, name only. */
 export const RADAR: HomeProtocol[] = [
   { slug: "hotstuff", name: "HotStuff" },
   { slug: "01exchange", name: "N1" },
-  { slug: "hibachi", name: "Hibachi" },
   { slug: "extended", name: "Extended" },
   { slug: "pacifica", name: "Pacifica" },
   { slug: "nado", name: "Nado" },
