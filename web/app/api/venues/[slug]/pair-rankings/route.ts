@@ -105,6 +105,18 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
     competition: null,
     isEligible: isTradfiMarket,
   },
+  // Neither documents a points emission or a competition window we can read,
+  // so neither claims one.
+  tradexyz: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
+  hibachi: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
 };
 
 type PairRanking = {

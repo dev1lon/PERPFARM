@@ -56,6 +56,16 @@ const EQUITY = new Set([
   // Single names listed by the smaller venues and by nobody in the two
   // universes above: ASML on Polymarket, GoPro on Entropy.
   "ASML", "GPRO",
+
+  // trade.xyz's listed single names that no curated venue above spells the
+  // same way (docs.trade.xyz specification index). SKHX and SMSN are its
+  // tickers for SK hynix and Samsung common shares; PURRDAT is Hyperliquid
+  // Strategies (Nasdaq: PURR); BIRD is Smartbird. MiniMax and Zhipu list in
+  // Hong Kong, so they are shares here, not pre-IPO names. QNT is left out on
+  // purpose: on trade.xyz it is pre-IPO Quantinuum, but Variational lists QNT
+  // as the Quant token, and one ticker cannot be both in a shared map.
+  "AMAT", "BIRD", "DKNG", "GEV", "GIGADEV", "KIOXIA", "MINIMAX", "NET", "PURRDAT",
+  "SKHX", "SMSN", "SOFTBANK", "ZHIPU",
 ]);
 
 /**
@@ -63,7 +73,11 @@ const EQUITY = new Set([
  *
  * ANTH and OAI are Entropy's tickers for the two Variational spells out.
  */
-const PRELISTING = new Set(["ANTH", "ANTHROPIC", "NBIS", "OAI", "OPENAI", "QNTX"]);
+const PRELISTING = new Set([
+  "ANTH", "ANTHROPIC", "NBIS", "OAI", "OPENAI", "QNTX",
+  // trade.xyz's pre-IPO perpetuals (its Pre-IPO specification index).
+  "CXMT", "SHEIN", "UNITREE",
+]);
 
 const INDEX = new Set([
   "DRAM", "EWJ", "EWT", "EWY", "EWZ", "IWM", "KSTR", "QQQ", "SOXL", "SPCX", "URNM", "US500",
@@ -77,6 +91,9 @@ const INDEX = new Set([
   // already warns about ("SKHY" vs "SKHYNIX") -- one instrument, several
   // tickers, and a lookup that only knows one of them.
   "NAS100", "SOXS", "SP500", "SPY",
+  // trade.xyz's indices and ETFs: its own XYZ U.S. 100 basket, the Korea 200
+  // and Japan 225 benchmarks, and three ETFs (KORU, MAGS, LYTE).
+  "JP225", "KORU", "KR200", "LYTE", "MAGS", "XYZ100",
   // Variational's index swaps ("Swap on US 500", "Swap on US Non-Financial
   // 100"). Same underlyings as US500 / US100, a different instrument -- see
   // SWAP below.
@@ -93,6 +110,8 @@ const COMMODITY = new Set([
   "BRENTOIL", "WTIOIL",
   // Nado's spelling of the same crude contract.
   "WTI",
+  // trade.xyz spells the two remaining precious metals out.
+  "PALLADIUM", "PLATINUM",
   // Variational's commodity swaps ("Swap on Gold Spot", "Swap on Silver Spot",
   // "Swap on WTI Crude Oil").
   "USOILP", "XAGS", "XAUS",
@@ -104,7 +123,11 @@ const COMMODITY = new Set([
  * venue's own answer and never need to appear here. Entries below cover a
  * venue that lists a currency without saying so.
  */
-const FX = new Set(["AUDUSD", "EURUSD", "GBPUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY"]);
+const FX = new Set([
+  "AUDUSD", "EURUSD", "GBPUSD", "NZDUSD", "USDCAD", "USDCHF", "USDJPY",
+  // Hibachi and trade.xyz name a currency by itself against the dollar.
+  "AUD", "CAD", "EUR", "GBP", "JPY", "NZD",
+]);
 
 /* Order is for readability only; the sets do not overlap. */
 const CURATED: ReadonlyArray<readonly [InstrumentClass, ReadonlySet<string>]> = [

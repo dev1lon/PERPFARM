@@ -76,7 +76,8 @@ describe("protocol page reference", () => {
     for (const slug of SLUGS) {
       expect(isReadyVenue(slug)).toBe(true);
     }
-    expect(isReadyVenue("hibachi")).toBe(false);
+    // A catalogued protocol with no data path is still never ready.
+    expect(isReadyVenue("hotstuff")).toBe(false);
     expect(isReadyVenue("venue_alpha")).toBe(false);
   });
 

@@ -52,6 +52,13 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   // base-tier maker is not paid rather than credited a rebate we cannot read.
   // docs.nado.xyz/core/fees-and-rebates
   nado: { makerBps: 0.0, takerBps: 3.5 },
+  // Standard Mode, tier 0: 0.030% maker / 0.090% taker
+  // (docs.trade.xyz/perpetuals/mechanics). Growth-mode markets are a tenth of
+  // it and are priced per market in ASSET_CLASS_FEES below.
+  tradexyz: { makerBps: 3.0, takerBps: 9.0 },
+  // Read from Hibachi's own exchange-info feeConfig (tradeMakerFeeRate 0,
+  // tradeTakerFeeRate 0.00045), which is also what its fee row stores.
+  hibachi: { makerBps: 0.0, takerBps: 4.5 },
 };
 
 /**
@@ -69,6 +76,14 @@ const ASSET_CLASS_FEES: Record<string, Record<string, VenueFees>> = {
     COMMODITY: { makerBps: 2.0, takerBps: 5.0 },
     FX: { makerBps: 1.0, takerBps: 2.0 },
   },
+  // Not an instrument class: trade.xyz charges by FEE MODE, and Hyperliquid
+  // states the mode per market. The collector stores GROWTH_MODE on each market
+  // in growth mode (worker/perpfarm/adapters/tradexyz.py) -- 0.0030% maker /
+  // 0.0090% taker, a tenth of Standard Mode. Pricing all 120 markets at the
+  // standard rate would have overstated 113 of them tenfold.
+  tradexyz: {
+    GROWTH_MODE: { makerBps: 0.3, takerBps: 0.9 },
+  },
 };
 
 /** How to name a class in the fee note under a route. */
@@ -77,6 +92,7 @@ const ASSET_CLASS_LABELS: Record<string, string> = {
   INDEX: "indices",
   COMMODITY: "commodities",
   FX: "FX",
+  GROWTH_MODE: "growth-mode markets",
 };
 
 export function assetClassLabel(assetClass: string | null | undefined): string | null {

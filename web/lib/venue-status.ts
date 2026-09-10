@@ -29,6 +29,12 @@ const READY_VENUE_SLUGS = [
   // interpolated quote curve. Funding is quoted daily and settled hourly --
   // both confirmed against the live API, see worker/perpfarm/adapters/nado.py.
   "nado",
+  // trade.xyz: a HIP-3 dex (`xyz`) on Hyperliquid, collected from Hyperliquid's
+  // own /info feed like Entropy; fees per market, see venue-fees.ts.
+  "tradexyz",
+  // Hibachi: collected hourly since 2026-07; its fee row is read live from
+  // the venue's exchange-info (0 maker / 4.5 bps taker).
+  "hibachi",
 ] as const;
 
 /** A protocol whose data path is verified -- the only kind that can be priced. */

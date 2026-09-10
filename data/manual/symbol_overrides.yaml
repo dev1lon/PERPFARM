@@ -18,3 +18,26 @@ overrides:
   - venue: venue_alpha
     symbol: kPEPE-PERP
     symbol_canonical: PEPE
+
+  # trade.xyz spells metals and Brent out; Variational, TxFlow and RiseX use the
+  # exchange codes. Same instrument, same scale -- checked 2026-09-10 against
+  # the collected marks: xyz:GOLD 4351.4 vs XAU 4351.7-4358.0, xyz:SILVER 64.10
+  # vs XAG 64.09-64.30, xyz:PLATINUM 1794.1 vs XPT 1795.1-1798.6,
+  # xyz:PALLADIUM 1289.3 vs XPD 1289.8-1292.2, xyz:BRENTOIL 104.44 vs BZ
+  # 104.65-104.74. xyz:CL already matches CL, and xyz:SP500 already matches
+  # Polymarket's SP500 at the same ~7,593 scale, so neither is mapped.
+  - venue: tradexyz
+    symbol: xyz:GOLD
+    symbol_canonical: XAU
+  - venue: tradexyz
+    symbol: xyz:SILVER
+    symbol_canonical: XAG
+  - venue: tradexyz
+    symbol: xyz:PLATINUM
+    symbol_canonical: XPT
+  - venue: tradexyz
+    symbol: xyz:PALLADIUM
+    symbol_canonical: XPD
+  - venue: tradexyz
+    symbol: xyz:BRENTOIL
+    symbol_canonical: BZ

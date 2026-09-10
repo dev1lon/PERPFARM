@@ -44,6 +44,10 @@ PUBLISHED_FEES: dict[str, tuple[float, float]] = {
     "risex": (1.0, 3.0),
     "qfex": (5.0, 10.0),
     "entropy": (3.0, 9.0),
+    "nado": (0.0, 3.5),
+    # Standard Mode; growth-mode markets are priced per class below.
+    "tradexyz": (3.0, 9.0),
+    "hibachi": (0.0, 4.5),
 }
 
 # Venues that charge by INSTRUMENT CLASS instead of one venue-wide rate, keyed
@@ -57,6 +61,10 @@ ASSET_CLASS_FEES: dict[str, dict[str, tuple[float, float]]] = {
         "INDEX": (2.0, 5.0),
         "COMMODITY": (2.0, 5.0),
         "FX": (1.0, 2.0),
+    },
+    # trade.xyz: Growth Mode is a tenth of Standard Mode (adapters/tradexyz.py).
+    "tradexyz": {
+        "GROWTH_MODE": (0.3, 0.9),
     },
 }
 

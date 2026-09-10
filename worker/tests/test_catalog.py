@@ -32,8 +32,9 @@ def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path):
         data_dir=tmp_path,
         summary=summary,
     )
-    # 12 stub real-venue adapters (variational, extended, pacifica, nado,
-    # txflow, tradexyz, hotstuff, risex, 01exchange, perpl, polymarket, reya)
-    # skip cleanly.
-    assert summary.markets_skipped >= 10
+    # The adapters still raising NotImplementedError skip cleanly: extended,
+    # pacifica, hotstuff, 01exchange, perpl, reya, bullet, ondo. The count
+    # drops each time a venue is wired up (nado, then tradexyz), so update it
+    # together with the registry rather than loosening it to nothing.
+    assert summary.markets_skipped >= 8
     assert summary.markets_synced == 0
