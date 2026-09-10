@@ -1197,16 +1197,21 @@ export function RouteResults({
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-6">
+            {/* The last two tiles (estimated cost, 24h range) get the wider
+                columns: in a monospace face "$0.68–$0.72" is wider than an
+                equal sixth, and the range broke onto two lines at the dash. */}
+            <div className="grid grid-cols-2 gap-3 pt-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.15fr)_minmax(0,1.45fr)]">
               {headlineTiles(locale, data, best, hold, hasCostHistory).map(([k, v, cls, tip]) => (
                 <div key={k} className="flex flex-col gap-1.5">
-                  {/* No nowrap: at six columns "Estimated cost · 24h median"
-                      overflowed its cell and printed on top of the next label. */}
+                  {/* No nowrap on the label: at six columns "Estimated cost ·
+                      24h median" overflowed its cell and printed on top of the
+                      next label. The VALUE never wraps -- a figure split in
+                      two reads as two figures. */}
                   <div className="flex items-center gap-1.5 text-[11px] leading-[1.35] text-text-muted">
                     {k}
                     {tip ? <InfoTip text={tip} /> : null}
                   </div>
-                  <div className={`font-mono-num text-[17px] ${cls}`}>{v}</div>
+                  <div className={`whitespace-nowrap font-mono-num text-[17px] ${cls}`}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1499,7 +1504,7 @@ export function RouteResults({
                               {k}
                               {tip ? <InfoTip text={tip} /> : null}
                             </div>
-                            <div className={`font-mono-num text-[15px] ${cls}`}>{v}</div>
+                            <div className={`whitespace-nowrap font-mono-num text-[15px] ${cls}`}>{v}</div>
                           </div>
                         ))}
                       </div>
