@@ -1218,7 +1218,11 @@ export function RouteResults({
                     {k}
                     {tip ? <InfoTip text={tip} /> : null}
                   </div>
-                  <div className={`whitespace-nowrap font-mono-num text-[17px] ${cls}`}>{v}</div>
+                  {/* Only a FIGURE is kept on one line. Without cost history the
+                      last tile names its source in words ("latest hourly
+                      snapshot"), and a nowrap sentence ran out of the panel
+                      over the route model. */}
+                  <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[17px]" : "text-[14px] leading-snug"} font-mono-num ${cls}`}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1266,7 +1270,9 @@ export function RouteResults({
               shortLabel={legsOf(best).shortName}
               height={360}
               costLabel={formatUsd(best.cycleCostUsd)}
-              rangeLabel={`24H ${formatUsd(best.costRangeLowUsd)}-${formatUsd(best.costRangeHighUsd)}`}
+              // A 24h range exists only once there is 24h of history; a
+              // protocol collected for an hour printed "24H $4.75-$4.75".
+              rangeLabel={hasCostHistory ? `24H ${formatUsd(best.costRangeLowUsd)}-${formatUsd(best.costRangeHighUsd)}` : undefined}
               longOrders={orders(best.firstLimitSide).entry.split(" / ")[0]}
               shortOrders={orders(best.firstLimitSide).entry.split(" / ")[1]}
               costFraction={costFractionOf(best)}
@@ -1511,7 +1517,7 @@ export function RouteResults({
                               {k}
                               {tip ? <InfoTip text={tip} /> : null}
                             </div>
-                            <div className={`whitespace-nowrap font-mono-num text-[15px] ${cls}`}>{v}</div>
+                            <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[15px]" : "text-[13px] leading-snug"} font-mono-num ${cls}`}>{v}</div>
                           </div>
                         ))}
                       </div>

@@ -41,3 +41,46 @@ overrides:
   - venue: tradexyz
     symbol: xyz:BRENTOIL
     symbol_canonical: BZ
+
+  # trade.xyz's tickers for the two Korean memory makers' USD-quoted shares,
+  # which TxFlow and Polymarket spell out. Same scale, checked 2026-09-10:
+  # xyz:SMSN 190.20 vs SAMSUNG 190.15-190.32, xyz:SKHX 1351.05 vs SKHYNIX
+  # 1348.89-1349.00. (xyz:SKHY, the ADS near 190, already matches SKHY.)
+  - venue: tradexyz
+    symbol: xyz:SMSN
+    symbol_canonical: SAMSUNG
+  - venue: tradexyz
+    symbol: xyz:SKHX
+    symbol_canonical: SKHYNIX
+
+  # QFEX quotes these in their HOME currency, not dollars, yet its adapter
+  # names them by the bare ticker -- so each was matched, and hedged, against
+  # the dollar listing elsewhere at a completely different scale. Checked
+  # 2026-09-10: SAMSUNG-KRW 256,300 vs SAMSUNG 190.15; SKHYNIX-KRW 1,818,350 vs
+  # SKHYNIX 1,348.89; HYUNDAI-KRW 380,950 vs xyz HYUNDAI 282.51; CXMT-CNY 55.26
+  # vs CXMT 8.21; UNITREE-CNY 483.84 vs xyz UNITREE 72.06. The currency stays
+  # in the key, so these are their own markets rather than a false hedge.
+  - venue: qfex
+    symbol: SAMSUNG-KRW
+    symbol_canonical: SAMSUNG-KRW
+  - venue: qfex
+    symbol: SKHYNIX-KRW
+    symbol_canonical: SKHYNIX-KRW
+  - venue: qfex
+    symbol: HYUNDAI-KRW
+    symbol_canonical: HYUNDAI-KRW
+  - venue: qfex
+    symbol: KIA-KRW
+    symbol_canonical: KIA-KRW
+  - venue: qfex
+    symbol: CXMT-CNY
+    symbol_canonical: CXMT-CNY
+  - venue: qfex
+    symbol: UNITREE-CNY
+    symbol_canonical: UNITREE-CNY
+  - venue: qfex
+    symbol: ZHIPU-HKD
+    symbol_canonical: ZHIPU-HKD
+  - venue: qfex
+    symbol: SIVE-SEK
+    symbol_canonical: SIVE-SEK

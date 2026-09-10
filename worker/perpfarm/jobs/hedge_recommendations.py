@@ -222,9 +222,16 @@ def _venue_bps(market: Market, fill_notional_usd: float, *, cheapest: bool) -> t
     impact = _curve_impact_bps(market.quote_curve, fill_notional_usd, cheapest=cheapest)
     if impact is None:
         impact = _bucket_impact_bps(market, fill_notional_usd)
+    # A per-class rate beats the venue-wide fee row, which is one headline rate
+    # (QFEX's single-stock 5/10, trade.xyz's Standard Mode 3/9) -- the same
+    # order web/lib/cross-cost.ts uses.
+    by_class = ASSET_CLASS_FEES.get(market.slug, {}).get((market.asset_class or "").upper())
     fallback = published_fees(market.slug, market.asset_class)
-    maker = market.maker_bps if market.maker_bps is not None else (fallback[0] if fallback else None)
-    taker = market.taker_bps if market.taker_bps is not None else (fallback[1] if fallback else None)
+    if by_class is not None:
+        maker, taker = by_class
+    else:
+        maker = market.maker_bps if market.maker_bps is not None else (fallback[0] if fallback else None)
+        taker = market.taker_bps if market.taker_bps is not None else (fallback[1] if fallback else None)
     if spread is None or impact is None or maker is None or taker is None:
         return None
     return maker, taker + spread / 2 + impact

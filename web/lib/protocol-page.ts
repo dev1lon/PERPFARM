@@ -21,7 +21,9 @@ export type ProtocolSlug =
   | "qfex"
   | "risex"
   | "polymarket"
-  | "entropy";
+  | "entropy"
+  | "tradexyz"
+  | "hibachi";
 
 export type HeroMetric = { label: string; value: string; valueClass?: string; tip?: string };
 
@@ -484,6 +486,10 @@ type PendingProtocol = {
   otcPointPrice: string;
   /** The venue a farmer would hedge on by hand today. */
   hedgePartnerSlug: string;
+  /** The venue HAS announced a points programme; only the write-up is missing.
+   *  Without this the intro says no mechanics were announced, which is false
+   *  for a venue like Hibachi. */
+  pointsProgramAnnounced?: boolean;
 };
 
 function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPageConfig {
@@ -510,11 +516,17 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
       // stored snapshots like every other protocol. The intro used to say the
       // opposite -- "no route or cost is published" -- directly above a table
       // of costed routes.
-      intro: tr(
-        locale,
-        `${protocol.name} routes are priced from PerpFarm's own hourly collection, like every other protocol here. What is not written yet is how ${protocol.name} awards points: it has announced no mechanics, so the guidance below is left blank rather than guessed.`,
-        `Маршруты ${protocol.name} считаются по нашему часовому сбору данных, как и у остальных протоколов. Не написано другое — как ${protocol.name} начисляет поинты: механики не анонсированы, поэтому рекомендации ниже оставлены пустыми, а не придуманы.`,
-      ),
+      intro: protocol.pointsProgramAnnounced
+        ? tr(
+            locale,
+            `${protocol.name} routes are priced from PerpFarm's own hourly collection, like every other protocol here. ${protocol.name} runs a points programme, but PerpFarm has not written up how to farm it yet, so the guidance below is left blank rather than guessed.`,
+            `Маршруты ${protocol.name} считаются по нашему часовому сбору данных, как и у остальных протоколов. У ${protocol.name} есть программа поинтов, но как её фармить, мы пока не описали, поэтому рекомендации ниже оставлены пустыми, а не придуманы.`,
+          )
+        : tr(
+            locale,
+            `${protocol.name} routes are priced from PerpFarm's own hourly collection, like every other protocol here. What is not written yet is how ${protocol.name} awards points: it has announced no mechanics, so the guidance below is left blank rather than guessed.`,
+            `Маршруты ${protocol.name} считаются по нашему часовому сбору данных, как и у остальных протоколов. Не написано другое — как ${protocol.name} начисляет поинты: механики не анонсированы, поэтому рекомендации ниже оставлены пустыми, а не придуманы.`,
+          ),
       // The reference's shape, waiting for its words: two priorities and four
       // tips, in the same slots every other protocol uses. Kept visible on
       // purpose -- a protocol page that silently drops half the panel is a
@@ -646,6 +658,44 @@ function polymarket(locale: Locale): ProtocolPageConfig {
   );
 }
 
+function tradexyz(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "tradexyz",
+      name: "TradeXYZ",
+      twitterUrl: "https://x.com/tradexyz",
+      docsUrl: "https://docs.trade.xyz/",
+      tradeUrl: "https://trade.xyz", // TODO(manual): referral link
+      season: "—",
+      // The same status the home card publishes, so the two cannot disagree.
+      farmEstimate: { value: tr(locale, "Activity records", "Учитывает активность"), positive: true, tip: retroExpectedTip("TradeXYZ", locale) },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+}
+
+function hibachi(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "hibachi",
+      name: "Hibachi",
+      twitterUrl: "https://x.com/hibachi_xyz",
+      docsUrl: "https://docs.hibachi.xyz/",
+      tradeUrl: "https://hibachi.xyz", // TODO(manual): referral link
+      season: "—",
+      // Hibachi publishes a points programme (docs.hibachi.xyz/hibachi-rewards/
+      // hibachi-points) but no cost per point, so no number is claimed.
+      farmEstimate: { value: "TBA" },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+      pointsProgramAnnounced: true,
+    },
+    locale,
+  );
+}
+
 const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   variational,
   txflow,
@@ -653,6 +703,8 @@ const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   risex,
   polymarket,
   entropy,
+  tradexyz,
+  hibachi,
 };
 
 /** Whether this slug has a protocol page at all (the rest get the SOON page). */

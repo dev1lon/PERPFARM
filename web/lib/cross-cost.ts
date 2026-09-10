@@ -23,7 +23,7 @@ import {
   oiBandsFor,
 } from "@/lib/route-model";
 import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, type InstrumentClass } from "@/lib/tradfi";
-import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
+import { assetClassLabel, classFees, publishedFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
   slug: string;
@@ -347,9 +347,10 @@ function schedulesOf(slug: string, rows: Map<string, VenueMarketRow>, pricedPair
     if (!pricedPairs.has(row.pair)) continue;
     const key = row.asset_class ?? "";
     if (seen.has(key)) continue;
+    const byClass = classFees(slug, row.asset_class);
     const published = publishedFees(slug, row.asset_class);
-    const makerBps = asNumber(row.maker_bps ?? null) ?? published?.makerBps ?? null;
-    const takerBps = asNumber(row.taker_bps ?? null) ?? published?.takerBps ?? null;
+    const makerBps = byClass?.makerBps ?? asNumber(row.maker_bps ?? null) ?? published?.makerBps ?? null;
+    const takerBps = byClass?.takerBps ?? asNumber(row.taker_bps ?? null) ?? published?.takerBps ?? null;
     if (makerBps === null || takerBps === null) continue;
     seen.set(key, { venue: slug, makerBps, takerBps, assetClass: assetClassLabel(row.asset_class) });
   }

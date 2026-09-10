@@ -112,6 +112,22 @@ export function feesVaryByAssetClass(slug: string): boolean {
  * consulted only for venues that publish a per-class schedule; everywhere else
  * the venue-wide rate is the answer and the argument is ignored.
  */
+/**
+ * The venue's rate for THIS market's class, and nothing else: null when the
+ * venue has no per-class schedule or the class is not one it prices by.
+ *
+ * Callers that also hold the venue-wide `fee_schedules` row must let this win
+ * over that row. The row is one headline rate (QFEX's is its single-stock
+ * 5/10 bps; trade.xyz's is Standard Mode 3/9), so reading the row first
+ * charged QFEX's FX pairs the stock rate and would charge every trade.xyz
+ * growth-mode market ten times what it costs.
+ */
+export function classFees(slug: string, assetClass?: string | null): VenueFees | null {
+  const byClass = ASSET_CLASS_FEES[slug];
+  if (!byClass || !assetClass) return null;
+  return byClass[assetClass.toUpperCase()] ?? null;
+}
+
 export function publishedFees(slug: string, assetClass?: string | null): VenueFees | null {
   const byClass = ASSET_CLASS_FEES[slug];
   if (byClass && assetClass) {
