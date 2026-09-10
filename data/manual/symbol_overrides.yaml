@@ -120,6 +120,9 @@ overrides:
   - venue: polymarket # 29,135.50 vs QFEX US100 29,132.00
     symbol: NAS100-USD
     symbol_canonical: US100
+  - venue: tradexyz # XYZ 100 tracks the Nasdaq-100: 29,132.50 vs US100 29,132.00
+    symbol: xyz:XYZ100
+    symbol_canonical: US100
   - venue: polymarket # 4,320.70 vs XAU 4,318-4,331
     symbol: GOLD-USD
     symbol_canonical: XAU

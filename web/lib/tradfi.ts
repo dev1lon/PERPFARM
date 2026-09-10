@@ -1,18 +1,16 @@
 /**
  * What each instrument IS, not merely whether it is TradFi.
  *
- * We do not decide what counts as what — the protocol does. Two sources feed
- * this file, in that order of authority:
+ * One answer per instrument, whichever venue lists it. Two sources feed this
+ * file, in this order of authority:
  *
- *   1. `markets.asset_class`, the class a venue publishes about its own market
- *      (QFEX exposes it as `product_category`). A venue's statement about its
- *      own listing always wins; see `instrumentClass` below.
- *   2. This curated map, for venues whose feed carries no class field at all —
- *      Variational's stats feed is one. It mirrors the venue's published RWA
- *      market list (docs.variational.io/omni/trading/rwa-perpetuals) and the
- *      instrument names in its public feed, which identify each listing as a
- *      company, ETF or commodity ("Apple Inc.", "iShares MSCI Japan ETF",
- *      "Brent Oil").
+ *   1. This curated map, checked against each venue's own interface and docs
+ *      (Variational's RWA list and tags, trade.xyz's specification index,
+ *      Entropy's and Polymarket's catalogs). It wins, because venue feeds are
+ *      coarse: QFEX's `product_category` is EQUITY for a pre-IPO name and an
+ *      ETF alike. See `instrumentClass` below.
+ *   2. `markets.asset_class`, the class a venue publishes about its own market,
+ *      for anything the map has not reached yet.
  *
  * Anything neither source classifies is crypto. That is the honest default
  * here: these are perp DEXes, so an unlabelled market is a token, and a
@@ -39,18 +37,17 @@ const EQUITY = new Set([
   "QCOM", "RIVN", "RKLB", "SHAZ", "SKHY", "SNDK", "SNOW", "SONY", "STRC", "STXX", "TSLA", "TSM",
   "TTWO", "UBER", "USAR", "VISA", "WEN", "WMT", "ZM",
 
-  // QFEX files these under EQUITY. Its own classification, kept verbatim --
-  // including COPX, a miners ETF the venue files with the single names. QFEX
-  // also files USDE (Ethena's stablecoin) under EQUITY; that one stays out,
-  // the same way tokenised gold does.
+  // QFEX files these under EQUITY. The ETFs it files there too (COPX, NCLD,
+  // RSP, SMH) are listed with the indices instead, and USDE (Ethena's
+  // stablecoin, also under EQUITY) stays out the same way tokenised gold does.
   "ABCL", "ABSI", "ADEA", "AEHR", "ALNT", "ASST", "ASTS", "AXTI", "B", "BA", "BB", "BE",
-  "BFLY", "BMNP", "BRK.B", "CAT", "CCXI", "CGNX", "CHYM", "CIEN", "CIFR", "COHR", "COPX",
+  "BFLY", "BMNP", "BRK.B", "CAT", "CCXI", "CGNX", "CHYM", "CIEN", "CIFR", "COHR",
   "CRDO", "CRON", "CRWV", "CVNA", "CYPH", "DGXX", "DXYZ", "FCEL", "FLEX", "GD", "GLW",
   "GLXY", "GRAB", "GRND", "GS", "HUBS", "HUT", "HYUNDAI", "ILMN", "IONQ", "IOVA", "JBL",
-  "KEEL", "LMT", "LPTH", "LRCX", "LSCC", "MITK", "MRNA", "MTCH", "MX", "NBR", "NCLD",
+  "KEEL", "LMT", "LPTH", "LRCX", "LSCC", "MITK", "MRNA", "MTCH", "MX", "NBR",
   "NEM", "NOC", "NOW", "NUAI", "NVTS", "OUST", "PANW", "PENG", "PL", "PLUG", "QURE",
-  "RCAT", "RDCM", "RDDT", "RDW", "RIOT", "RSP", "RTX", "SAMSUNG", "SBET", "SERV", "SIVE",
-  "SKHYNIX", "SKM", "SMCI", "SMH", "SPCE", "SUIG", "TE", "TEM", "TMO", "VCX", "WDC",
+  "RCAT", "RDCM", "RDDT", "RDW", "RIOT", "RTX", "SAMSUNG", "SBET", "SERV", "SIVE",
+  "SKHYNIX", "SKM", "SMCI", "SPCE", "SUIG", "TE", "TEM", "TMO", "VCX", "WDC",
   "WOLF", "WPM", "WULF", "WYFI", "XOM", "ZBRA",
 
   // Single names listed by the smaller venues and by nobody in the two
@@ -66,6 +63,16 @@ const EQUITY = new Set([
   // as the Quant token, and one ticker cannot be both in a shared map.
   "AMAT", "BIRD", "DKNG", "GEV", "GIGADEV", "KIOXIA", "MINIMAX", "NET", "PURRDAT",
   "SKHX", "SMSN", "SOFTBANK", "ZHIPU",
+
+  // Listed shares that were filed elsewhere before (checked 2026-09-10 against
+  // each venue's own labels): Nebius (Nasdaq: NBIS) and Quantinuum (Nasdaq:
+  // QNT; Variational's QNTX, "Class A Common Stock") are tagged TradFi, not
+  // Pre-IPO, on Variational and "Stocks" in trade.xyz's catalog; SPCX is
+  // SpaceX (Nasdaq: SPCX) on every venue that lists it, not an index. Cisco and
+  // Teradyne are Variational listings the map had not reached. CXMT and
+  // UNITREE trade as shares on every venue that labels them (Polymarket
+  // "equity", trade.xyz "Stocks", QFEX quoting them in yuan), not pre-IPO.
+  "CSCO", "CXMT", "NBIS", "QNTX", "SPCX", "TER", "UNITREE",
 ]);
 
 /**
@@ -74,13 +81,15 @@ const EQUITY = new Set([
  * ANTH and OAI are Entropy's tickers for the two Variational spells out.
  */
 const PRELISTING = new Set([
-  "ANTH", "ANTHROPIC", "NBIS", "OAI", "OPENAI", "QNTX",
-  // trade.xyz's pre-IPO perpetuals (its Pre-IPO specification index).
-  "CXMT", "SHEIN", "UNITREE",
+  "ANTH", "ANTHROPIC", "OAI", "OPENAI",
+  // SHEIN, the one name trade.xyz's own catalog (via Entropy's market API)
+  // still labels "Pre-IPOs". Its older Pre-IPO index also named SPCX, QNT,
+  // CBRS, SKHY, CXMT and UNITREE; every venue now labels those as stocks.
+  "SHEIN",
 ]);
 
 const INDEX = new Set([
-  "DRAM", "EWJ", "EWT", "EWY", "EWZ", "IWM", "KSTR", "QQQ", "SOXL", "SPCX", "URNM", "US500",
+  "DRAM", "EWJ", "EWT", "EWY", "EWZ", "IWM", "KSTR", "QQQ", "SOXL", "URNM", "US500",
   "UVXY", "XBI", "XLE",
   // QFEX's indices and sector ETFs.
   "HSI", "IGV", "KOSPI", "NIKKEI", "TAIEX", "US100", "XLF",
@@ -94,6 +103,10 @@ const INDEX = new Set([
   // trade.xyz's indices and ETFs: its own XYZ U.S. 100 basket, the Korea 200
   // and Japan 225 benchmarks, and three ETFs (KORU, MAGS, LYTE).
   "JP225", "KORU", "KR200", "LYTE", "MAGS", "XYZ100",
+  // ETFs QFEX files under its coarse EQUITY class, and two Variational ETFs the
+  // map had not reached (Direxion TMF / TZA). An ETF is an index product on
+  // every venue that labels it (trade.xyz: SMH, NCLD under "Indices / ETFs").
+  "COPX", "NCLD", "RSP", "SMH", "TMF", "TZA",
   // Variational's index swaps ("Swap on US 500", "Swap on US Non-Financial
   // 100"). Same underlyings as US500 / US100, a different instrument -- see
   // SWAP below.
@@ -114,7 +127,7 @@ const COMMODITY = new Set([
   "PALLADIUM", "PLATINUM",
   // Variational's commodity swaps ("Swap on Gold Spot", "Swap on Silver Spot",
   // "Swap on WTI Crude Oil").
-  "USOILP", "XAGS", "XAUS",
+  "UKOILP", "USOILP", "XAGS", "XAUS",
 ]);
 
 /**
@@ -180,19 +193,23 @@ const VENUE_CLASS: Record<string, InstrumentClass> = {
 /**
  * What this instrument is.
  *
- * `venueAssetClass` is the class the venue publishes for its own market
- * (`markets.asset_class`), and it wins whenever it is present and recognised:
- * a venue describing its own listing outranks a list we maintain by hand.
- * Unrecognised strings fall through to the curated map rather than inventing a
- * class, so a new product line shows up as whatever we already knew instead of
- * as a label nobody can read.
+ * The curated map answers first, and the class a venue publishes for its own
+ * market (`markets.asset_class`) fills in only what the map does not name.
+ *
+ * It used to be the other way round, and that made one instrument read as two
+ * kinds depending on the venue: QFEX's API files pre-IPO names and ETFs under
+ * the single coarse class EQUITY (its own interface tags OpenAI "Pre-IPO"), so
+ * OPENAI was pre-IPO on Variational and a stock on QFEX. The map is curated
+ * against every venue's own interface and docs, one answer per instrument; a
+ * venue's class still classifies everything the map has not reached yet.
+ * Unrecognised venue strings fall through rather than inventing a class.
  */
 export function instrumentClass(symbol: string, venueAssetClass?: string | null): InstrumentClass {
+  for (const [name, set] of CURATED) if (set.has(symbol)) return name;
   if (venueAssetClass) {
     const known = VENUE_CLASS[venueAssetClass.trim().toUpperCase()];
     if (known) return known;
   }
-  for (const [name, set] of CURATED) if (set.has(symbol)) return name;
   return TRADFI_BY_AT_LEAST_ONE_PROTOCOL.get(symbol) ?? "crypto";
 }
 
@@ -241,6 +258,8 @@ const SWAP_UNDERLYING = new Map<string, string>([
   // trades at a tenth of the index (~759). Checked 2026-09-10.
   ["US500S", "SP500"],
   ["USOILP", "CL"],
+  // "Swap on Brent Crude Oil", listed after the map was written.
+  ["UKOILP", "BZ"],
 ]);
 
 export function isSwap(symbol: string): boolean {
