@@ -309,16 +309,25 @@ function TierLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function farmVolumeTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Approximate cost of $100k volume on one account at the cheapest route. A manual estimate; it moves with spreads and fees.",
+    "Примерная стоимость $100k объёма на одном аккаунте по самому дешёвому маршруту. Ручная оценка, меняется вместе со спредом и комиссиями.",
+  );
+}
+
 function ProtocolCard({ p }: { p: HomeProtocol }) {
   const locale = useLocale();
   const emptyLabel =
     p.status === "retro"
       ? tr(locale, "No points yet", "Поинтов пока нет")
       : tr(locale, "No points", "Поинтов нет");
-  // A protocol with a farm estimate HAS points -- an empty OTC cell there means
-  // nobody is quoting them yet, which is a different fact from "no points" and
-  // the one a farmer needs. Only a card in that exact state reads differently.
-  const otcEmptyLabel = p.farmEstimate ? tr(locale, "No OTC yet", "OTC пока нет") : emptyLabel;
+  // A LIVE programme has points -- an empty OTC cell there means nobody is
+  // quoting them yet, which is a different fact from "no points" and the one a
+  // farmer needs. Keyed on status, not on a farm estimate: retro protocols now
+  // carry a cost per volume while still having no points to quote.
+  const otcEmptyLabel = p.status === "live" ? tr(locale, "No OTC yet", "OTC пока нет") : emptyLabel;
   const cell = (label: string, value: string | undefined, tip: string, empty: string) => (
     <div className="flex flex-col gap-1.5 rounded-xl bg-surface-2 p-3">
       <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
@@ -355,7 +364,14 @@ function ProtocolCard({ p }: { p: HomeProtocol }) {
           {p.status ? <StatusBadge status={p.status} /> : null}
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          {cell(tr(locale, "Farm estimate", "Оценка фарма"), p.farmEstimate, farmEstimateTip(locale), emptyLabel)}
+          {cell(
+            tr(locale, "Farm estimate", "Оценка фарма"),
+            p.farmEstimate,
+            // The tip has to name the unit the figure is in: per point where a
+            // programme prices points, per volume where it does not yet.
+            p.farmEstimate?.includes("vol") ? farmVolumeTip(locale) : farmEstimateTip(locale),
+            emptyLabel,
+          )}
           {cell(tr(locale, "OTC point price", "OTC цена поинта"), p.otc, otcPointTip(locale), otcEmptyLabel)}
         </div>
       </Link>
@@ -446,7 +462,7 @@ function Protocols() {
           {radar.length > 0 && (
             <>
               <div className="pt-[34px]">
-                <TierLabel>{tr(locale, "Radar", "Радар")}</TierLabel>
+                <TierLabel>{tr(locale, "Soon", "Скоро")}</TierLabel>
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                 {radar.map((p) => (

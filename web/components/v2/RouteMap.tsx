@@ -35,8 +35,6 @@ const NETWORK: NodeData[] = [
   { name: "Hibachi", slug: "hibachi", p: [-1.92, -0.78, -0.7] },
   { name: "Extended", slug: "extended", p: [0.3, 0.52, 1.3] },
   { name: "Pacifica", slug: "pacifica", p: [-0.3, 0.02, -1.55] },
-  { name: "Bullet", slug: "bullet", p: [1.9, -1.06, 0.85] },
-  { name: "Reya", slug: "reya", p: [1.05, 1.18, -1.35] },
   { name: "Nado", slug: "nado", p: [0.68, -0.34, 0.05] },
 ];
 
