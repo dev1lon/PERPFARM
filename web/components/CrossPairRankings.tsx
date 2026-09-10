@@ -145,6 +145,6 @@ export function CrossPairRankings({
     bands: response.bands.map((band) => ({ key: band.key, pairs: mapPairs(band.pairs) })),
     pairs: response.pairs ? mapPairs(response.pairs) : undefined,
   };
-  const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug);
+  const [best, bestRule] = selectRecommendedPair(data.bands, venueSlug, data.pairs);
   return <RouteResults data={data} top={pairs} best={best} bestRule={bestRule} hedgeName={hedgeName} homeName={homeName} homeSlug={venueSlug} hedgeSlug={hedgeSlug} expanded={expanded} setExpanded={setExpanded} grouped={response.grouped} oiFilter={activeFilter} setOiFilter={setOiFilter} classFilters={classFilters} setClassFilters={setClassFilters} swapsOnly={swapsOnly} setSwapsOnly={setSwapsOnly} />;
 }

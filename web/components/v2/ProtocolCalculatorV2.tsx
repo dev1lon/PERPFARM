@@ -725,7 +725,7 @@ export function ProtocolCalculatorV2({
   const activeFilter = resolveBandFilter(bands, oiFilter);
   const tablePairs = [...(activeFilter === "all" || !grouped ? data?.pairs ?? flatPairs : bandPairs(activeFilter))]
     .sort((a, b) => a.cycleCostUsd - b.cycleCostUsd);
-  const [best, bestRule] = selectRecommendedPair(bands, venueSlug);
+  const [best, bestRule] = selectRecommendedPair(bands, venueSlug, data?.pairs ?? flatPairs);
 
   return (
     <div className="mt-10">
@@ -858,7 +858,7 @@ export function ProtocolCalculatorV2({
 }
 
 /** Which criteria actually selected the recommended pair. */
-export type BestRule = "medium-tradfi" | "medium" | "tradfi" | "cheapest";
+export type BestRule = "swap-low-oi" | "medium-tradfi" | "medium" | "tradfi" | "cheapest";
 
 type RecommendationPolicy = { preferMediumOi: boolean; preferTradfi: boolean };
 
@@ -902,13 +902,22 @@ function recommendedHold(homeSlug: string, locale: Locale): string {
 export function selectRecommendedPair(
   bands: RankingResponse["bands"],
   homeSlug: string,
+  /** Every eligible pair, not just each band's cheapest ten -- a swap can sit
+   *  outside a band's top ten and must still be found. */
+  allPairs?: PairRanking[],
 ): [PairRanking | undefined, BestRule] {
-  // Swaps are listed and filterable, but never picked automatically: the venue
-  // does not document whether swap volume earns points, and a swap's daily
-  // financing is not in the public feed, so its cost is incomplete. A route
-  // recommended for FARMING has to rest on neither unknown. Falls back to the
-  // full list only if a venue had nothing but swaps.
   const everything = bands.flatMap((band) => band.pairs);
+  // Swaps come first whenever the answer holds one (Variational on either
+  // leg): the Swaps Trading Competition counts swap volume only. With five swap
+  // markets there is no cost race worth running, so the pick is the one with
+  // the LEAST open interest; a tie goes to the cheaper route.
+  const swaps = (allPairs ?? everything).filter((pair) => isSwap(pair.pair));
+  if (swaps.length > 0) {
+    const leastOi = [...swaps].sort(
+      (a, b) => a.openInterestUsd - b.openInterestUsd || a.cycleCostUsd - b.cycleCostUsd,
+    )[0];
+    return [leastOi, "swap-low-oi"];
+  }
   const perps = everything.filter((pair) => !isSwap(pair.pair));
   const all = perps.length > 0 ? perps : everything;
   const medium = (bands.find((band) => band.key === "medium")?.pairs ?? []).filter((pair) => !isSwap(pair.pair));
@@ -1112,7 +1121,9 @@ export function RouteResults({
     ? data.costBasis === "24h-median"
     : best.costRangeLowUsd !== best.costRangeHighUsd;
   const hold = recommendedHold(homeSlug, locale);
-  const bestRuleLabel = bestRule === "medium-tradfi"
+  const bestRuleLabel = bestRule === "swap-low-oi"
+    ? tr(locale, "Lowest-OI swap", "Своп с наименьшим OI")
+    : bestRule === "medium-tradfi"
     ? tr(locale, "Cheapest medium-OI TradFi pair", "Самая дешёвая TradFi-пара со средним OI")
     : bestRule === "medium"
       ? tr(locale, "Cheapest medium-OI pair", "Самая дешёвая пара со средним OI")
