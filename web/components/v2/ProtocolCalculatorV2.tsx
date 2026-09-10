@@ -59,7 +59,7 @@ export function AssetClassBadge({ assetClass, locale }: { assetClass?: Instrumen
   return (
     <span
       title={ASSET_CLASS_TITLE[assetClass]}
-      className="whitespace-nowrap rounded-sm border border-border px-1.5 py-0.5 font-mono-num text-[10px] text-text-muted"
+      className="inline-flex items-center whitespace-nowrap rounded-none border border-border px-2.5 py-1 text-[13px] font-semibold text-text-muted"
     >
       {tr(locale, label.en, label.ru)}
     </span>
@@ -266,21 +266,15 @@ function snapshotTip(locale: Locale): string {
  * a sentence inside a shared component.
  */
 /**
- * What the funding tile is, and above all what it is NOT.
- *
- * The tile sits in one row with spread, slippage and fees -- the three parts
- * the cycle cost is summed from -- so a bare "+$2.78" there reads as a fourth
- * part of that sum. It is not: funding is an estimate for a 12-hour hold that
- * drifts while the position is open, and it never changes the ranking. This
- * tip was removed in 5f707ca on the theory that the +/- sign and its colour
- * made it redundant; the sign says which way the money moves, but not that the
- * money is outside the total. So the sentence leads with exactly that.
+ * The tile sits beside spread, slippage and fees, so without this a signed
+ * "+$2.78" reads as part of the total. One line is enough here; how funding
+ * is estimated lives on the methodology page.
  */
 function fundingTip(locale: Locale): string {
   return tr(
     locale,
-    "Not part of the cycle cost. What holding the hedge for 12 hours is expected to earn (+) or cost (−), estimated from the last 24h of funding rates on both legs. It changes while the position is open, so it never affects the route ranking. On a same-protocol route both legs sit on one book and net to $0.",
-    "Не входит в стоимость цикла. Сколько удержание хеджа 12 часов, по оценке, принесёт (+) или будет стоить (−) — по ставкам фандинга обеих ног за последние 24ч. Меняется, пока позиция открыта, поэтому не влияет на ранжирование маршрутов. На маршруте внутри одного протокола обе ноги стоят в одной книге и дают $0.",
+    "Not included in the cycle cost. Estimated for a 12-hour hold.",
+    "Не входит в стоимость цикла. Оценка за удержание 12 часов.",
   );
 }
 

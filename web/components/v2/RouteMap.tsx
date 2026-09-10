@@ -161,11 +161,13 @@ export function RouteMap({
           fontVariantNumeric: "tabular-nums slashed-zero",
           color: "var(--accent)",
         });
-      // What each leg does on entry, under its venue name.
+      // What each leg does on entry, under its venue name -- and the 24h range,
+      // which shares this treatment. 12px: at 10px both read as fine print
+      // next to the figures they sit beside.
       if (kind === "sub")
         Object.assign(base, {
           fontFamily: CHART_FACE,
-          fontSize: "10px",
+          fontSize: "12px",
           fontWeight: "600",
           letterSpacing: "0.14em",
           color: "var(--text-dim)",
@@ -705,7 +707,9 @@ export function RouteMap({
         if (costTag) {
           v.copy(curve.getPoint(0.62)).project(camera);
           const cx = (v.x * 0.5 + 0.5) * w + 30;
-          const cy = (-v.y * 0.5 + 0.5) * h;
+          // Lifted clear of the track: centred on the line, the blue figure sat
+          // on the blue arc and the two ran together.
+          const cy = (-v.y * 0.5 + 0.5) * h - 20;
           costTag.style.transform = `translate(-50%,-50%) translate(${cx.toFixed(1)}px, ${cy.toFixed(1)}px)`;
         }
       }
