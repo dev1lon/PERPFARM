@@ -10,10 +10,11 @@ import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
-import type { InstrumentClass } from "@/lib/tradfi";
+import { isSwap, type InstrumentClass } from "@/lib/tradfi";
 
-/** "all", or one market class. */
-export type ClassFilter = InstrumentClass | "all";
+/** "all", one market class, or "swap" -- the instrument type, which cuts
+ *  across classes (a gold swap is still a commodity). */
+export type ClassFilter = InstrumentClass | "all" | "swap";
 
 /** The order classes are offered in: the two biggest sets a perp DEX lists,
  *  then the rest of the TradFi shelf. */
@@ -64,6 +65,45 @@ export function AssetClassBadge({ assetClass, locale }: { assetClass?: Instrumen
       {tr(locale, label.en, label.ru)}
     </span>
   );
+}
+
+/**
+ * Marks a swap, next to its class badge and in the same treatment.
+ *
+ * A swap is a different instrument from the perp on the same underlying: it
+ * accrues daily financing at the 17:00 ET close instead of funding, and trades
+ * restricted hours (docs.variational.io/omni/trading/swaps). Both change what
+ * the numbers beside it mean, so the row has to say which one it is.
+ */
+export function SwapBadge({ locale }: { locale: Locale }) {
+  return (
+    <span
+      title={tr(
+        locale,
+        "Swap — tracks the underlying's total return; daily financing instead of funding, restricted trading hours",
+        "Своп — повторяет полную доходность актива; суточное финансирование вместо фандинга, ограниченные часы торгов",
+      )}
+      className="inline-flex items-center whitespace-nowrap rounded-none border border-accent/40 px-2.5 py-1 text-[13px] font-semibold text-accent"
+    >
+      Swap
+    </span>
+  );
+}
+
+/** A swap's funding tile reads "n/a", and this says why. */
+function swapFundingTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Swaps accrue daily financing at the 17:00 ET close instead of funding. Variational's public feed does not publish the rate.",
+    "Своп начисляет суточное финансирование на закрытии в 17:00 ET вместо фандинга. Публичный фид Variational ставку не публикует.",
+  );
+}
+
+/** One label for every segment of the market strip, including "Swaps". */
+function classFilterLabel(locale: Locale, filter: ClassFilter): string {
+  if (filter === "all") return tr(locale, "All", "Все");
+  if (filter === "swap") return tr(locale, "Swaps", "Свопы");
+  return tr(locale, ASSET_CLASS_LABEL[filter].en, ASSET_CLASS_LABEL[filter].ru);
 }
 
 /**
@@ -740,8 +780,15 @@ export function selectRecommendedPair(
   bands: RankingResponse["bands"],
   homeSlug: string,
 ): [PairRanking | undefined, BestRule] {
-  const all = bands.flatMap((band) => band.pairs);
-  const medium = bands.find((band) => band.key === "medium")?.pairs ?? [];
+  // Swaps are listed and filterable, but never picked automatically: the venue
+  // does not document whether swap volume earns points, and a swap's daily
+  // financing is not in the public feed, so its cost is incomplete. A route
+  // recommended for FARMING has to rest on neither unknown. Falls back to the
+  // full list only if a venue had nothing but swaps.
+  const everything = bands.flatMap((band) => band.pairs);
+  const perps = everything.filter((pair) => !isSwap(pair.pair));
+  const all = perps.length > 0 ? perps : everything;
+  const medium = (bands.find((band) => band.key === "medium")?.pairs ?? []).filter((pair) => !isSwap(pair.pair));
   const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
   const policy = RECOMMENDATION_POLICY[homeSlug] ?? DEFAULT_RECOMMENDATION_POLICY;
 
@@ -835,7 +882,13 @@ export function RouteResults({
     classCounts.set(pair.assetClass, (classCounts.get(pair.assetClass) ?? 0) + 1);
   }
   const offeredClasses = CLASS_ORDER.filter((name) => (classCounts.get(name) ?? 0) > 0);
-  const byClass = classFilter === "all" ? top : top.filter((pair) => pair.assetClass === classFilter);
+  const swapCount = top.filter((pair) => isSwap(pair.pair)).length;
+  const byClass =
+    classFilter === "all"
+      ? top
+      : classFilter === "swap"
+        ? top.filter((pair) => isSwap(pair.pair))
+        : top.filter((pair) => pair.assetClass === classFilter);
   const needle = query.trim().toUpperCase();
   const matches = needle === "" ? byClass : byClass.filter((pair) => pair.pair.toUpperCase().includes(needle));
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
@@ -922,6 +975,7 @@ export function RouteResults({
                 and Dogecoin were both TradFi. One badge now, one answer, and it
                 is the instrument's real class. */}
             <AssetClassBadge assetClass={best.assetClass} locale={locale} />
+            {isSwap(best.pair) ? <SwapBadge locale={locale} /> : null}
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -981,8 +1035,8 @@ export function RouteResults({
               <CostTile label={tr(locale, "Slippage", "Проскальзывание")} value={best.slippageCostUsd} />
               <CostTile
                 label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
-                value={best.fundingUsd ?? 0}
-                tip={fundingTip(locale)}
+                value={isSwap(best.pair) ? null : best.fundingUsd ?? 0}
+                tip={isSwap(best.pair) ? swapFundingTip(locale) : fundingTip(locale)}
                 signed
               />
               <CostTile
@@ -1044,7 +1098,7 @@ export function RouteResults({
                        same word over a filtered number would say only nine
                        markets qualified, when nine is how many of the
                        qualifying markets are commodities. */
-                    `${matches.length} · ${tr(locale, ASSET_CLASS_LABEL[classFilter].en, ASSET_CLASS_LABEL[classFilter].ru)}`
+                    `${matches.length} · ${classFilterLabel(locale, classFilter)}`
                   : oiFilter === "all"
                     ? tr(
                         locale,
@@ -1066,9 +1120,11 @@ export function RouteResults({
                 segment that could only ever return nothing is not a choice.
                 Each carries its count, so the reader knows the size of what
                 they are switching to before switching. */}
-            {setClassFilter && offeredClasses.length > 1 && (
+            {setClassFilter && (offeredClasses.length > 1 || swapCount > 0) && (
               <div className="flex flex-wrap gap-0.5 rounded-lg border border-border p-[3px]">
-                {(["all", ...offeredClasses] as ClassFilter[]).map((k) => (
+                {/* "Swaps" sits after the classes: it is an instrument type that
+                    cuts across them, offered only when the answer holds one. */}
+                {(["all", ...offeredClasses, ...(swapCount > 0 ? ["swap"] : [])] as ClassFilter[]).map((k) => (
                   <button
                     key={k}
                     type="button"
@@ -1081,9 +1137,9 @@ export function RouteResults({
                     aria-pressed={classFilter === k}
                     className={`pf-transition rounded-none px-3 py-1.5 text-[13px] font-semibold ${classFilter === k ? "bg-text-primary/10 text-text-primary" : "text-text-muted hover:text-text-primary"}`}
                   >
-                    {k === "all" ? tr(locale, "All", "Все") : tr(locale, ASSET_CLASS_LABEL[k].en, ASSET_CLASS_LABEL[k].ru)}
+                    {classFilterLabel(locale, k)}
                     <span className="pl-1.5 font-mono-num opacity-60">
-                      {k === "all" ? top.length : classCounts.get(k) ?? 0}
+                      {k === "all" ? top.length : k === "swap" ? swapCount : classCounts.get(k) ?? 0}
                     </span>
                   </button>
                 ))}
@@ -1172,6 +1228,7 @@ export function RouteResults({
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
+                        {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
                         {showEligible && p.competitionEligible && (
                           <span title="Competition eligible" className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
@@ -1198,6 +1255,7 @@ export function RouteResults({
                         <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
+                        {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
                         {showEligible && p.competitionEligible && (
                           <span className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
@@ -1268,11 +1326,13 @@ export function RouteResults({
                               // Same-protocol routes hold an equal long and
                               // short on one book, so funding is a measured
                               // zero; cross routes retain their signed value.
-                              p.fundingUsd ?? 0,
+                              // A swap has no published funding at all, so it
+                              // reads "n/a" rather than a measured $0.00.
+                              isSwap(p.pair) ? null : p.fundingUsd ?? 0,
                               // The tip travels with the tile into the row: the
                               // "shown separately" note under the headline route
                               // is out of sight once a reader opens a row.
-                              fundingTip(locale),
+                              isSwap(p.pair) ? swapFundingTip(locale) : fundingTip(locale),
                             ],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined],
                           ] as [string, number | null, string | undefined][]

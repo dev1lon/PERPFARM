@@ -28,7 +28,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, inspect, select
 
-from perpfarm.adapters.base import MarketUnavailable, OrderbookTop, VenueAdapter
+from perpfarm.adapters.base import FundingUnavailable, MarketUnavailable, OrderbookTop, VenueAdapter
 from perpfarm.adapters.registry import FIXTURE_SLUGS, build_adapter
 from perpfarm.jobs.hedge_recommendations import run_hedge_recommendations
 from perpfarm.schema import (
@@ -117,7 +117,9 @@ class _Reading:
 
     target: Target
     book: dict[str, object]
-    funding: dict[str, object]
+    #: None when the venue publishes no funding for a quotable market (a swap).
+    #: The book and volume are still written; see `FundingUnavailable`.
+    funding: dict[str, object] | None
     volume: dict[str, object]
     mark: dict[str, object] | None
 
@@ -135,7 +137,13 @@ def _read_market(
     _slug, market_id, symbol = target
     try:
         book = adapter.get_orderbook_top(symbol)
-        funding = adapter.get_funding(symbol)
+        # Funding alone may be unpublished without the market being unpriceable.
+        # Only `FundingUnavailable` is absorbed here; every other failure still
+        # reaches the handlers below and skips the market exactly as before.
+        try:
+            funding = adapter.get_funding(symbol)
+        except FundingUnavailable:
+            funding = None
         volume = adapter.get_volume(symbol)
     except NotImplementedError as reason:
         return None, ("unwired", str(reason) or type(reason).__name__)
@@ -166,13 +174,17 @@ def _read_market(
         _Reading(
             target=target,
             book=book_values,
-            funding={
-                "market_id": market_id,
-                "ts": ts,
-                "funding_rate_raw": funding.funding_rate_raw,
-                "interval_hours": funding.interval_hours,
-                "funding_rate_annualized": funding.funding_rate_annualized,
-            },
+            funding=(
+                {
+                    "market_id": market_id,
+                    "ts": ts,
+                    "funding_rate_raw": funding.funding_rate_raw,
+                    "interval_hours": funding.interval_hours,
+                    "funding_rate_annualized": funding.funding_rate_annualized,
+                }
+                if funding is not None
+                else None
+            ),
             volume={
                 "market_id": market_id,
                 "ts": ts,
@@ -195,7 +207,8 @@ def _write_one(engine: Engine, reading: _Reading) -> Outcome:
     try:
         with engine.begin() as conn:
             conn.execute(book_snapshots.insert().values(**reading.book))
-            conn.execute(funding_snapshots.insert().values(**reading.funding))
+            if reading.funding is not None:
+                conn.execute(funding_snapshots.insert().values(**reading.funding))
             if reading.mark is not None:
                 conn.execute(mark_snapshots.insert().values(**reading.mark))
             conn.execute(volume_snapshots.insert().values(**reading.volume))
@@ -222,7 +235,9 @@ def _write_batch(engine: Engine, readings: list[_Reading]) -> dict[Target, Outco
     try:
         with engine.begin() as conn:
             conn.execute(book_snapshots.insert(), [reading.book for reading in readings])
-            conn.execute(funding_snapshots.insert(), [reading.funding for reading in readings])
+            fundings = [reading.funding for reading in readings if reading.funding is not None]
+            if fundings:
+                conn.execute(funding_snapshots.insert(), fundings)
             marks = [reading.mark for reading in readings if reading.mark is not None]
             if marks:
                 conn.execute(mark_snapshots.insert(), marks)

@@ -77,6 +77,10 @@ const INDEX = new Set([
   // already warns about ("SKHY" vs "SKHYNIX") -- one instrument, several
   // tickers, and a lookup that only knows one of them.
   "NAS100", "SOXS", "SP500", "SPY",
+  // Variational's index swaps ("Swap on US 500", "Swap on US Non-Financial
+  // 100"). Same underlyings as US500 / US100, a different instrument -- see
+  // SWAP below.
+  "US100S", "US500S",
 ]);
 
 const COMMODITY = new Set([
@@ -89,6 +93,9 @@ const COMMODITY = new Set([
   "BRENTOIL", "WTIOIL",
   // Nado's spelling of the same crude contract.
   "WTI",
+  // Variational's commodity swaps ("Swap on Gold Spot", "Swap on Silver Spot",
+  // "Swap on WTI Crude Oil").
+  "USOILP", "XAGS", "XAUS",
 ]);
 
 /**
@@ -173,4 +180,24 @@ export function instrumentClass(symbol: string, venueAssetClass?: string | null)
  */
 export function isTradfiMarket(symbol: string): boolean {
   return TRADFI_TICKERS.has(symbol) || TRADFI_BY_AT_LEAST_ONE_PROTOCOL.has(symbol);
+}
+
+/**
+ * Swaps, as opposed to perpetuals.
+ *
+ * A property of the instrument's TYPE, orthogonal to its class: a gold swap is
+ * still a commodity. What makes it worth marking is that it behaves differently
+ * where the calculator is concerned -- per docs.variational.io/omni/trading/swaps
+ * a swap accrues daily traditional-market financing at the 17:00 ET close
+ * instead of perp funding, and trades restricted hours rather than 24/7.
+ *
+ * Curated from the live feed, where every one is named "Swap on ..." and
+ * reports `funding_rate: 0` with `funding_interval_s: 0`. The venue's docs name
+ * more swap markets (XPT, XPD, COPP, UKOIL, TWI, EURUSD) than the feed lists
+ * today; their tickers are added when they appear, not guessed ahead of it.
+ */
+const SWAP = new Set(["US100S", "US500S", "USOILP", "XAGS", "XAUS"]);
+
+export function isSwap(symbol: string): boolean {
+  return SWAP.has(symbol);
 }

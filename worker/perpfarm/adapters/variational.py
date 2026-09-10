@@ -22,6 +22,7 @@ import httpx
 from perpfarm.adapters.base import (
     FeeData,
     FundingData,
+    FundingUnavailable,
     MarketInfo,
     MarketUnavailable,
     OrderbookTop,
@@ -196,6 +197,13 @@ class VariationalAdapter(VenueAdapter):
         listing = self._listing(symbol)
         raw = _float(listing.get("funding_rate"))
         interval_seconds = _float(listing.get("funding_interval_s"))
+        # A swap, not a broken perp: both fields are exactly zero on every swap
+        # listing ("Swap on Gold Spot", US500S, ...), because swaps accrue daily
+        # financing the feed does not publish. Only that exact signature is
+        # treated as "funding not published"; anything else malformed still
+        # means the reading cannot be trusted.
+        if raw == 0 and interval_seconds == 0:
+            raise FundingUnavailable(f"variational: {symbol} is a swap; its daily financing is not in the public feed")
         if raw is None or interval_seconds is None or interval_seconds <= 0:
             raise MarketUnavailable(f"variational: funding unavailable for {symbol}")
         interval_hours = interval_seconds / 3600.0

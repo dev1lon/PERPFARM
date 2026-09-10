@@ -26,6 +26,22 @@ class MarketUnavailable(Exception):
     whole run."""
 
 
+class FundingUnavailable(Exception):
+    """The market is quotable, but its venue publishes no funding figure for it.
+
+    Different from `MarketUnavailable` on purpose. A missing QUOTE means there is
+    nothing to price, so the market is skipped for the hour. A missing FUNDING
+    figure on an instrument with a live book is not that: Variational's swaps
+    report `funding_rate: 0` and `funding_interval_s: 0` because they do not
+    settle funding like a perp at all -- they accrue daily traditional-market
+    financing at the 17:00 ET close (docs.variational.io/omni/trading/swaps),
+    which the public feed does not expose.
+
+    Storing that as a measured zero would price an unknown as free, and skipping
+    the market would hide the most liquid TradFi listings on the venue. So the
+    snapshot job records the book and volume and leaves funding absent."""
+
+
 @dataclass(frozen=True)
 class MarketInfo:
     symbol: str  # native ticker as reported by the venue, e.g. "kPEPE-PERP"
