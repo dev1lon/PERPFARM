@@ -265,6 +265,25 @@ function snapshotTip(locale: Locale): string {
  * and wrong the moment a third lists: per-protocol facts belong in data, not in
  * a sentence inside a shared component.
  */
+/**
+ * What the funding tile is, and above all what it is NOT.
+ *
+ * The tile sits in one row with spread, slippage and fees -- the three parts
+ * the cycle cost is summed from -- so a bare "+$2.78" there reads as a fourth
+ * part of that sum. It is not: funding is an estimate for a 12-hour hold that
+ * drifts while the position is open, and it never changes the ranking. This
+ * tip was removed in 5f707ca on the theory that the +/- sign and its colour
+ * made it redundant; the sign says which way the money moves, but not that the
+ * money is outside the total. So the sentence leads with exactly that.
+ */
+function fundingTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Not part of the cycle cost. What holding the hedge for 12 hours is expected to earn (+) or cost (−), estimated from the last 24h of funding rates on both legs. It changes while the position is open, so it never affects the route ranking. On a same-protocol route both legs sit on one book and net to $0.",
+    "Не входит в стоимость цикла. Сколько удержание хеджа 12 часов, по оценке, принесёт (+) или будет стоить (−) — по ставкам фандинга обеих ног за последние 24ч. Меняется, пока позиция открыта, поэтому не влияет на ранжирование маршрутов. На маршруте внутри одного протокола обе ноги стоят в одной книге и дают $0.",
+  );
+}
+
 function feeTip(locale: Locale, data: RankingResponse): string {
   const schedule = data.feeSchedule ?? [];
   const charging = schedule.filter((entry) => entry.makerBps > 0 || entry.takerBps > 0);
@@ -969,6 +988,7 @@ export function RouteResults({
               <CostTile
                 label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
                 value={best.fundingUsd ?? 0}
+                tip={fundingTip(locale)}
                 signed
               />
               <CostTile
@@ -1255,7 +1275,10 @@ export function RouteResults({
                               // short on one book, so funding is a measured
                               // zero; cross routes retain their signed value.
                               p.fundingUsd ?? 0,
-                              undefined,
+                              // The tip travels with the tile into the row: the
+                              // "shown separately" note under the headline route
+                              // is out of sight once a reader opens a row.
+                              fundingTip(locale),
                             ],
                             [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined],
                           ] as [string, number | null, string | undefined][]
