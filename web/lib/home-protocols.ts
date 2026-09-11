@@ -57,7 +57,15 @@ export const EARLY: HomeProtocol[] = [
   { slug: "lighterrh", name: "Lighter RH", status: "live" },
 ];
 
-/** Radar — compact tiles, name only. */
+/**
+ * Listed in the catalog but NOT shown on the home page (the "Soon" row was
+ * removed on 2026-09-11) and not counted as tracked.
+ *
+ * Kept rather than deleted because the catalog does more than draw the home
+ * page: `protocolName` reads a venue's display name from here, and Nado is a
+ * priced hedge venue -- dropping its entry would hide it from every hedge
+ * picker. The others keep their existing links resolving.
+ */
 export const RADAR: HomeProtocol[] = [
   { slug: "hotstuff", name: "HotStuff" },
   { slug: "01exchange", name: "N1" },
@@ -67,8 +75,8 @@ export const RADAR: HomeProtocol[] = [
   { slug: "ondo", name: "Ondo" },
 ];
 
-/** Total tracked protocols, for the hero badge. */
-export const TRACKED_COUNT = TIER_S.length + EARLY.length + RADAR.length;
+/** Tracked protocols for the hero badge: the two tiers the home page shows. */
+export const TRACKED_COUNT = TIER_S.length + EARLY.length;
 
 /** The full listed catalog (all tiers). Doubles as the web-side slug catalog:
  *  a slug here is a real protocol page even if the DB has no row for it yet

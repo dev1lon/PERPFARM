@@ -12,7 +12,6 @@ import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import {
   TIER_S,
   EARLY,
-  RADAR,
   TRACKED_COUNT,
   type HomeProtocol,
   type PointsStatus,
@@ -379,18 +378,6 @@ function ProtocolCard({ p }: { p: HomeProtocol }) {
   );
 }
 
-function RadarTile({ p }: { p: HomeProtocol }) {
-  return (
-    <Link
-      href={`/${p.slug}`}
-      className="pf-transition flex items-center gap-2.5 rounded-xl border border-border bg-bg px-3 py-2.5 hover:border-text-muted/40 hover:bg-surface-1"
-    >
-      <ProtocolMark slug={p.slug} name={p.name} size={24} radius={0} />
-      <div className="truncate text-[13px] font-medium text-text-primary">{p.name}</div>
-    </Link>
-  );
-}
-
 function Protocols() {
   const locale = useLocale();
   const [query, setQuery] = useState("");
@@ -399,8 +386,7 @@ function Protocols() {
 
   const tierS = TIER_S.filter(match);
   const early = EARLY.filter(match);
-  const radar = RADAR.filter(match);
-  const empty = tierS.length + early.length + radar.length === 0;
+  const empty = tierS.length + early.length === 0;
 
   return (
     <div id="protocols" className="scroll-mt-24 pb-4">
@@ -454,19 +440,6 @@ function Protocols() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {early.map((p) => (
                   <ProtocolCard key={p.slug} p={p} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {radar.length > 0 && (
-            <>
-              <div className="pt-[34px]">
-                <TierLabel>{tr(locale, "Soon", "Скоро")}</TierLabel>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-                {radar.map((p) => (
-                  <RadarTile key={p.slug} p={p} />
                 ))}
               </div>
             </>

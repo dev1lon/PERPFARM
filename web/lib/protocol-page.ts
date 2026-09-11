@@ -24,7 +24,8 @@ export type ProtocolSlug =
   | "entropy"
   | "tradexyz"
   | "hibachi"
-  | "lighterrh";
+  | "lighterrh"
+  | "truenorth";
 
 export type HeroMetric = { label: string; value: string; valueClass?: string; tip?: string };
 
@@ -103,6 +104,10 @@ export type ProtocolPageConfig = {
   hedge: { intro: string; partner: HedgePartnerCard };
   activity: ActivityConfig;
   points: PointsConfig;
+  /** Why a protocol with a page has nothing to price or chart, in its own
+   *  words. Absent means the generic "not collected yet", which is wrong for an
+   *  agent: it has no market of its own to collect. */
+  unpriced?: { calculator: string; activity: string };
 };
 
 /**
@@ -719,6 +724,75 @@ function lighterrh(locale: Locale): ProtocolPageConfig {
   );
 }
 
+/**
+ * TrueNorth is an AI trading agent ("the world's first agentic brokerage",
+ * truenorth.xyz), not an exchange: it holds no order book, and the trades its
+ * agents place fill on the perp venues it connects -- Hyperliquid and Ondo
+ * Perps today. Its docs (docs.truenorth.xyz) cover the analysis app and the MCP
+ * connector only; nothing on execution, its own fee or how TruthSayer Rewards
+ * are paid is published. So the page says what it is and prices nothing.
+ */
+function truenorth(locale: Locale): ProtocolPageConfig {
+  const base = pendingProtocol(
+    {
+      slug: "truenorth",
+      name: "TrueNorth",
+      twitterUrl: "https://x.com/get_truenorth",
+      docsUrl: "https://docs.truenorth.xyz/",
+      tradeUrl: "https://truenorth.xyz", // TODO(manual): referral link
+      season: "0",
+      // The same status the home card publishes, so the two cannot disagree.
+      farmEstimate: {
+        value: tr(locale, "Retro activity", "Ретро-активность"),
+        positive: true,
+        tip: tr(
+          locale,
+          "TrueNorth pays TruthSayer Rewards: discretionary USDC payouts with no published formula.",
+          "TrueNorth платит TruthSayer Rewards: выплаты в USDC на своё усмотрение, формула не опубликована.",
+        ),
+      },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+    },
+    locale,
+  );
+  return {
+    ...base,
+    guidance: {
+      ...base.guidance,
+      intro: tr(
+        locale,
+        "TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on the perp venues it connects to — Hyperliquid and Ondo Perps today — so the fees, spread and funding are those venues'. TrueNorth has published nothing on execution, its own fee or its rewards, so the guidance below is left blank rather than guessed.",
+        "TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на подключённых перп-площадках — сейчас это Hyperliquid и Ondo Perps, — поэтому комиссии, спред и фандинг берутся от них. Об исполнении, своей комиссии и наградах TrueNorth ничего не публиковал, поэтому рекомендации ниже оставлены пустыми, а не придуманы.",
+      ),
+    },
+    hedge: {
+      ...base.hedge,
+      partner: {
+        slug: "variational",
+        body: tr(
+          locale,
+          "A TrueNorth trade fills on Hyperliquid or Ondo Perps. Variational charges 0% on both sides, so the hedge leg against it costs only its spread.",
+          "Сделка через TrueNorth исполняется на Hyperliquid или Ondo Perps. Variational берёт 0% с обеих сторон, так что хедж-нога к ней стоит только спреда.",
+        ),
+        tags: [[tr(locale, "0% fees", "0% комиссии"), "ok"]],
+      },
+    },
+    unpriced: {
+      calculator: tr(
+        locale,
+        "TrueNorth has no market of its own to price: its trades fill on Hyperliquid and Ondo Perps. Hyperliquid's crypto book is priced on the TradeXYZ page, since it is the same book; Ondo Perps is not collected yet. TrueNorth's own fee on top is not published.",
+        "У TrueNorth нет своего рынка, который можно посчитать: сделки исполняются на Hyperliquid и Ondo Perps. Крипто-стакан Hyperliquid считается на странице TradeXYZ — это тот же стакан; Ondo Perps мы пока не собираем. Собственная комиссия TrueNorth сверху не опубликована.",
+      ),
+      activity: tr(
+        locale,
+        "TrueNorth's volume is booked on Hyperliquid and Ondo Perps, not on a market of its own, so there is no TrueNorth activity to draw.",
+        "Объём TrueNorth проходит на Hyperliquid и Ondo Perps, а не на своём рынке, поэтому рисовать активность TrueNorth не из чего.",
+      ),
+    },
+  };
+}
+
 const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   variational,
   txflow,
@@ -729,6 +803,7 @@ const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   tradexyz,
   hibachi,
   lighterrh,
+  truenorth,
 };
 
 /** Whether this slug has a protocol page at all (the rest get the SOON page). */

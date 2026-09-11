@@ -10,6 +10,11 @@ import { isReadyVenue } from "./venue-status";
 const WRITTEN_GUIDANCE: ProtocolSlug[] = ["variational", "txflow"];
 /** Every protocol that has a page, priced or not. */
 const SLUGS: ProtocolSlug[] = [...WRITTEN_GUIDANCE, "qfex", "risex", "polymarket", "entropy", "tradexyz", "hibachi", "lighterrh"];
+/** Pages with no market of their own to price. TrueNorth is an agent: its
+ *  trades fill on the venues it connects, so it has a page but no calculator. */
+const UNPRICED_PAGES: ProtocolSlug[] = ["truenorth"];
+/** Every protocol that has a page at all. */
+const PAGES: ProtocolSlug[] = [...SLUGS, ...UNPRICED_PAGES];
 const componentsDir = join(__dirname, "..", "components", "v2");
 const read = (file: string) => readFileSync(join(componentsDir, file), "utf-8");
 
@@ -21,7 +26,7 @@ const read = (file: string) => readFileSync(join(componentsDir, file), "utf-8");
  * that drift fail here instead of on the live site.
  */
 describe("protocol page reference", () => {
-  it.each(SLUGS)("%s renders through the shared page component", (slug) => {
+  it.each(PAGES)("%s renders through the shared page component", (slug) => {
     const file = slug === "variational" ? "ProtocolV2.tsx" : "TxFlowV2.tsx";
     const source = read(file);
 
@@ -30,7 +35,7 @@ describe("protocol page reference", () => {
     expect(source).not.toMatch(/function\s+(Hero|HedgeRecommendations|ActivityAndDistribution|MechanicsPanel)\b/);
   });
 
-  it.each(SLUGS)("%s supplies every section the reference needs", (slug) => {
+  it.each(PAGES)("%s supplies every section the reference needs", (slug) => {
     const config = protocolPageConfig(slug, "en");
 
     expect(config.name.length).toBeGreaterThan(0);
@@ -62,26 +67,32 @@ describe("protocol page reference", () => {
     // A slug in the catalog with a page must be in the union, and a page must
     // never exist for a slug the catalog does not list -- that is how a raw
     // database slug once reached a user.
-    for (const slug of SLUGS) {
+    for (const slug of PAGES) {
       expect(ALL_PROTOCOLS.map((protocol) => protocol.slug)).toContain(slug);
       expect(hasProtocolPage(slug)).toBe(true);
     }
     expect(hasProtocolPage("venue_alpha")).toBe(false);
   });
 
-  it("prices every protocol it has a page for, and nothing else", () => {
-    // The page renders the calculator on this answer alone. Every protocol
-    // with a page now has both halves of a data path -- collection and a
-    // published fee schedule -- and a slug with neither must never be ready.
+  it("prices every protocol it has a page for, except one with no market of its own", () => {
+    // The page renders the calculator on this answer alone. Every exchange
+    // with a page has both halves of a data path -- collection and a published
+    // fee schedule -- and a slug with neither must never be ready.
     for (const slug of SLUGS) {
       expect(isReadyVenue(slug)).toBe(true);
+    }
+    // An agent fills on other venues: it has a page, never a calculator, and
+    // says why in its own words instead of "not collected yet".
+    for (const slug of UNPRICED_PAGES) {
+      expect(isReadyVenue(slug)).toBe(false);
+      expect(protocolPageConfig(slug, "en").unpriced?.calculator.length).toBeGreaterThan(0);
     }
     // A catalogued protocol with no data path is still never ready.
     expect(isReadyVenue("hotstuff")).toBe(false);
     expect(isReadyVenue("venue_alpha")).toBe(false);
   });
 
-  it.each(SLUGS)("%s keeps the reference's guidance shape", (slug) => {
+  it.each(PAGES)("%s keeps the reference's guidance shape", (slug) => {
     // Two priorities and at least four tips, written or waiting to be: the
     // panel must not change shape between protocols.
     const config = protocolPageConfig(slug, "en");
@@ -90,7 +101,7 @@ describe("protocol page reference", () => {
     expect(config.guidance.tips.length).toBeGreaterThanOrEqual(4);
   });
 
-  it.each(SLUGS)("%s is translated in both languages", (slug) => {
+  it.each(PAGES)("%s is translated in both languages", (slug) => {
     const en = protocolPageConfig(slug, "en");
     const ru = protocolPageConfig(slug, "ru");
 

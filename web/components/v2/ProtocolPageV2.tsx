@@ -578,7 +578,9 @@ export function ProtocolPageV2({
         ) : (
           <NotPricedYet
             title={tr(locale, "Route calculator", "Калькулятор маршрута")}
-            body={tr(
+            // A protocol can say WHY it has nothing to price -- an agent that
+            // fills on other venues is not a venue waiting to be collected.
+            body={config.unpriced?.calculator ?? tr(
               locale,
               `PerpFarm does not collect market data for ${config.name} yet, so there is nothing to price a route from. Use the calculator on a protocol that has one, and place this leg by hand.`,
               `PerpFarm пока не собирает рыночные данные по ${config.name}, так что считать маршрут не из чего. Используйте калькулятор на протоколе, где данные есть, а эту ногу ставьте руками.`,
@@ -600,7 +602,7 @@ export function ProtocolPageV2({
         ) : (
           <NotPricedYet
             title={tr(locale, "Market activity", "Активность рынка")}
-            body={tr(
+            body={config.unpriced?.activity ?? tr(
               locale,
               `Volume, open interest and traders are drawn from saved observations, and PerpFarm has not started collecting them for ${config.name}.`,
               `Объём, открытый интерес и трейдеры рисуются по сохранённым наблюдениям — по ${config.name} мы их пока не собираем.`,
