@@ -10,7 +10,7 @@ import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
-import { isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
+import { displayPair, isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
 
 /** "all", one market class, or "swap" -- the instrument type, which cuts
  *  across classes (a gold swap is still a commodity). */
@@ -86,8 +86,8 @@ export function AssetClassBadge({ assetClass, locale }: { assetClass?: Instrumen
 function swapHoursTip(locale: Locale): string {
   return tr(
     locale,
-    "Swaps don't trade 24/7: Mon–Fri 00:00–17:00 and 18:00–24:00 ET (Brent reopens at 20:00), closed on weekends and holidays. While a swap is closed no order on it fills, not even TP/SL, so the hedge can only be closed after it reopens — while a perp leg keeps trading and can still be liquidated. Financing is charged daily at 17:00 ET, triple once a week.",
-    "Свопы торгуются не 24/7: пн–пт 00:00–17:00 и 18:00–24:00 ET (Brent — с 20:00), в выходные и праздники закрыты. Пока своп закрыт, по нему не исполняется ни одна заявка, даже TP/SL, поэтому закрыть связку можно только после открытия — а нога-перп продолжает торговаться и может получить ликвидацию. Финансирование — раз в день в 17:00 ET, раз в неделю тройное.",
+    "Swaps trade Mon–Fri only, with a daily 17:00–18:00 ET break. While closed, orders don't fill (not even TP/SL), but the perp leg keeps trading.",
+    "Свопы торгуются только пн–пт, с перерывом 17:00–18:00 ET. Пока закрыт, заявки не исполняются (даже TP/SL), а нога-перп торгуется дальше.",
   );
 }
 
@@ -130,8 +130,8 @@ function ClosedBadge({ pair, compact = false }: { pair: PairRanking; compact?: b
     <span
       title={tr(
         locale,
-        `${names} is not quoting this market in the latest hourly snapshot, so it is shut for now (Variational's swaps pause daily 17:00–18:00 ET). The cost shown is from its last quoted hour.`,
-        `${names} не котирует этот рынок в последнем часовом снимке, сейчас он закрыт (свопы Variational встают ежедневно 17:00–18:00 ET). Стоимость — по последнему часу с котировкой.`,
+        `${names} isn't quoting this market right now. Cost is from its last quoted hour.`,
+        `${names} сейчас не котирует этот рынок. Стоимость — по последнему часу с котировкой.`,
       )}
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-warning/30 bg-warning/10 font-semibold text-warning ${compact ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-1 text-[13px]"}`}
     >
@@ -483,8 +483,8 @@ function SpreadRiskBadge({ risk }: { risk: SpreadRisk }) {
       <span
         title={tr(
           locale,
-          "Needs at least 12 hourly price readings taken at the same time on both protocols. A newly added protocol or market is rated within about half a day.",
-          "Нужно минимум 12 почасовых цен, снятых в одно время на обеих площадках. Новую площадку или рынок оценим примерно за полдня.",
+          "Needs 12 hours of prices on both protocols. New markets are rated within a day.",
+          "Нужно 12 часов цен на обеих площадках. Новые рынки оцениваются в течение дня.",
         )}
         className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-border px-2.5 py-1 text-[13px] font-semibold text-text-muted"
       >
@@ -1168,7 +1168,9 @@ export function RouteResults({
   const matches = needle === ""
     ? byClass
     : byClass.filter((pair) =>
-        [pair.pair, ...Object.values(pair.tickers ?? {})].some((name) => name.toUpperCase().includes(needle)),
+        [pair.pair, displayPair(pair.pair), ...Object.values(pair.tickers ?? {})].some((name) =>
+          name.toUpperCase().includes(needle),
+        ),
       );
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   // A filter or a search can shorten the list under the current page.
@@ -1288,7 +1290,7 @@ export function RouteResults({
         <div className="grid lg:grid-cols-[1fr_400px]">
           <div className="px-6 py-6">
             <div className="flex flex-wrap items-center gap-3.5">
-              <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{best.pair}</div>
+              <div className="font-mono-num text-[40px] font-medium tracking-[-0.01em] text-text-primary">{displayPair(best.pair)}</div>
               {/* Set like the spread-risk badge beside it: same size, same
                   weight, same face. It was the same 11px, but in the CONDENSED
                   cut at normal weight, which reads a size smaller than its
@@ -1382,7 +1384,7 @@ export function RouteResults({
           <div className="hidden border-t border-border bg-surface-1 lg:block lg:border-l lg:border-t-0">
             <RouteMap
               mode="result"
-              pair={best.pair}
+              pair={displayPair(best.pair)}
               longLabel={legsOf(best).longName}
               shortLabel={legsOf(best).shortName}
               height={360}
@@ -1557,7 +1559,7 @@ export function RouteResults({
                     <div className={`hidden lg:grid ${GRID} items-center gap-3 px-[18px] py-3.5`}>
                       <div className="font-mono-num text-[13px] text-text-dim">{String(i + 1).padStart(2, "0")}</div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
+                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{displayPair(p.pair)}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
@@ -1591,7 +1593,7 @@ export function RouteResults({
                     <div className="flex flex-col gap-1 px-4 py-3 lg:hidden">
                       <div className="flex items-center gap-2">
                         <span className="font-mono-num text-[12px] text-text-dim">{String(i + 1).padStart(2, "0")}</span>
-                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{p.pair}</span>
+                        <span className="font-mono-num text-[16px] font-medium text-text-primary">{displayPair(p.pair)}</span>
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
@@ -1659,7 +1661,7 @@ export function RouteResults({
                           </div>
                         ))}
                       </div>
-                      <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Cost breakdown", "Разбор стоимости")} · {p.pair}</div>
+                      <div className="pb-3 text-[11px] uppercase tracking-[0.1em] text-text-dim">{tr(locale, "Cost breakdown", "Разбор стоимости")} · {displayPair(p.pair)}</div>
                       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                         {(
                           [

@@ -8,8 +8,10 @@ Payloads below were recorded from api.hyperliquid.xyz on 2026-09-10 for the
 `xyz` dex, trimmed to the fields the adapter reads.
 """
 
+import httpx
 import pytest
 
+from perpfarm.adapters import tradexyz
 from perpfarm.adapters.base import MarketUnavailable
 from perpfarm.adapters.tradexyz import (
     CORE_CRYPTO_CLASS,
@@ -154,3 +156,43 @@ def test_venue_fee_row_is_the_standard_schedule():
     assert fees.maker_bps == pytest.approx(3.0)
     assert fees.taker_bps == pytest.approx(9.0)
     assert fees.source_url is not None
+
+
+def test_a_refused_call_is_retried_before_the_market_is_given_up(monkeypatch):
+    """A burst of ~300 book calls can be refused mid-run; one pause saves the market."""
+
+    request = httpx.Request("POST", tradexyz.INFO_URL)
+    answers = iter([httpx.Response(429, request=request), httpx.Response(200, json={"ok": True}, request=request)])
+    pauses: list[float] = []
+    monkeypatch.setattr(tradexyz.httpx, "post", lambda *args, **kwargs: next(answers))
+    monkeypatch.setattr(tradexyz.time, "sleep", pauses.append)
+
+    assert TradexyzAdapter()._post({"type": "l2Book", "coin": "HYPE"}) == {"ok": True}
+    assert pauses == [1.0]
+
+
+def test_a_call_that_keeps_failing_still_fails(monkeypatch):
+    """The retry is a pause, not a mask: the job must still see the failure."""
+
+    request = httpx.Request("POST", tradexyz.INFO_URL)
+    monkeypatch.setattr(tradexyz.httpx, "post", lambda *args, **kwargs: httpx.Response(429, request=request))
+    monkeypatch.setattr(tradexyz.time, "sleep", lambda seconds: None)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        TradexyzAdapter()._post({"type": "l2Book", "coin": "HYPE"})
+
+
+def test_a_bad_request_is_not_retried(monkeypatch):
+    request = httpx.Request("POST", tradexyz.INFO_URL)
+    calls: list[int] = []
+
+    def answer(*args, **kwargs):
+        calls.append(1)
+        return httpx.Response(400, request=request)
+
+    monkeypatch.setattr(tradexyz.httpx, "post", answer)
+    monkeypatch.setattr(tradexyz.time, "sleep", lambda seconds: None)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        TradexyzAdapter()._post({"type": "l2Book", "coin": "NOPE"})
+    assert len(calls) == 1

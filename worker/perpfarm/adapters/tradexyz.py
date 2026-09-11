@@ -43,6 +43,7 @@ interface adds a builder fee on core crypto (it publishes none).
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping, Sequence
 
 import httpx
@@ -147,6 +148,12 @@ def is_core_market(symbol: str) -> bool:
     return ":" not in symbol
 
 
+#: Answers worth a second try: Hyperliquid shedding load, or a gateway blip.
+_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+_MAX_ATTEMPTS = 3
+_BACKOFF_SECONDS = 1.0
+
+
 class TradexyzAdapter(VenueAdapter):
     slug = "tradexyz"
 
@@ -154,9 +161,24 @@ class TradexyzAdapter(VenueAdapter):
         self._contexts: dict[str, tuple[Mapping[str, object], Mapping[str, object]]] | None = None
 
     def _post(self, payload: Mapping[str, object]) -> object:
-        response = httpx.post(INFO_URL, json=payload, timeout=25, headers={"Accept": "application/json"})
-        response.raise_for_status()
-        return response.json()
+        """One `/info` call, retried briefly when Hyperliquid refuses it.
+
+        With the core crypto book added a run makes about 300 `l2Book` calls in
+        a row. On 2026-09-11 the 10:03 run lost 18 liquid markets (HYPE, AVAX,
+        TRUMP, ...) that answered normally minutes later; Hyperliquid weighs
+        `/info` against a per-minute budget, so a burst is the likely cause. A
+        short backoff keeps such a market in the hour's first pass instead of
+        leaving it to the job's retry round five minutes later.
+        """
+
+        for attempt in range(_MAX_ATTEMPTS):
+            response = httpx.post(INFO_URL, json=payload, timeout=25, headers={"Accept": "application/json"})
+            if response.status_code in _RETRY_STATUSES and attempt < _MAX_ATTEMPTS - 1:
+                time.sleep(_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            response.raise_for_status()
+            return response.json()
+        raise AssertionError("unreachable: the last attempt always returns or raises")
 
     def _dex(self, dex: str | None) -> list[tuple[Mapping[str, object], Mapping[str, object]]]:
         """One dex's markets with their live contexts; `None` is Hyperliquid's core."""

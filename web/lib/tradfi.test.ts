@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { instrumentClass, venueTicker } from "./tradfi";
+import { displayPair, instrumentClass, venueTicker } from "./tradfi";
+
+describe("displayPair", () => {
+  it("names a swap row by the pair's standard name, not Variational's feed ticker", () => {
+    expect(displayPair("USOILP")).toBe("CL");
+    expect(displayPair("UKOILP")).toBe("BZ");
+    expect(displayPair("US500S")).toBe("SP500");
+    expect(displayPair("NVDA")).toBe("NVDA");
+  });
+});
 
 describe("venueTicker", () => {
+  it("prints trade.xyz's on-screen name, not its API coin", () => {
+    expect(venueTicker("xyz:CL")).toBe("WTIOIL");
+    expect(venueTicker("xyz:SMSN")).toBe("SAMSUNG");
+    expect(venueTicker("xyz:GOLD")).toBe("GOLD");
+  });
+
   it("strips feed plumbing and keeps the name the venue prints", () => {
     expect(venueTicker("xyz:GOLD")).toBe("GOLD");
     expect(venueTicker("io:ANTH")).toBe("ANTH");

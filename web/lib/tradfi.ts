@@ -298,7 +298,40 @@ const SWAP_TICKER_ON_VENUE = new Map<string, string>([
  * QFEX's won-quoted SAMSUNG-KRW keeps its currency.
  */
 export function venueTicker(symbol: string): string {
+  const onScreen = VENUE_SCREEN_NAME.get(symbol);
+  if (onScreen !== undefined) return onScreen;
   const bare = symbol.replace(/^[a-z0-9]+:/, "").replace(/(?:-PERP_USDT0|\/USDT-P|\/USDC|-USDC|-USD)$/, "");
   const swap = SWAP_TICKER_ON_VENUE.get(bare);
   return swap === undefined ? bare : `${swap} swap`;
+}
+
+/**
+ * trade.xyz's on-screen names, where they differ from the coin its API uses.
+ * Read from the market catalog in app.trade.xyz's own bundle (2026-09-11): the
+ * API's xyz:CL is "WTIOIL" on screen, xyz:SMSN is "SAMSUNG". A reader searches
+ * the venue for what the venue shows, so that is what is printed.
+ */
+const VENUE_SCREEN_NAME = new Map<string, string>([
+  ["xyz:CL", "WTIOIL"],
+  ["xyz:EUR", "EURUSD"],
+  ["xyz:GBP", "GBPUSD"],
+  ["xyz:JPY", "USDJPY"],
+  ["xyz:KRW", "USDKRW"],
+  ["xyz:SKHX", "SKHYNIX"],
+  ["xyz:SMSN", "SAMSUNG"],
+  ["xyz:SP500", "S&P500"],
+  ["xyz:VIX", "VVV"],
+]);
+
+/**
+ * The name a row is printed under.
+ *
+ * A swap row is keyed by the swap's feed ticker (USOILP) so it can never
+ * collide with the perp route on the same pair -- but that ticker is
+ * Variational's plumbing, which not even Variational's own screen shows. The
+ * row reads as the pair's standard name (CL, BZ, XAU) with the Swap badge beside
+ * it, and the venue's own "USOIL swap" sits under that venue's name.
+ */
+export function displayPair(pair: string): string {
+  return swapUnderlying(pair) ?? pair;
 }
