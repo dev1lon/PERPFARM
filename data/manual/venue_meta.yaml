@@ -117,6 +117,11 @@ venue_meta:
     docs_url: "https://docs.entropy.io/"
 
   # Lighter's Robinhood Chain deployment: its own app, books and API.
+  # Hyperliquid's own core book; TrueNorth executes on it.
+  - venue: hyperliquid
+    twitter_url: "https://x.com/HyperliquidX"
+    docs_url: "https://hyperliquid.gitbook.io/hyperliquid-docs"
+
   - venue: lighterrh
     twitter_url: "https://x.com/Lighter_xyz"
     docs_url: "https://apidocs.rh.lighter.xyz/docs/get-started"

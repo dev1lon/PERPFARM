@@ -721,9 +721,12 @@ function HedgeDropdown({
 export function ProtocolCalculatorV2({
   otherVenues,
   venueSlug = "variational",
+  executionContext,
 }: {
   otherVenues: VenueSummary[];
   venueSlug?: ReadyVenueSlug;
+  /** A broker (such as TrueNorth) routes to `venueSlug` but charges separately. */
+  executionContext?: { feeNote: string };
 }) {
   const locale = useLocale();
   // From the catalog, never a branch: a third protocol used to be silently
@@ -893,6 +896,8 @@ export function ProtocolCalculatorV2({
           </div>
         </div>
       </div>
+
+      {executionContext ? <p className="mt-3 text-[12px] leading-relaxed text-text-muted">{executionContext.feeNote}</p> : null}
 
       {/* states */}
       {status === "idle" && (

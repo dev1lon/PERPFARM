@@ -24,6 +24,8 @@ describe("publishedFees", () => {
   it("ignores the class on a venue that charges one rate", () => {
     expect(publishedFees("risex", "EQUITY")).toEqual(publishedFees("risex"));
     expect(publishedFees("variational", "FX")).toEqual({ makerBps: 0, takerBps: 0 });
+    expect(publishedFees("hyperliquid", "CRYPTO")).toEqual({ makerBps: 1.5, takerBps: 4.5 });
+    expect(publishedFees("ondo", "EQUITY")).toEqual({ makerBps: 1.0, takerBps: 2.5 });
   });
 
   it("treats a venue with no verified schedule as unknown, not free", () => {

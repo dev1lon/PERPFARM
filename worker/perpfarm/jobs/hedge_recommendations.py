@@ -50,6 +50,10 @@ PUBLISHED_FEES: dict[str, tuple[float, float]] = {
     "hibachi": (0.0, 4.5),
     # Standard account on Lighter's Robinhood Chain deployment.
     "lighterrh": (0.0, 0.0),
+    # Hyperliquid's own core book, tier 0.
+    "hyperliquid": (1.5, 4.5),
+    # Every enabled Ondo Perps contract.
+    "ondo": (1.0, 2.5),
 }
 
 # Venues that charge by INSTRUMENT CLASS instead of one venue-wide rate, keyed

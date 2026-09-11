@@ -38,6 +38,10 @@ const READY_VENUE_SLUGS = [
   // Lighter RH: Lighter's CLOB on Robinhood Chain, collected hourly from its
   // public API since 2026-09-11; each market's own fee fields read 0 / 0.
   "lighterrh",
+  // TrueNorth executes its connected accounts on these order books. The
+  // broker itself is not a venue, so each gets its own verified data path.
+  "hyperliquid",
+  "ondo",
 ] as const;
 
 /** A protocol whose data path is verified -- the only kind that can be priced. */
@@ -64,5 +68,9 @@ export const READY_VENUE_SLUG_LIST = [...READY_VENUE_SLUGS];
  */
 export function protocolName(slug: string | null | undefined): string | null {
   if (!slug) return null;
-  return findProtocol(slug)?.name ?? null;
+  const catalogName = findProtocol(slug)?.name;
+  if (catalogName) return catalogName;
+  // Execution-only books are selectable in the TrueNorth calculator but do
+  // not receive home-page cards or standalone protocol-guide pages.
+  return ({ hyperliquid: "Hyperliquid", ondo: "Ondo" } as Record<string, string | undefined>)[slug] ?? null;
 }

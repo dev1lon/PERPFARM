@@ -1,3 +1,5 @@
+from perpfarm.adapters.registry import REGISTRY
+from perpfarm.jobs import catalog
 from perpfarm.jobs.catalog import CatalogRefreshSummary, _sync_all_markets
 
 
@@ -20,11 +22,11 @@ def test_summary_defaults_to_all_zero():
     assert summary.errors == []
 
 
-def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path):
-    # Every stub venue raises NotImplementedError from get_markets(); hibachi
-    # is live (network) and the two fixtures need real files -- so point
-    # fixtures_dir at an empty dir: fixture venues then fail to build (recorded
-    # as errors), stubs are skipped, and the engine is never touched.
+def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path, monkeypatch):
+    # This is a unit test of the stub path, not an integration test of every
+    # live public API. Restrict its registry to stubs so adding a live adapter
+    # cannot turn a fast, offline assertion into a network timeout.
+    monkeypatch.setattr(catalog, "REGISTRY", [reg for reg in REGISTRY if reg.api_status == "stub"])
     summary = CatalogRefreshSummary()
     _sync_all_markets(
         _FakeEngine(),
@@ -33,8 +35,8 @@ def test_sync_all_markets_skips_stub_adapters_without_db(tmp_path):
         summary=summary,
     )
     # The adapters still raising NotImplementedError skip cleanly: extended,
-    # pacifica, hotstuff, 01exchange, perpl, reya, bullet, ondo. The count
-    # drops each time a venue is wired up (nado, then tradexyz), so update it
+    # pacifica, hotstuff, 01exchange, perpl, reya, bullet. The count drops each
+    # time a venue is wired up (nado, tradexyz, then ondo), so update it
     # together with the registry rather than loosening it to nothing.
-    assert summary.markets_skipped >= 8
+    assert summary.markets_skipped >= 7
     assert summary.markets_synced == 0

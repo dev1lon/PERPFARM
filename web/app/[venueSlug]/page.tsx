@@ -12,6 +12,7 @@ import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { loadFdvMarkets } from "@/lib/fdv-market";
 import { loadOiComposition } from "@/lib/oi-composition";
 import { hasProtocolPage } from "@/lib/protocol-page";
+import { trueNorthExecutionVenue } from "@/lib/truenorth-execution";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
 
@@ -60,7 +61,10 @@ export default async function VenuePage({
 
   const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
 
-  if (hasProtocolPage(venueSlug) && isReadyVenue(venueSlug)) {
+  // TrueNorth is a broker rather than a venue: prefetch its default execution
+  // book (Hyperliquid) while the client still lets the user switch to Ondo.
+  const pricedVenue = isReadyVenue(venueSlug) ? venueSlug : trueNorthExecutionVenue(venueSlug);
+  if (hasProtocolPage(venueSlug) && pricedVenue) {
     // The cards' numbers, read HERE rather than by four separate requests from
     // the browser after the page has painted. This page is regenerated hourly,
     // which is the same window those answers are cached for anyway.
@@ -69,14 +73,14 @@ export default async function VenuePage({
     // whose read failed falls back to asking for itself, exactly as before, so
     // one unavailable source can never blank a page that has everything else.
     const [activity, cheapestRoute, fdvMarkets, oiComposition] = await Promise.allSettled([
-      venueSlug === "txflow"
+      pricedVenue === "txflow"
         ? loadTxflowActivity()
-        : venueSlug === "variational"
+        : pricedVenue === "variational"
           ? loadVariationalActivity()
-          : loadStoredActivity(venueSlug),
-      loadCheapestRoute(venueSlug),
-      loadFdvMarkets(venueSlug),
-      venueSlug === "variational" ? loadOiComposition(venueSlug) : Promise.resolve(null),
+          : loadStoredActivity(pricedVenue),
+      loadCheapestRoute(pricedVenue),
+      loadFdvMarkets(pricedVenue),
+      pricedVenue === "variational" ? loadOiComposition(pricedVenue) : Promise.resolve(null),
     ]);
     const settled = <T,>(result: PromiseSettledResult<T>): T | undefined =>
       result.status === "fulfilled" ? result.value : undefined;

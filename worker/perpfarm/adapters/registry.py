@@ -18,6 +18,7 @@ from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
 from perpfarm.adapters.hibachi import HibachiAdapter
 from perpfarm.adapters.hotstuff import HotStuffAdapter
+from perpfarm.adapters.hyperliquid import HyperliquidAdapter
 from perpfarm.adapters.lighterrh import LighterRhAdapter
 from perpfarm.adapters.nado import NadoAdapter
 from perpfarm.adapters.ondo import OndoAdapter
@@ -80,7 +81,10 @@ REGISTRY: list[VenueRegistration] = [
     _real("polymarket", "Polymarket", PolymarketAdapter, api_status="live"),
     _real("reya", "Reya", ReyaAdapter),
     _real("bullet", "Bullet", BulletAdapter),
-    _real("ondo", "Ondo", OndoAdapter),
+    # TrueNorth routes orders to Hyperliquid core and Ondo Perps. Both adapters
+    # are live, so the catalog and hourly snapshot job must see both rows.
+    _real("hyperliquid", "Hyperliquid", HyperliquidAdapter, api_status="live"),
+    _real("ondo", "Ondo", OndoAdapter, api_status="live"),
     _real("qfex", "QFEX", QfexAdapter, api_status="live"),
     _real("entropy", "Entropy", EntropyAdapter, api_status="live"),
     # Lighter's own deployment on Robinhood Chain (api.rh.lighter.xyz).

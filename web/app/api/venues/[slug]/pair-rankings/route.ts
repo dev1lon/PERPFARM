@@ -127,6 +127,18 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
     competition: null,
     isEligible: isTradfiMarket,
   },
+  // Execution books selectable through TrueNorth. They have no PerpFarm
+  // campaign-specific eligibility rule; routes remain available to price.
+  hyperliquid: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: () => false,
+  },
+  ondo: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: () => false,
+  },
 };
 
 type PairRanking = {

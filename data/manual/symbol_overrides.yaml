@@ -184,6 +184,35 @@ overrides:
   - venue: tradexyz
     symbol: kFLOKI
     symbol_canonical: 1000FLOKI
+  # The same core book collected as its own venue (TrueNorth trades it).
+  - venue: hyperliquid
+    symbol: kPEPE
+    symbol_canonical: 1000PEPE
+  - venue: hyperliquid
+    symbol: kSHIB
+    symbol_canonical: 1000SHIB
+  - venue: hyperliquid
+    symbol: kBONK
+    symbol_canonical: 1000BONK
+  - venue: hyperliquid
+    symbol: kFLOKI
+    symbol_canonical: 1000FLOKI
+  # Ondo Perps names four instruments its own way. Checked 2026-09-11 on mids:
+  # WTI 96.4 vs CL 95.8-96.7, BRENT 100.4 vs BZ 100.4-100.8, US500 7673.9 vs
+  # SP500 7666-7670, SMSN 196.2 vs SAMSUNG 196.3-196.4. Its SKHY (190.7) is
+  # the SKHY every other venue lists, so it needs no entry.
+  - venue: ondo
+    symbol: WTI-USD.P
+    symbol_canonical: CL
+  - venue: ondo
+    symbol: BRENT-USD.P
+    symbol_canonical: BZ
+  - venue: ondo
+    symbol: US500-USD.P
+    symbol_canonical: SP500
+  - venue: ondo
+    symbol: SMSN-USD.P
+    symbol_canonical: SAMSUNG
   # BlackBerry (NYSE: BB). trade.xyz and QFEX list it as BB; Variational ("BlackBerry
   # Limited") and Nado as BBX. Checked 2026-09-10: xyz:BB 7.5381, QFEX BB-USD
   # 7.5350, Variational BBX 7.5230, Nado BBX 7.5245.

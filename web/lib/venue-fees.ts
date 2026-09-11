@@ -64,6 +64,11 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   // market's own fee fields report. Premium accounts pay for lower latency;
   // they are not the account a farmer opens by default.
   lighterrh: { makerBps: 0.0, takerBps: 0.0 },
+  // Hyperliquid core, tier 0 (0.015% maker / 0.045% taker). TrueNorth's
+  // builder fee is 0 bps, so its route uses these exchange rates unchanged.
+  hyperliquid: { makerBps: 1.5, takerBps: 4.5 },
+  // Ondo's live enabled-contract schedule (0.01% maker / 0.025% taker).
+  ondo: { makerBps: 1.0, takerBps: 2.5 },
 };
 
 /**

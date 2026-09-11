@@ -15,7 +15,7 @@ import type { CheapestRoute } from "@/lib/cheapest-route";
 import type { FdvMarketResponse } from "@/lib/fdv-market";
 import { protocolPageConfig, type ActivityConfig, type HedgePartnerCard, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
 import type { VenueSummary } from "@/lib/types";
-import { isReadyVenue, protocolName } from "@/lib/venue-status";
+import { isReadyVenue, protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 
 /**
  * THE protocol page. One layout, one set of words, one set of controls, for
@@ -560,6 +560,9 @@ export function ProtocolPageV2({
 }) {
   const locale = useLocale();
   const config = protocolPageConfig(slug, locale);
+  const execution = config.execution;
+  const [executionVenue, setExecutionVenue] = useState<ReadyVenueSlug | null>(execution?.defaultVenue ?? null);
+  const pricedVenue = executionVenue ?? (isReadyVenue(slug) ? slug : null);
   return (
     <div>
       <SiteHeaderV2 />
@@ -571,10 +574,44 @@ export function ProtocolPageV2({
             can choose the right counterparty before running a route. */}
         <HedgeRecommendations config={config} initialRoute={initial?.cheapestRoute} />
 
+        {execution ? (
+          <section className="mt-11 rounded-none border border-accent/25 bg-surface-1 p-5 sm:p-6">
+            <div className="flex flex-col gap-1.5 pb-4 sm:flex-row sm:items-baseline sm:justify-between">
+              <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{execution.label}</h2>
+              <p className="text-[13px] text-text-muted">{tr(locale, "TrueNorth routes the order; PerpFarm prices this book.", "TrueNorth маршрутизирует ордер; PerpFarm считает этот стакан.")}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {execution.venues.map((venue) => {
+                const selected = venue.slug === executionVenue;
+                return (
+                  <button
+                    key={venue.slug}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setExecutionVenue(venue.slug)}
+                    className={`pf-transition flex items-center gap-3 rounded-none border px-4 py-3.5 text-left ${selected ? "border-accent bg-accent/10" : "border-border bg-bg hover:border-accent/45"}`}
+                  >
+                    <ProtocolMark slug={venue.slug} name={venue.name} size={28} radius={0} />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-[15px] font-semibold text-text-primary">{venue.name}</span>
+                      <span className="font-mono-num text-[11px] text-text-muted">{selected ? tr(locale, "SELECTED", "ВЫБРАН") : tr(locale, "SELECT", "ВЫБРАТЬ")}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         {/* Live calculator + recommended route + 10-pairs table -- only where
             there is a data path to price. */}
-        {isReadyVenue(slug) ? (
-          <ProtocolCalculatorV2 otherVenues={otherVenues} venueSlug={slug} />
+        {pricedVenue ? (
+          <ProtocolCalculatorV2
+            key={pricedVenue}
+            otherVenues={otherVenues}
+            venueSlug={pricedVenue}
+            executionContext={execution ? { feeNote: execution.feeNote } : undefined}
+          />
         ) : (
           <NotPricedYet
             title={tr(locale, "Route calculator", "Калькулятор маршрута")}
@@ -597,8 +634,12 @@ export function ProtocolPageV2({
         {isReadyVenue(slug) ? <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} /> : null}
 
         {/* Market-activity chart (live activity API). */}
-        {isReadyVenue(slug) ? (
-          <MarketActivityV2 venueSlug={slug} initialData={initial?.activity} />
+        {pricedVenue ? (
+          <MarketActivityV2
+            key={pricedVenue}
+            venueSlug={pricedVenue}
+            initialData={execution && executionVenue !== execution.defaultVenue ? undefined : initial?.activity}
+          />
         ) : (
           <NotPricedYet
             title={tr(locale, "Market activity", "Активность рынка")}
