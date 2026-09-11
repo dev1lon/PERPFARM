@@ -712,7 +712,7 @@ function lighterrh(locale: Locale): ProtocolPageConfig {
       // The referral link, on Lighter's Robinhood Chain app -- a separate
       // deployment from lighter.xyz, with its own books and account.
       tradeUrl: "https://robinhoodchain.lighter.xyz/?referral=DEVILON&source=none",
-      season: "—",
+      season: "1",
       // Lighter RH runs live points (its API serves an account's "RH live
       // points"), but publishes no cost per point, so no number is claimed.
       farmEstimate: { value: "TBA" },
