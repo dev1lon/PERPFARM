@@ -199,6 +199,11 @@ export const BRAND: Record<string, BrandAssets> = {
     // brand tile as shipped; no separate wordmark, so the name renders as text.
     mark: "logos/entropy/logo.jpg",
   },
+  lighterrh: {
+    // Lighter's white "L" on its black brand tile, as shipped; it fills the
+    // mark box like QFEX's. No separate wordmark, so the name renders as text.
+    mark: "logos/LighterRH/logo.jpg",
+  },
 };
 
 export function brandAssets(slug: string): BrandAssets {

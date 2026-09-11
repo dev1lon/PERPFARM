@@ -9,7 +9,7 @@ import { isReadyVenue } from "./venue-status";
  *  empty slots waiting for it. */
 const WRITTEN_GUIDANCE: ProtocolSlug[] = ["variational", "txflow"];
 /** Every protocol that has a page, priced or not. */
-const SLUGS: ProtocolSlug[] = [...WRITTEN_GUIDANCE, "qfex", "risex", "polymarket", "entropy", "tradexyz", "hibachi"];
+const SLUGS: ProtocolSlug[] = [...WRITTEN_GUIDANCE, "qfex", "risex", "polymarket", "entropy", "tradexyz", "hibachi", "lighterrh"];
 const componentsDir = join(__dirname, "..", "components", "v2");
 const read = (file: string) => readFileSync(join(componentsDir, file), "utf-8");
 

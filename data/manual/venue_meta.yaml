@@ -115,3 +115,9 @@ venue_meta:
   - venue: entropy
     twitter_url: "https://x.com/entropyIO"
     docs_url: "https://docs.entropy.io/"
+
+  # Lighter's Robinhood Chain deployment: its own app, books and API.
+  - venue: lighterrh
+    twitter_url: "https://x.com/Lighter_xyz"
+    docs_url: "https://apidocs.rh.lighter.xyz/docs/get-started"
+    referral_link: "https://robinhoodchain.lighter.xyz/?referral=DEVILON&source=none"

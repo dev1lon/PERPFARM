@@ -59,6 +59,11 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   // Read from Hibachi's own exchange-info feeConfig (tradeMakerFeeRate 0,
   // tradeTakerFeeRate 0.00045), which is also what its fee row stores.
   hibachi: { makerBps: 0.0, takerBps: 4.5 },
+  // Lighter on Robinhood Chain: a standard account pays 0% maker / 0% taker
+  // (apidocs.rh.lighter.xyz/docs/account-types), which is also what every
+  // market's own fee fields report. Premium accounts pay for lower latency;
+  // they are not the account a farmer opens by default.
+  lighterrh: { makerBps: 0.0, takerBps: 0.0 },
 };
 
 /**

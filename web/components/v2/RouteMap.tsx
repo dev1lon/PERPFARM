@@ -36,6 +36,7 @@ const NETWORK: NodeData[] = [
   { name: "Extended", slug: "extended", p: [0.3, 0.52, 1.3] },
   { name: "Pacifica", slug: "pacifica", p: [-0.3, 0.02, -1.55] },
   { name: "Nado", slug: "nado", p: [0.68, -0.34, 0.05] },
+  { name: "Lighter RH", slug: "lighterrh", p: [1.02, 1.12, -0.92] },
 ];
 
 interface NodeRec {

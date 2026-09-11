@@ -35,6 +35,9 @@ const READY_VENUE_SLUGS = [
   // Hibachi: collected hourly since 2026-07; its fee row is read live from
   // the venue's exchange-info (0 maker / 4.5 bps taker).
   "hibachi",
+  // Lighter RH: Lighter's CLOB on Robinhood Chain, collected hourly from its
+  // public API since 2026-09-11; each market's own fee fields read 0 / 0.
+  "lighterrh",
 ] as const;
 
 /** A protocol whose data path is verified -- the only kind that can be priced. */

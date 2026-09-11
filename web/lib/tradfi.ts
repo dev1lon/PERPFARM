@@ -41,6 +41,11 @@ const EQUITY = new Set([
   // below) sits under "Indices" in that same interface, but Variational's own
   // feed names it "GoPro, Inc." -- a share, like every other venue has it.
   "TXN",
+  // Single names Lighter RH lists and no curated venue above does, checked
+  // against Lighter's own marks on 2026-09-11: Rigetti (15.68), CleanSpark
+  // (13.89), SoFi (17.38), Intuitive Machines (14.52), D-Wave Quantum (17.04),
+  // AMC Entertainment (2.49).
+  "AMC", "CLSK", "LUNR", "QBTS", "RGTI", "SOFI",
 
   // QFEX files these under EQUITY. The ETFs it files there too (COPX, NCLD,
   // RSP, SMH) are listed with the indices instead, and USDE (Ethena's
@@ -112,6 +117,11 @@ const INDEX = new Set([
   // map had not reached (Direxion TMF / TZA). An ETF is an index product on
   // every venue that labels it (trade.xyz: SMH, NCLD under "Indices / ETFs").
   "COPX", "NCLD", "RSP", "SMH", "TMF", "TZA",
+  // Lighter RH's ETFs, checked against its own marks on 2026-09-11: United
+  // States Oil Fund (152.59), iShares Silver Trust (58.28) and iShares 0-3
+  // Month Treasury Bond (100.51). Funds, not the oil and silver contracts CL
+  // and XAG, so they stay their own markets.
+  "SGOV", "SLV", "USO",
   // Variational's index swaps ("Swap on US 500", "Swap on US Non-Financial
   // 100"). Same underlyings as US500 / US100, a different instrument -- see
   // SWAP below.

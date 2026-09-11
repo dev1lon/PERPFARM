@@ -52,6 +52,9 @@ export const EARLY: HomeProtocol[] = [
   // Priced since 2026-09-10; Hibachi runs a points programme
   // (docs.hibachi.xyz/hibachi-rewards/hibachi-points).
   { slug: "hibachi", name: "Hibachi", season: "Season PLAYOFFS (4)", farmEstimate: "from $27/100k volume", status: "live" },
+  // Lighter on Robinhood Chain, priced since 2026-09-11. Runs live points (its
+  // API serves an account's "RH live points"); no season or cost measured yet.
+  { slug: "lighterrh", name: "Lighter RH", status: "live" },
 ];
 
 /** Radar — compact tiles, name only. */

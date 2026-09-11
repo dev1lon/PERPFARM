@@ -7,9 +7,10 @@ from perpfarm.adapters.registry import REGISTRY, build_adapter, get_registration
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "data" / "fixtures"
 
 
-def test_registry_has_nineteen_unique_venues():
-    assert len(REGISTRY) == 19
-    assert len({r.slug for r in REGISTRY}) == 19
+def test_registry_has_twenty_unique_venues():
+    # Lighter RH (2026-09-11) is the twentieth.
+    assert len(REGISTRY) == 20
+    assert len({r.slug for r in REGISTRY}) == 20
 
 
 def test_real_adapter_stub_raises_not_implemented():

@@ -121,6 +121,12 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
     competition: null,
     isEligible: isTradfiMarket,
   },
+  // Lighter on Robinhood Chain: live points, but no competition window.
+  lighterrh: {
+    defaultAccountVolumeUsd: 20_000,
+    competition: null,
+    isEligible: isTradfiMarket,
+  },
 };
 
 type PairRanking = {

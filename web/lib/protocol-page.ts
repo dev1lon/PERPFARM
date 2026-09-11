@@ -23,7 +23,8 @@ export type ProtocolSlug =
   | "polymarket"
   | "entropy"
   | "tradexyz"
-  | "hibachi";
+  | "hibachi"
+  | "lighterrh";
 
 export type HeroMetric = { label: string; value: string; valueClass?: string; tip?: string };
 
@@ -696,6 +697,28 @@ function hibachi(locale: Locale): ProtocolPageConfig {
   );
 }
 
+function lighterrh(locale: Locale): ProtocolPageConfig {
+  return pendingProtocol(
+    {
+      slug: "lighterrh",
+      name: "Lighter RH",
+      twitterUrl: "https://x.com/Lighter_xyz",
+      docsUrl: "https://apidocs.rh.lighter.xyz/docs/get-started",
+      // The referral link, on Lighter's Robinhood Chain app -- a separate
+      // deployment from lighter.xyz, with its own books and account.
+      tradeUrl: "https://robinhoodchain.lighter.xyz/?referral=DEVILON&source=none",
+      season: "—",
+      // Lighter RH runs live points (its API serves an account's "RH live
+      // points"), but publishes no cost per point, so no number is claimed.
+      farmEstimate: { value: "TBA" },
+      otcPointPrice: "TBA",
+      hedgePartnerSlug: "variational",
+      pointsProgramAnnounced: true,
+    },
+    locale,
+  );
+}
+
 const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   variational,
   txflow,
@@ -705,6 +728,7 @@ const BUILDERS: Record<ProtocolSlug, (locale: Locale) => ProtocolPageConfig> = {
   entropy,
   tradexyz,
   hibachi,
+  lighterrh,
 };
 
 /** Whether this slug has a protocol page at all (the rest get the SOON page). */

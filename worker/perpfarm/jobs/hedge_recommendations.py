@@ -48,6 +48,8 @@ PUBLISHED_FEES: dict[str, tuple[float, float]] = {
     # Standard Mode; growth-mode markets are priced per class below.
     "tradexyz": (3.0, 9.0),
     "hibachi": (0.0, 4.5),
+    # Standard account on Lighter's Robinhood Chain deployment.
+    "lighterrh": (0.0, 0.0),
 }
 
 # Venues that charge by INSTRUMENT CLASS instead of one venue-wide rate, keyed

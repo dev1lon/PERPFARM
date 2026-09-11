@@ -18,6 +18,7 @@ from perpfarm.adapters.extended import ExtendedAdapter
 from perpfarm.adapters.fixture import FixtureAdapter
 from perpfarm.adapters.hibachi import HibachiAdapter
 from perpfarm.adapters.hotstuff import HotStuffAdapter
+from perpfarm.adapters.lighterrh import LighterRhAdapter
 from perpfarm.adapters.nado import NadoAdapter
 from perpfarm.adapters.ondo import OndoAdapter
 from perpfarm.adapters.pacifica import PacificaAdapter
@@ -82,6 +83,8 @@ REGISTRY: list[VenueRegistration] = [
     _real("ondo", "Ondo", OndoAdapter),
     _real("qfex", "QFEX", QfexAdapter, api_status="live"),
     _real("entropy", "Entropy", EntropyAdapter, api_status="live"),
+    # Lighter's own deployment on Robinhood Chain (api.rh.lighter.xyz).
+    _real("lighterrh", "Lighter RH", LighterRhAdapter, api_status="live"),
     _fixture("venue_alpha", "Perp-dex Alpha (fixture)"),
     _fixture("venue_beta", "Perp-dex Beta (fixture)"),
 ]
