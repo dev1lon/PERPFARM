@@ -194,6 +194,8 @@ export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number
 
 export type VenueMarket = {
   pair: string;
+  /** The venue's own ticker (`xyz:GOLD`), before canonical renaming. */
+  symbol: string;
   /** When the newest snapshot behind this market was taken. */
   bookTs: string;
   volume24hUsd: number | null;
@@ -210,6 +212,7 @@ export type VenueMarket = {
 
 type VenueMarketRow = ImpactSnapshot & {
   pair: string;
+  symbol: string;
   ts: string;
   rn: number;
   volume_24h_usd: string | number | null;
@@ -231,7 +234,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
     getPool().query<VenueMarketRow>(
       `WITH v AS (SELECT id FROM venues WHERE slug = $3),
      ranked AS (
-       SELECT m.symbol_canonical AS pair, m.asset_class, b.ts,
+       SELECT m.symbol_canonical AS pair, m.symbol, m.asset_class, b.ts,
               b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
               to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
               row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
@@ -248,7 +251,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
        WHERE m.venue_id = (SELECT id FROM v) AND m.is_active = true
        ORDER BY s.market_id, s.ts DESC
      )
-     SELECT ranked.pair, ranked.asset_class, ranked.ts, ranked.rn,
+     SELECT ranked.pair, ranked.symbol, ranked.asset_class, ranked.ts, ranked.rn,
             ranked.spread_bps, ranked.impact_bps_10k, ranked.impact_bps_50k,
             ranked.impact_bps_100k, ranked.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd
@@ -273,6 +276,7 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
     // side to cross is derivable from it -- no live book required.
     byPair.set(row.pair, {
       pair: row.pair,
+      symbol: row.symbol,
       bookTs: row.ts,
       volume24hUsd: asNumber(row.volume_24h_usd),
       openInterestUsd: asNumber(row.open_interest_usd),

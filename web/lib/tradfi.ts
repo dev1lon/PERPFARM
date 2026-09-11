@@ -36,6 +36,11 @@ const EQUITY = new Set([
   "META", "MRVL", "MSFT", "MSTR", "MU", "NFLX", "NOK", "NVDA", "NVO", "ORCL", "PAYP", "PLTR",
   "QCOM", "RIVN", "RKLB", "SHAZ", "SKHY", "SNDK", "SNOW", "SONY", "STRC", "STXX", "TSLA", "TSM",
   "TTWO", "UBER", "USAR", "VISA", "WEN", "WMT", "ZM",
+  // Texas Instruments, listed after the rest and filed as crypto until it was
+  // checked against Variational's Equities tab (2026-09-10). GoPro (GPRO,
+  // below) sits under "Indices" in that same interface, but Variational's own
+  // feed names it "GoPro, Inc." -- a share, like every other venue has it.
+  "TXN",
 
   // QFEX files these under EQUITY. The ETFs it files there too (COPX, NCLD,
   // RSP, SMH) are listed with the indices instead, and USDE (Ethena's
@@ -269,4 +274,31 @@ export function isSwap(symbol: string): boolean {
 /** The pair a swap stands in for, or null when the symbol is not a swap. */
 export function swapUnderlying(symbol: string): string | null {
   return SWAP_UNDERLYING.get(symbol) ?? null;
+}
+
+/** How Variational's own interface names each swap: the underlying, tagged SWAP. */
+const SWAP_TICKER_ON_VENUE = new Map<string, string>([
+  ["XAUS", "XAU"],
+  ["XAGS", "XAG"],
+  ["US100S", "US100"],
+  ["US500S", "US500"],
+  ["USOILP", "USOIL"],
+  ["UKOILP", "UKOIL"],
+]);
+
+/**
+ * A market's ticker as its own venue shows it.
+ *
+ * Rows are named by the canonical pair, and that is not always what a venue
+ * calls the market: Variational's US500 is the SPDR ETF and joins SPY here,
+ * trade.xyz's GOLD is XAU, Nado's kPEPE is 1000PEPE. Someone looking the route
+ * up on the venue searches the venue's name, so the interface prints it. Only
+ * feed plumbing is removed -- a HIP-3 dex prefix (`xyz:`) and a dollar quote
+ * suffix (`-USD`, `/USDC`, `-PERP_USDT0`) -- never part of the name, so
+ * QFEX's won-quoted SAMSUNG-KRW keeps its currency.
+ */
+export function venueTicker(symbol: string): string {
+  const bare = symbol.replace(/^[a-z0-9]+:/, "").replace(/(?:-PERP_USDT0|\/USDT-P|\/USDC|-USDC|-USD)$/, "");
+  const swap = SWAP_TICKER_ON_VENUE.get(bare);
+  return swap === undefined ? bare : `${swap} swap`;
 }

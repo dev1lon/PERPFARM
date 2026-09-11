@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetClassLabel, feesVaryByAssetClass, publishedFees } from "./venue-fees";
+import { assetClassLabel, classFees, feesVaryByAssetClass, publishedFees } from "./venue-fees";
 
 /**
  * QFEX charges by instrument class: 0.05%/0.10% on a single stock, 0.02%/0.05%
@@ -29,6 +29,15 @@ describe("publishedFees", () => {
   it("treats a venue with no verified schedule as unknown, not free", () => {
     expect(publishedFees("nowhere")).toBeNull();
     expect(publishedFees("nowhere", "EQUITY")).toBeNull();
+  });
+
+  it("prices trade.xyz crypto at Hyperliquid's core schedule, over the venue row", () => {
+    // Core perps pay half the HIP-3 rate; the venue-wide row is Standard Mode.
+    expect(classFees("tradexyz", "CRYPTO")).toEqual({ makerBps: 1.5, takerBps: 4.5 });
+    expect(publishedFees("tradexyz", "CRYPTO")).toEqual({ makerBps: 1.5, takerBps: 4.5 });
+    expect(publishedFees("tradexyz", null)).toEqual({ makerBps: 3.0, takerBps: 9.0 });
+    expect(classFees("risex", "CRYPTO")).toBeNull();
+    expect(assetClassLabel("CRYPTO")).toBe("crypto (Hyperliquid core)");
   });
 
   it("says which venues vary by class, so the fee note can name them", () => {

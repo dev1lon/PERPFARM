@@ -83,6 +83,12 @@ const ASSET_CLASS_FEES: Record<string, Record<string, VenueFees>> = {
   // standard rate would have overstated 113 of them tenfold.
   tradexyz: {
     GROWTH_MODE: { makerBps: 0.3, takerBps: 0.9 },
+    // trade.xyz's crypto is Hyperliquid's own core book, not the xyz dex, and
+    // pays the core schedule: tier 0, 0.015% maker / 0.045% taker
+    // (docs.hyperliquid.xyz, "Fees") -- half the HIP-3 rate above. The
+    // collector stores CRYPTO on each core market. trade.xyz publishes no
+    // builder fee of its own on these, so none is added.
+    CRYPTO: { makerBps: 1.5, takerBps: 4.5 },
   },
 };
 
@@ -93,6 +99,7 @@ const ASSET_CLASS_LABELS: Record<string, string> = {
   COMMODITY: "commodities",
   FX: "FX",
   GROWTH_MODE: "growth-mode markets",
+  CRYPTO: "crypto (Hyperliquid core)",
 };
 
 export function assetClassLabel(assetClass: string | null | undefined): string | null {

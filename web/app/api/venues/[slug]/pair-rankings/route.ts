@@ -7,13 +7,16 @@ import {
   DEAD_MARKET_OI_USD,
   DEAD_MARKET_VOLUME_USD,
   MIN_PAIRS_FOR_BANDS,
+  QUOTE_CLOSED_AFTER_MS,
   displayedOpenInterestUsd,
   isDeadMarket,
   oiBandFor,
   quantizeAccountVolumeUsd,
+  quoteLagMs,
+  referenceRunMs,
   snapshotsAreFresh,
 } from "@/lib/route-model";
-import { instrumentClass, isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
+import { instrumentClass, isSwap, isTradfiMarket, venueTicker, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
@@ -145,6 +148,11 @@ type PairRanking = {
   feeCostUsd: number;
   /** Equal long and short on the SAME venue: funding cancels out. */
   fundingUsd: number;
+  /** The market's ticker as this venue shows it, keyed by slug -- the same
+   *  shape the cross table uses, so one interface prints both. */
+  tickers: Record<string, string>;
+  /** This venue, when the market had no quote in its latest run. */
+  closedVenues: string[];
 };
 
 type Band = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: PairRanking[] };
@@ -211,6 +219,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // from, so the fee note names what was charged instead of one headline
     // rate that most of the table did not pay.
     const appliedFees = new Map<string, { makerBps: number; takerBps: number }>();
+    // The run markets are judged against, read before pricing: a market whose
+    // newest book trails it got no quote in that run and is shut for now. Not
+    // simply the newest book -- a run still landing would mark half the venue.
+    const latestRun = referenceRunMs([...markets.values()].map((market) => market.bookTs));
     const candidates = [...markets.values()]
       .map((market): PairRanking | null => {
         const eligible = config.isEligible(market.pair);
@@ -263,6 +275,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           fundingUsd: 0,
           // No spread risk on a same-protocol route: both legs sit on one book
           // at one mark, so there is no gap between venues to drift.
+          tickers: { [slug]: venueTicker(market.symbol) },
+          closedVenues: quoteLagMs(market.bookTs, latestRun) > QUOTE_CLOSED_AFTER_MS ? [slug] : [],
         };
       })
       .filter((value): value is PairRanking => value !== null);

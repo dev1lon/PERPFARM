@@ -3,6 +3,7 @@
 import pytest
 
 from perpfarm.adapters.variational import (
+    VariationalAdapter,
     _funding_from_annualized_rate,
     _quote_curve_from_listing,
     _quote_curve_impact_bps,
@@ -61,6 +62,27 @@ def test_quote_curve_impact_requires_base_and_100k_quotes():
         "impact_bps_50k": None,
         "impact_bps_100k": None,
     }
+
+
+def test_a_swap_in_its_daily_break_stays_listed():
+    """Omni drops a swap's quotes from 17:00 to 18:00 ET but keeps its mark.
+
+    Retiring it for that hour emptied every swap route on the site until the
+    next run; only a listing with no quote AND no mark is gone.
+    """
+    adapter = VariationalAdapter()
+    adapter._stats = {
+        "listings": [
+            {"ticker": "XAU", "mark_price": "4324.3", "quotes": {"base": {"bid": "4323.2", "ask": "4324.6"}}},
+            {"ticker": "XAUS", "mark_price": "4317.4"},
+            {"ticker": "GONE", "mark_price": "0"},
+            {"ticker": "NOMARK"},
+        ]
+    }
+
+    active = {market.symbol: market.is_active for market in adapter.get_markets()}
+
+    assert active == {"XAU": True, "XAUS": True, "GONE": False, "NOMARK": False}
 
 
 def test_annualized_funding_is_converted_to_a_per_interval_raw_rate():

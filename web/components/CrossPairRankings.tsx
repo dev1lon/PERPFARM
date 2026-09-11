@@ -19,6 +19,10 @@ type CrossPair = {
   costRangeLowUsd: number; costRangeHighUsd: number;
   spreadRisk?: "low" | "medium" | "high" | "unknown";
   spreadBreakoutShare?: number | null;
+  /** Each leg's ticker as its venue shows it, keyed by slug. */
+  tickers?: Record<string, string>;
+  /** Venues not quoting this market in their latest run. */
+  closedVenues?: string[];
 };
 type CrossBandKey = "high" | "medium" | "low" | "all";
 type CrossResponse = {
@@ -98,6 +102,8 @@ export function CrossPairRankings({
       feeCostUsd: pair.feeCostUsd,
       longVenue: pair.longVenue,
       shortVenue: pair.shortVenue,
+      tickers: pair.tickers,
+      closedVenues: pair.closedVenues,
       entryOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
       exitOrders: longIsMaker ? "LIMIT / MARKET" : "MARKET / LIMIT",
     };

@@ -166,6 +166,33 @@ overrides:
   - venue: polymarket # 0.005086 = 1,000 x TxFlow SHIB 0.000005085
     symbol: KSHIB-USD
     symbol_canonical: 1000SHIB
+  # trade.xyz's crypto is Hyperliquid's core book, which writes the thousand as
+  # "k" too. Checked 2026-09-10 on Hyperliquid mids: kPEPE 0.003311 vs 1000PEPE
+  # 0.003311-0.003316, kSHIB 0.005104 vs 1000SHIB 0.005102, kBONK 0.002695 vs
+  # 1000BONK 0.002701-0.002704, kFLOKI 0.024106 vs Variational 1000FLOKI
+  # 0.02405. kLUNC and kNEIRO have no counterpart anywhere yet, so they stay
+  # unmapped rather than guessed.
+  - venue: tradexyz
+    symbol: kPEPE
+    symbol_canonical: 1000PEPE
+  - venue: tradexyz
+    symbol: kSHIB
+    symbol_canonical: 1000SHIB
+  - venue: tradexyz
+    symbol: kBONK
+    symbol_canonical: 1000BONK
+  - venue: tradexyz
+    symbol: kFLOKI
+    symbol_canonical: 1000FLOKI
+  # BlackBerry (NYSE: BB). trade.xyz and QFEX list it as BB; Variational ("BlackBerry
+  # Limited") and Nado as BBX. Checked 2026-09-10: xyz:BB 7.5381, QFEX BB-USD
+  # 7.5350, Variational BBX 7.5230, Nado BBX 7.5245.
+  - venue: variational
+    symbol: BBX
+    symbol_canonical: BB
+  - venue: nado
+    symbol: BBX-PERP_USDT0
+    symbol_canonical: BB
 
   # Currencies by PAIR, the way Nado and the curated FX list already name them.
   # Hibachi quotes every currency in dollars (EUR 1.16, JPY 0.006478), so CAD

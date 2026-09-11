@@ -18,16 +18,22 @@ import {
   DEAD_MARKET_OI_USD,
   DEAD_MARKET_VOLUME_USD,
   MIN_PAIRS_FOR_BANDS,
+  QUOTE_CLOSED_AFTER_MS,
+  QUOTE_GONE_AFTER_MS,
   displayedOpenInterestUsd,
   isDeadMarket,
   oiBandsFor,
+  quoteLagMs,
+  referenceRunMs,
 } from "@/lib/route-model";
-import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, type InstrumentClass } from "@/lib/tradfi";
+import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, venueTicker, type InstrumentClass } from "@/lib/tradfi";
 import { assetClassLabel, classFees, publishedFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
   slug: string;
   pair: string;
+  /** The venue's own ticker (`xyz:GOLD`), before canonical renaming. */
+  symbol: string;
   book_ts: string;
   spread_bps: string | number | null;
   impact_bps_10k: string | number | null;
@@ -72,6 +78,14 @@ export type CrossPair = {
    *  place, and the rating that follows from it. */
   spreadBreakoutShare: number | null;
   spreadRisk: SpreadRisk;
+  /** Each leg's ticker AS THAT VENUE SHOWS IT, keyed by venue slug. The row is
+   *  named by the canonical pair, which is not always what a venue calls the
+   *  market -- Variational's US500 is SPY here, trade.xyz's GOLD is XAU -- and
+   *  someone searching the venue for the row's name would not find it. */
+  tickers: Record<string, string>;
+  /** Venues whose leg had no quote in that venue's latest run: shut for now (a
+   *  swap's daily break). The route is priced from its last quoted hour. */
+  closedVenues: string[];
 };
 
 export type CrossBand = { key: "high" | "medium" | "low" | "all"; oiRangeUsd: [number, number]; pairs: CrossPair[] };
@@ -134,13 +148,18 @@ function venueBps(
     [50_000, asNumber(row.impact_bps_50k)],
     [100_000, asNumber(row.impact_bps_100k)],
   ]);
-  // A stored schedule wins; otherwise fall back to the venue's published one
-  // FOR THIS MARKET'S CLASS -- QFEX charges five times more on a single stock
-  // than on an FX pair, so one rate per venue would misprice most of its list.
-  // Only a venue we have neither for is treated as unknown.
+  // THIS MARKET'S CLASS schedule wins, then the stored venue row, then the
+  // venue's published headline rate. The stored row is one venue-wide rate
+  // (QFEX's single-stock 5/10, trade.xyz's Standard Mode 3/9), so letting it
+  // win charged QFEX's FX pairs the stock rate, and would charge trade.xyz's
+  // growth-mode markets ten times -- and its core crypto twice -- what they
+  // cost, the day the fee watcher writes a row. schedulesOf() below and the
+  // worker already read them in this order. Only a venue we have neither for
+  // is treated as unknown.
+  const byClass = classFees(row.slug, row.asset_class);
   const published = publishedFees(row.slug, row.asset_class);
-  const takerFee = asNumber(row.taker_bps) ?? published?.takerBps ?? null;
-  const makerFee = asNumber(row.maker_bps) ?? published?.makerBps ?? null;
+  const takerFee = byClass?.takerBps ?? asNumber(row.taker_bps) ?? published?.takerBps ?? null;
+  const makerFee = byClass?.makerBps ?? asNumber(row.maker_bps) ?? published?.makerBps ?? null;
   if (spread === null || impact === null || takerFee === null || makerFee === null) return null;
   return {
     maker: makerFee,
@@ -220,7 +239,7 @@ async function loadVenueMarkets(slugs: string[]): Promise<VenueMarketRow[]> {
        WHERE effective_from <= CURRENT_DATE AND venue_id IN (SELECT id FROM v)
        ORDER BY venue_id, effective_from DESC, created_at DESC
      )
-     SELECT v.slug, m.symbol_canonical AS pair, m.asset_class, book.ts AS book_ts,
+     SELECT v.slug, m.symbol_canonical AS pair, m.symbol, m.asset_class, book.ts AS book_ts,
             book.spread_bps, book.impact_bps_10k, book.impact_bps_50k, book.impact_bps_100k, book.quote_curve_json,
             vol.volume_24h_usd, vol.open_interest_usd, fund.funding, fee.taker_bps, fee.maker_bps
      FROM markets m
@@ -400,9 +419,17 @@ export async function computeCrossRankings(
     );
   const newestA = newestOf(A);
   const newestB = newestOf(B);
+  // The run each venue's legs are judged against for "closed now": the newest
+  // one once it has settled, the one before while it is still landing.
+  const referenceA = referenceRunMs([...A.values()].map((row) => row.book_ts));
+  const referenceB = referenceRunMs([...B.values()].map((row) => row.book_ts));
 
   const sharedPairs = [...A.keys()].filter((pair) => B.has(pair));
-  const ratings = await loadSpreadRisk(slugA, slugB, sharedPairs);
+  // A swap route is rated under the swap's own ticker -- the worker pairs the
+  // swap with its underlying on the other venue -- and a swap is listed on one
+  // venue only, so it is never among the shared tickers.
+  const ratedPairs = [...new Set([...sharedPairs, ...[...A.keys(), ...B.keys()].filter(isSwap)])];
+  const ratings = await loadSpreadRisk(slugA, slugB, ratedPairs);
 
   const fillNotionalUsd = accountVolumeUsd / 2;
   const candidates: Array<CrossPair & { oiKey: number }> = [];
@@ -415,7 +442,7 @@ export async function computeCrossRankings(
   // `wildFunding` outlived the filters they belonged to and reported a
   // permanent 0 -- a diagnostic that always says "nothing was dropped here" is
   // worse than no diagnostic, because it gets believed.
-  const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, deadMarket: 0 };
+  const drops = { considered: 0, notListedOnBoth: 0, noMarketData: 0, noFeeOrBook: 0, deadMarket: 0, stoppedQuoting: 0 };
   /** Markets on the home venue with no counterpart found on the hedge venue. */
   const unmatched: string[] = [];
   // A swap is another liquidity source for the same pair, not a separate
@@ -472,6 +499,16 @@ export async function computeCrossRankings(
     const displayedOiA = displayedOpenInterestUsd(oiA, slugA);
     const displayedOiB = displayedOpenInterestUsd(oiB, slugB);
     if (isDeadMarket(volA, displayedOiA) || isDeadMarket(volB, displayedOiB)) { drops.deadMarket++; continue; }
+    // A leg that missed its venue's latest run is shut for now -- a swap's
+    // daily break -- and stays in the table marked closed, priced from its last
+    // quoted hour. A leg that has missed a day of runs is not on a break.
+    const lagA = quoteLagMs(ra.book_ts, referenceA);
+    const lagB = quoteLagMs(rb.book_ts, referenceB);
+    if (lagA > QUOTE_GONE_AFTER_MS || lagB > QUOTE_GONE_AFTER_MS) { drops.stoppedQuoting++; continue; }
+    const closedVenues = [
+      ...(lagA > QUOTE_CLOSED_AFTER_MS ? [slugA] : []),
+      ...(lagB > QUOTE_CLOSED_AFTER_MS ? [slugB] : []),
+    ];
 
     // Which venue should rest the LIMIT orders? Try both assignments and keep
     // the cheaper: passive on the venue whose maker fee beats what its taker
@@ -566,14 +603,17 @@ export async function computeCrossRankings(
     const feeCostUsd = median.feeUsd;
     observations = Math.max(observations, sorted.length);
 
-    // Drift ratings are stored per identical ticker on both venues; a swap
-    // leg against a perp leg has none yet, so it reads "unknown" rather than
-    // borrowing the perp pair's rating.
-    const rating = symA === symB ? ratings.get(symA) : undefined;
+    // Ratings are stored under the row's own key: the shared ticker, or the
+    // swap's ticker for a swap leg against its underlying (the worker rates
+    // that pairing itself). A swap route therefore never borrows the rating of
+    // the perp route on the same pair.
+    const rating = ratings.get(sym);
 
     pricedA.add(symA);
     pricedB.add(symB);
     candidates.push({
+      tickers: { [slugA]: venueTicker(ra.symbol), [slugB]: venueTicker(rb.symbol) },
+      closedVenues,
       pair: sym,
       // The farmed venue's class first; the hedge venue answers only when the
       // farmed one publishes nothing. One instrument must not change class

@@ -37,9 +37,25 @@ MIN_TICKS_FOR_RISK = 12
 #: The window the badge reads. A week is what the pruner keeps hourly.
 SPREAD_WINDOW_DAYS = 7
 
+#: Swap ticker -> the pair it stands in for. A swap is listed on one venue only
+#: (Variational), so no other venue shares its ticker, and a swap route -- a
+#: gold swap hedged with another venue's XAU perp -- was never rated: the badge
+#: read "unknown" on every swap, which is every route Variational recommends.
+#: Keep in lockstep with SWAP_UNDERLYING in web/lib/tradfi.ts
+#: (tests/test_website_parity.py compares the two).
+SWAP_UNDERLYING: dict[str, str] = {
+    "XAUS": "XAU",
+    "XAGS": "XAG",
+    "US100S": "US100",
+    "US500S": "SP500",
+    "USOILP": "CL",
+    "UKOILP": "BZ",
+}
+
 #: Marks for every venue over the window, for the instruments listed on more
-#: than one venue. Pulled once and paired up in memory: with N venues the
-#: alternative is N x (N-1) / 2 queries over the same rows.
+#: than one venue, plus every swap and its underlying. Pulled once and paired
+#: up in memory: with N venues the alternative is N x (N-1) / 2 queries over the
+#: same rows.
 _MARKS_SQL = """
 SELECT m.venue_id, m.symbol_canonical AS pair, s.ts, s.mark
 FROM mark_snapshots s
@@ -48,12 +64,15 @@ JOIN venues v ON v.id = m.venue_id
 WHERE m.is_active
   AND v.slug <> ALL(:excluded_slugs)
   AND s.ts >= now() - make_interval(days => :days)
-  AND m.symbol_canonical IN (
-    SELECT symbol_canonical
-    FROM markets
-    WHERE is_active
-    GROUP BY symbol_canonical
-    HAVING COUNT(DISTINCT venue_id) > 1
+  AND (
+    m.symbol_canonical IN (
+      SELECT symbol_canonical
+      FROM markets
+      WHERE is_active
+      GROUP BY symbol_canonical
+      HAVING COUNT(DISTINCT venue_id) > 1
+    )
+    OR m.symbol_canonical = ANY(:swap_legs)
   )
 ORDER BY m.venue_id, m.symbol_canonical, s.ts
 """
@@ -132,11 +151,38 @@ def spread_risk_of(share: float | None) -> str:
     return "high"
 
 
+def rated_legs(
+    markets_a: dict[str, list[Tick]], markets_b: dict[str, list[Tick]]
+) -> list[tuple[str, list[Tick], list[Tick]]]:
+    """Every route two venues share, with each venue's own series.
+
+    The same ticker on both, and a swap on one venue against its underlying on
+    the other. A swap route is stored under the SWAP's ticker, which is how the
+    site keys it (web/lib/cross-cost.ts), so it can never overwrite the perp
+    route on the same pair. The swap and the perp sit at a steady basis to each
+    other (gold swap 4317 vs perp 4326); that offset is the pair's normal gap and
+    cancels, exactly as a steady gap between two perps does.
+    """
+
+    legs = [(pair, markets_a[pair], markets_b[pair]) for pair in sorted(set(markets_a) & set(markets_b))]
+    shared = {pair for pair, _, _ in legs}
+    for swap, underlying in sorted(SWAP_UNDERLYING.items()):
+        if swap in shared:
+            continue
+        if swap in markets_a and underlying in markets_b:
+            legs.append((swap, markets_a[swap], markets_b[underlying]))
+        elif swap in markets_b and underlying in markets_a:
+            legs.append((swap, markets_a[underlying], markets_b[swap]))
+    return legs
+
+
 def _load_marks(engine: Engine, *, days: int) -> dict[int, dict[str, list[Tick]]]:
     by_venue: dict[int, dict[str, list[Tick]]] = {}
+    swap_legs = sorted({*SWAP_UNDERLYING, *SWAP_UNDERLYING.values()})
     with engine.begin() as conn:
         rows = conn.execute(
-            text(_MARKS_SQL), {"days": days, "excluded_slugs": list(FIXTURE_SLUGS)}
+            text(_MARKS_SQL),
+            {"days": days, "excluded_slugs": list(FIXTURE_SLUGS), "swap_legs": swap_legs},
         ).all()
     for row in rows:
         by_venue.setdefault(int(row.venue_id), {}).setdefault(str(row.pair), []).append(
@@ -161,8 +207,8 @@ def run_spread_risk(engine: Engine, *, days: int = SPREAD_WINDOW_DAYS) -> Spread
         for venue_b in venue_ids[index + 1 :]:
             markets_a = by_venue[venue_a]
             markets_b = by_venue[venue_b]
-            for pair in sorted(set(markets_a) & set(markets_b)):
-                gaps = aligned_gaps_bps(markets_a[pair], markets_b[pair])
+            for pair, series_a, series_b in rated_legs(markets_a, markets_b):
+                gaps = aligned_gaps_bps(series_a, series_b)
                 share = breakout_share(gaps)
                 ratings.append(
                     {

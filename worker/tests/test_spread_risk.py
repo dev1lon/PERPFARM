@@ -86,6 +86,22 @@ def test_the_window_is_the_week_the_pruner_keeps_hourly():
     assert job.SPREAD_WINDOW_DAYS == prune_snapshots.MARK_HOURLY_DAYS
 
 
+def test_a_swap_is_rated_against_its_underlying_on_the_other_venue():
+    """Variational's swaps are listed nowhere else, so matching by ticker alone
+    left every swap route -- the routes Variational recommends -- unrated."""
+
+    swap = series([4317.0] * 3)
+    perp_here = series([4324.0] * 3)
+    perp_there = series([4326.0] * 3)
+
+    legs = {pair: (a, b) for pair, a, b in job.rated_legs({"XAUS": swap, "XAU": perp_here}, {"XAU": perp_there})}
+    assert legs == {"XAU": (perp_here, perp_there), "XAUS": (swap, perp_there)}
+
+    # Whichever venue sorts first, the row is keyed by the swap.
+    flipped = {pair: (a, b) for pair, a, b in job.rated_legs({"XAU": perp_there}, {"XAUS": swap})}
+    assert flipped == {"XAUS": (perp_there, swap)}
+
+
 def test_every_pair_is_rated_once_whichever_way_round_it_is_asked():
     """The table's check constraint requires venue_a_id < venue_b_id, so the
     job must only ever produce ordered pairs."""

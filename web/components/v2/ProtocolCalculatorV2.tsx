@@ -90,6 +90,63 @@ export function SwapBadge({ locale }: { locale: Locale }) {
   );
 }
 
+/**
+ * A route leg whose venue is not quoting the market right now.
+ *
+ * The hourly run found no quote on it, so the market is shut for the moment --
+ * a Variational swap's daily 17:00-18:00 ET break, an equity perp over a
+ * holiday. Hiding such a market for the hour is what emptied "Only swaps"; it
+ * is listed instead, priced from its last quoted hour, and never recommended
+ * while an open market exists.
+ */
+function ClosedBadge({ pair, compact = false }: { pair: PairRanking; compact?: boolean }) {
+  const locale = useLocale();
+  const venues = pair.closedVenues ?? [];
+  if (venues.length === 0) return null;
+  const names = venues.map((slug) => protocolName(slug) ?? slug).join(", ");
+  return (
+    <span
+      title={tr(
+        locale,
+        `${names} is not quoting this market in the latest hourly snapshot, so it is shut for now (Variational's swaps pause daily 17:00–18:00 ET). The cost shown is from its last quoted hour.`,
+        `${names} не котирует этот рынок в последнем часовом снимке, сейчас он закрыт (свопы Variational встают ежедневно 17:00–18:00 ET). Стоимость — по последнему часу с котировкой.`,
+      )}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-warning/30 bg-warning/10 font-semibold text-warning ${compact ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-1 text-[13px]"}`}
+    >
+      <span className="h-[5px] w-[5px] rounded-full bg-warning" />
+      {tr(locale, "Closed now", "Сейчас закрыт")}
+    </span>
+  );
+}
+
+/** A leg's ticker on its own venue, or undefined when the answer carries none. */
+function tickerOn(pair: PairRanking, slug: string): string | undefined {
+  return pair.tickers?.[slug];
+}
+
+/** The same, but only where it differs from the name the row is printed under. */
+function differingTicker(pair: PairRanking, slug: string): string | undefined {
+  const ticker = tickerOn(pair, slug);
+  return ticker !== undefined && ticker.toUpperCase() !== pair.pair.toUpperCase() ? ticker : undefined;
+}
+
+/**
+ * What to search for on a leg's venue, inside that leg's card.
+ *
+ * Printed on every leg that carries a ticker, not only the ones that differ:
+ * the two cards keep one height, and "Ticker NVDA" under a venue is never a
+ * wasted line to someone about to open that venue and look the market up. The
+ * table rows, where space is tight, print it only where it differs.
+ */
+function LegTicker({ ticker, locale, compact = false }: { ticker?: string; locale: Locale; compact?: boolean }) {
+  if (ticker === undefined) return null;
+  return (
+    <div className={`font-mono-num ${compact ? "text-[11px]" : "text-[12px]"} text-text-muted`}>
+      {tr(locale, "Ticker", "Тикер")} <span className="text-text-primary">{ticker}</span>
+    </div>
+  );
+}
+
 /** A swap's funding tile reads "n/a", and this says why. */
 function swapFundingTip(locale: Locale): string {
   return tr(
@@ -261,6 +318,12 @@ export interface PairRanking {
    *  so it is NOT simply the page you opened. */
   longVenue?: string;
   shortVenue?: string;
+  /** Each leg's ticker as its own venue shows it, keyed by slug. The row is
+   *  named by the canonical pair (SPY), which is not always what a venue calls
+   *  the market (Variational: US500). */
+  tickers?: Record<string, string>;
+  /** Venues not quoting this market in their latest run: shut for now. */
+  closedVenues?: string[];
 }
 type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
@@ -388,12 +451,30 @@ function spreadRiskLabel(locale: Locale, risk: SpreadRisk): string {
       ? tr(locale, "Medium spread risk", "Средний риск расхождения")
       : risk === "high"
         ? tr(locale, "High spread risk", "Высокий риск расхождения")
-        : tr(locale, "Spread risk unknown", "Риск расхождения неизвестен");
+        : tr(locale, "Spread risk: not rated yet", "Риск расхождения: пока не оценён");
 }
 
 function SpreadRiskBadge({ risk }: { risk: SpreadRisk }) {
   const locale = useLocale();
-  if (risk === "unknown") return null;
+  // An unrated route used to print no badge at all, so the badge seemed to
+  // vanish on exactly the routes that most need a word about it: a protocol
+  // added hours ago (a week of hourly marks is the measure, twelve the
+  // minimum) and, until swaps were rated too, every Variational swap. Say it.
+  if (risk === "unknown") {
+    return (
+      <span
+        title={tr(
+          locale,
+          "Needs at least 12 hourly price readings taken at the same time on both protocols. A newly added protocol or market is rated within about half a day.",
+          "Нужно минимум 12 почасовых цен, снятых в одно время на обеих площадках. Новую площадку или рынок оценим примерно за полдня.",
+        )}
+        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-border px-2.5 py-1 text-[13px] font-semibold text-text-muted"
+      >
+        <span className="h-[5px] w-[5px] rounded-full bg-text-dim" />
+        {spreadRiskLabel(locale, risk)}
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border px-2.5 py-1 text-[13px] font-semibold ${SPREAD_RISK_TONE[risk]}`}
@@ -918,6 +999,15 @@ export function selectRecommendedPair(
    *  outside a band's top ten and must still be found. */
   allPairs?: PairRanking[],
 ): [PairRanking | undefined, BestRule] {
+  // A market not quoting right now is never the pick while an open one exists:
+  // the route is handed out to be traded, and a swap in its daily break cannot
+  // be. It stays in the table, marked closed. Only when EVERYTHING is shut
+  // (a weekend on a TradFi-only venue) does the rule run over the closed set.
+  const isOpen = (pair: PairRanking) => (pair.closedVenues?.length ?? 0) === 0;
+  if (bands.some((band) => band.pairs.some(isOpen))) {
+    bands = bands.map((band) => ({ ...band, pairs: band.pairs.filter(isOpen) }));
+    allPairs = allPairs?.filter(isOpen);
+  }
   const everything = bands.flatMap((band) => band.pairs);
   // Swaps come first only where the home protocol's policy says so
   // (Variational). With five swap markets there is no cost race worth running,
@@ -1055,7 +1145,13 @@ export function RouteResults({
     ...(swapsOnly ? [tr(locale, "Swaps", "Свопы")] : []),
   ];
   const needle = query.trim().toUpperCase();
-  const matches = needle === "" ? byClass : byClass.filter((pair) => pair.pair.toUpperCase().includes(needle));
+  // Each venue's own ticker is searched too: someone who knows the market as
+  // Variational's "US500" must find the row printed as SPY.
+  const matches = needle === ""
+    ? byClass
+    : byClass.filter((pair) =>
+        [pair.pair, ...Object.values(pair.tickers ?? {})].some((name) => name.toUpperCase().includes(needle)),
+      );
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   // A filter or a search can shorten the list under the current page.
   const safePage = Math.min(page, pageCount - 1);
@@ -1163,6 +1259,7 @@ export function RouteResults({
                 is the instrument's real class. */}
             <AssetClassBadge assetClass={best.assetClass} locale={locale} />
             {isSwap(best.pair) ? <SwapBadge locale={locale} /> : null}
+            <ClosedBadge pair={best} />
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
                 <span className="h-[5px] w-[5px] rounded-full bg-positive" />
@@ -1191,6 +1288,7 @@ export function RouteResults({
                   <ProtocolMark slug={legsOf(best).longSlug} name={legsOf(best).longName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).longName}</div>
                 </div>
+                <LegTicker ticker={tickerOn(best, legsOf(best).longSlug)} locale={locale} />
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
               </div>
               <div className="flex flex-col gap-2.5 rounded-none border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
@@ -1199,6 +1297,7 @@ export function RouteResults({
                   <ProtocolMark slug={legsOf(best).shortSlug} name={legsOf(best).shortName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).shortName}</div>
                 </div>
+                <LegTicker ticker={tickerOn(best, legsOf(best).shortSlug)} locale={locale} />
                 <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
@@ -1439,19 +1538,26 @@ export function RouteResults({
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
+                        <ClosedBadge pair={p} compact />
                         {showEligible && p.competitionEligible && (
                           <span title="Competition eligible" className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
-                      <div className="flex items-center gap-2">
-                        <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={0} />
-                        <span className="text-[13px] text-text-primary">{legsOf(p).longName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={0} />
-                        <span className="text-[13px] text-text-primary">{legsOf(p).shortName}</span>
-                      </div>
+                      {/* A venue that names the market differently says so under
+                          its own name: Variational's SPY route is "US500" there,
+                          and the row's name alone would not find it. */}
+                      {[legsOf(p).longSlug, legsOf(p).shortSlug].map((slug, leg) => (
+                        <div key={leg} className="flex min-w-0 items-center gap-2">
+                          <ProtocolMark slug={slug} name={leg === 0 ? legsOf(p).longName : legsOf(p).shortName} size={22} radius={0} />
+                          <span className="flex min-w-0 flex-col leading-tight">
+                            <span className="text-[13px] text-text-primary">{leg === 0 ? legsOf(p).longName : legsOf(p).shortName}</span>
+                            {differingTicker(p, slug) ? (
+                              <span className="truncate font-mono-num text-[11px] text-text-dim">{differingTicker(p, slug)}</span>
+                            ) : null}
+                          </span>
+                        </div>
+                      ))}
                       <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
                       <div className="font-mono-num text-[12px] text-text-muted">{o.exit}</div>
                       <div className={`text-right font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</div>
@@ -1466,6 +1572,7 @@ export function RouteResults({
                         {p.spreadRisk && p.spreadRisk !== "unknown" ? <span title={spreadRiskLabel(locale, p.spreadRisk)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${SPREAD_RISK_DOT[p.spreadRisk]}`} /> : null}
                         <AssetClassBadge assetClass={p.assetClass} locale={locale} />
                         {isSwap(p.pair) ? <SwapBadge locale={locale} /> : null}
+                        <ClosedBadge pair={p} compact />
                         {showEligible && p.competitionEligible && (
                           <span className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
@@ -1473,9 +1580,12 @@ export function RouteResults({
                         <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
                       </div>
                       <div className="flex min-w-0 items-center gap-1.5 pl-[26px] font-mono-num text-[10px] text-text-muted">
-                        <span className="truncate">L {homeName}</span>
+                        {/* The long leg is chosen per pair by funding, so it is
+                            not always the page's own protocol -- this line used to
+                            print the page's name as L on every card. */}
+                        <span className="truncate">L {legsOf(p).longName}{differingTicker(p, legsOf(p).longSlug) ? ` (${differingTicker(p, legsOf(p).longSlug)})` : ""}</span>
                         <span className="text-text-dim">·</span>
-                        <span className="truncate">S {legsOf(p).shortName}</span>
+                        <span className="truncate">S {legsOf(p).shortName}{differingTicker(p, legsOf(p).shortSlug) ? ` (${differingTicker(p, legsOf(p).shortSlug)})` : ""}</span>
                         <span className="ml-auto shrink-0">OI {compactUsd(p.openInterestUsd)}</span>
                       </div>
                     </div>
@@ -1499,6 +1609,7 @@ export function RouteResults({
                             <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).longName}</span>
                           </div>
+                          <LegTicker ticker={tickerOn(p, legsOf(p).longSlug)} locale={locale} compact />
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
                         </div>
                         <div className="flex flex-col gap-2 rounded-none border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
@@ -1507,6 +1618,7 @@ export function RouteResults({
                             <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).shortName}</span>
                           </div>
+                          <LegTicker ticker={tickerOn(p, legsOf(p).shortSlug)} locale={locale} compact />
                           <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
                         </div>
                       </div>

@@ -27,7 +27,18 @@ That field carries no instrument class for this venue -- trade.xyz publishes
 none -- so the site classifies xyz markets from its curated map
 (web/lib/tradfi.ts), exactly as for any venue whose feed states no class.
 
-Not confirmed, and so not claimed: a points programme.
+Crypto is the other half of what trade.xyz's interface trades, and it is NOT on
+the xyz dex: BTC, ETH and the rest are Hyperliquid's own core perps, the same
+`metaAndAssetCtxs` call without a `dex` (bare names, no prefix). They are
+collected here too, stored with ``asset_class = CORE_CRYPTO_CLASS`` so the site
+prices them at Hyperliquid's core schedule, tier 0: 0.015% maker / 0.045%
+taker (docs.hyperliquid.xyz, "Fees") -- half the HIP-3 rate the xyz markets
+pay. Two things stay out on purpose: a delisted core market (it never traded
+under this venue here, so it gets no row at all), and core volume in the venue
+totals -- that is Hyperliquid's activity, not trade.xyz's.
+
+Not confirmed, and so not claimed: a points programme, and whether trade.xyz's
+interface adds a builder fee on core crypto (it publishes none).
 """
 
 from __future__ import annotations
@@ -57,6 +68,9 @@ XYZ_DEX = "xyz"
 #: the site prices it at the Growth Mode schedule. Keep in lockstep with
 #: ASSET_CLASS_FEES in web/lib/venue-fees.ts and jobs/hedge_recommendations.py.
 GROWTH_MODE_CLASS = "GROWTH_MODE"
+#: Stored as `asset_class` on a Hyperliquid core crypto perp, priced at the
+#: core schedule. Also a class the site reads as crypto (web/lib/tradfi.ts).
+CORE_CRYPTO_CLASS = "CRYPTO"
 _HOURS_PER_YEAR = 8760.0
 #: Hyperliquid settles funding every hour (checked on the xyz dex itself).
 _FUNDING_INTERVAL_HOURS = 1.0
@@ -127,6 +141,12 @@ def canonical_symbol(symbol: str) -> str:
     return (base or symbol).upper()
 
 
+def is_core_market(symbol: str) -> bool:
+    """Hyperliquid's own perps carry no dex prefix; every xyz market does."""
+
+    return ":" not in symbol
+
+
 class TradexyzAdapter(VenueAdapter):
     slug = "tradexyz"
 
@@ -138,24 +158,46 @@ class TradexyzAdapter(VenueAdapter):
         response.raise_for_status()
         return response.json()
 
+    def _dex(self, dex: str | None) -> list[tuple[Mapping[str, object], Mapping[str, object]]]:
+        """One dex's markets with their live contexts; `None` is Hyperliquid's core."""
+
+        request: dict[str, object] = {"type": "metaAndAssetCtxs"}
+        if dex is not None:
+            request["dex"] = dex
+        name = dex or "core"
+        payload = self._post(request)
+        if not isinstance(payload, Sequence) or len(payload) < 2:
+            raise ValueError(f"tradexyz: metaAndAssetCtxs ({name}) returned an unexpected shape")
+        meta, contexts = payload[0], payload[1]
+        universe = meta.get("universe") if isinstance(meta, Mapping) else None
+        if not isinstance(universe, list) or not isinstance(contexts, list):
+            raise ValueError(f"tradexyz: metaAndAssetCtxs ({name}) returned no universe")
+        return [
+            (market, context)
+            for market, context in zip(universe, contexts)
+            if isinstance(market, Mapping) and isinstance(context, Mapping)
+        ]
+
     def _all(self) -> dict[str, tuple[Mapping[str, object], Mapping[str, object]]]:
-        """Every listed market with its live context, fetched once per instance."""
+        """Every listed market with its live context, fetched once per instance.
+
+        Both calls or neither: a run that listed the xyz markets alone would
+        retire every crypto market for the hour (sync_markets deactivates what a
+        venue stops listing), so a failed core call fails the run instead.
+        """
 
         if self._contexts is None:
-            payload = self._post({"type": "metaAndAssetCtxs", "dex": XYZ_DEX})
-            if not isinstance(payload, Sequence) or len(payload) < 2:
-                raise ValueError("tradexyz: metaAndAssetCtxs returned an unexpected shape")
-            meta, contexts = payload[0], payload[1]
-            universe = meta.get("universe") if isinstance(meta, Mapping) else None
-            if not isinstance(universe, list) or not isinstance(contexts, list):
-                raise ValueError("tradexyz: metaAndAssetCtxs returned no universe")
             paired: dict[str, tuple[Mapping[str, object], Mapping[str, object]]] = {}
-            for market, context in zip(universe, contexts):
-                if not isinstance(market, Mapping) or not isinstance(context, Mapping):
-                    continue
+            for market, context in self._dex(XYZ_DEX):
                 symbol = market.get("name")
                 if isinstance(symbol, str) and symbol:
                     paired[symbol] = (market, context)
+            for market, context in self._dex(None):
+                symbol = market.get("name")
+                # A delisted core market never traded under this venue here, so
+                # it gets no row at all (module docstring).
+                if isinstance(symbol, str) and symbol and market.get("isDelisted") is not True:
+                    paired.setdefault(symbol, (market, context))
             self._contexts = paired
         return self._contexts
 
@@ -179,9 +221,16 @@ class TradexyzAdapter(VenueAdapter):
                     # A delisted market keeps its row and its history; it just
                     # stops being collected and routed to.
                     is_active=market.get("isDelisted") is not True,
-                    # The fee schedule this market is charged, not an
-                    # instrument class -- see the module docstring.
-                    asset_class=GROWTH_MODE_CLASS if market.get("growthMode") == "enabled" else None,
+                    # The fee schedule this market is charged -- see the
+                    # module docstring. On the xyz dex that is a fee mode,
+                    # not an instrument class; a core market is crypto.
+                    asset_class=(
+                        CORE_CRYPTO_CLASS
+                        if is_core_market(symbol)
+                        else GROWTH_MODE_CLASS
+                        if market.get("growthMode") == "enabled"
+                        else None
+                    ),
                 )
             )
         return markets
@@ -258,16 +307,18 @@ class TradexyzAdapter(VenueAdapter):
         )
 
     def get_venue_totals(self) -> VenueTotals:
-        """The xyz dex totalled from the single call a run makes.
+        """The xyz dex totalled from the call a run already makes.
 
         Hyperliquid publishes no aggregate for a HIP-3 dex, so this sums the
-        venue's own per-market figures over every live market.
+        venue's own per-market figures over every live market. Core crypto is
+        left out: that volume is Hyperliquid's, whichever interface sent it, and
+        counting it would print Hyperliquid's billions as trade.xyz's activity.
         """
 
         volume = 0.0
         open_interest = 0.0
-        for market, context in self._all().values():
-            if market.get("isDelisted") is True:
+        for symbol, (market, context) in self._all().items():
+            if market.get("isDelisted") is True or is_core_market(symbol):
                 continue
             market_volume = _float(context.get("dayNtlVlm"))
             if market_volume is not None:

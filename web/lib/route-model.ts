@@ -36,6 +36,44 @@ export const HOURS_PER_YEAR = 8_760;
  * prices (spread and depth); it is not a reason to hide a market. The one thing
  * worth hiding is a listing nobody trades and nobody holds.
  */
+/**
+ * A market whose newest book is this far behind its venue's newest one got no
+ * quote in the latest run: it is shut for now -- a Variational swap's daily
+ * 17:00-18:00 ET break, an equity perp over a holiday. A run takes minutes, so
+ * half an hour cannot catch a market merely read late in the same run.
+ */
+export const QUOTE_CLOSED_AFTER_MS = 30 * 60_000;
+/** Past a day it is no longer a break but a market that stopped quoting. */
+export const QUOTE_GONE_AFTER_MS = 24 * 60 * 60_000;
+
+/**
+ * How long a run takes to finish landing. Every book in a run carries the
+ * run's START time, but the rows arrive over the next few minutes (Variational's
+ * 552 took about four), so while a run is still landing half a venue looks a
+ * run behind. Judged against the newest book alone, 272 of Variational's
+ * markets -- PUMP among them -- read as closed. Until a run has settled, the
+ * run before it is the reference. trade.xyz's late second pass (+9 to +15
+ * minutes) stays inside QUOTE_CLOSED_AFTER_MS either way.
+ */
+export const QUOTE_RUN_SETTLE_MS = 15 * 60_000;
+
+/** The run a venue's markets are judged against, in ms; null with no books. */
+export function referenceRunMs(bookTimes: Iterable<string | Date>, nowMs: number = Date.now()): number | null {
+  const times = [...bookTimes].map((ts) => new Date(ts).getTime()).filter((ms) => Number.isFinite(ms));
+  if (times.length === 0) return null;
+  const newest = Math.max(...times);
+  if (nowMs - newest >= QUOTE_RUN_SETTLE_MS) return newest;
+  const settled = times.filter((ms) => newest - ms > QUOTE_CLOSED_AFTER_MS);
+  return settled.length > 0 ? Math.max(...settled) : null;
+}
+
+/** How far a market's newest book trails the reference run, in ms. */
+export function quoteLagMs(bookTs: string | Date, referenceMs: number | null): number {
+  if (referenceMs === null) return 0;
+  const lag = referenceMs - new Date(bookTs).getTime();
+  return Number.isFinite(lag) ? Math.max(0, lag) : 0;
+}
+
 export const DEAD_MARKET_VOLUME_USD = 100;
 export const DEAD_MARKET_OI_USD = 1_000;
 

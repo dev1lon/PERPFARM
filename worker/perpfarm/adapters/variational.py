@@ -180,15 +180,23 @@ class VariationalAdapter(VenueAdapter):
             ticker = listing.get("ticker")
             if not isinstance(ticker, str) or not ticker:
                 continue
-            # The read-only API returns currently quoted listings only. A
-            # missing quote remains in the catalog but is marked inactive.
+            # A listing with no quote is CLOSED, not gone, as long as Omni still
+            # prices it. Swaps trade restricted hours: every day at 17:00 ET
+            # (21:00 UTC) all six drop their quotes for an hour while keeping
+            # their mark and 24h volume, and marking them inactive for that
+            # hour made every swap route vanish from the site -- "Only swaps 0"
+            # -- until the next run. They stay listed; the hour's book is simply
+            # not written (the snapshot job records the market as unavailable),
+            # and the site marks a leg with no quote in the newest snapshot as
+            # closed. Only a listing with neither a quote nor a mark is retired.
             quoted = isinstance(listing.get("quotes"), Mapping)
+            mark = _float(listing.get("mark_price"))
             markets.append(
                 MarketInfo(
                     symbol=ticker,
                     symbol_canonical=ticker,
                     base_asset=ticker,
-                    is_active=quoted,
+                    is_active=quoted or (mark is not None and mark > 0),
                 )
             )
         return markets

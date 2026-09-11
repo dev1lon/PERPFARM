@@ -105,6 +105,23 @@ def _website_dead_market_thresholds() -> tuple[float, float]:
     return _evaluate(volume.group(1), {}), _evaluate(oi.group(1), {})
 
 
+def _website_swap_underlying() -> dict[str, str]:
+    source = _source("tradfi.ts")
+    start = source.index("SWAP_UNDERLYING = new Map")
+    body = source[start : source.index("]);", start)]
+    entries = re.findall(r'\[\s*"(\w+)"\s*,\s*"(\w+)"\s*\]', body)
+    assert entries, "tradfi.ts SWAP_UNDERLYING could not be read"
+    return dict(entries)
+
+
+def test_swap_underlyings_match_the_website():
+    """The site keys a swap route's rating by the swap; the job must rate the same legs."""
+
+    from perpfarm.jobs import spread_risk
+
+    assert spread_risk.SWAP_UNDERLYING == _website_swap_underlying()
+
+
 def test_published_fee_fallbacks_match_the_website():
     """A venue priced at one fee here and another there quotes two costs."""
     website = _website_published_fees()

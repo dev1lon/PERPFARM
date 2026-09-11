@@ -65,6 +65,8 @@ ASSET_CLASS_FEES: dict[str, dict[str, tuple[float, float]]] = {
     # trade.xyz: Growth Mode is a tenth of Standard Mode (adapters/tradexyz.py).
     "tradexyz": {
         "GROWTH_MODE": (0.3, 0.9),
+        # Hyperliquid core crypto traded through trade.xyz: core tier 0.
+        "CRYPTO": (1.5, 4.5),
     },
 }
 

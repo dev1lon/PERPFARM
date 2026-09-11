@@ -11,7 +11,25 @@ Payloads below were recorded from api.hyperliquid.xyz on 2026-09-10 for the
 import pytest
 
 from perpfarm.adapters.base import MarketUnavailable
-from perpfarm.adapters.tradexyz import GROWTH_MODE_CLASS, TradexyzAdapter, canonical_symbol
+from perpfarm.adapters.tradexyz import (
+    CORE_CRYPTO_CLASS,
+    GROWTH_MODE_CLASS,
+    TradexyzAdapter,
+    canonical_symbol,
+    is_core_market,
+)
+
+#: Hyperliquid's core dex, which trade.xyz's interface trades as its crypto.
+CORE_UNIVERSE = [
+    {"name": "BTC", "szDecimals": 5},
+    {"name": "kPEPE", "szDecimals": 0},
+    {"name": "OLDCOIN", "szDecimals": 0, "isDelisted": True},
+]
+CORE_CONTEXTS = [
+    {"funding": "0.0000125", "openInterest": "30000.0", "dayNtlVlm": "2000000000.0", "markPx": "77181.5"},
+    {"funding": "0.00001", "openInterest": "1000000000.0", "dayNtlVlm": "30000000.0", "markPx": "0.003311"},
+    {"funding": "0.0", "openInterest": "0.0", "dayNtlVlm": "0.0", "markPx": "0.1"},
+]
 
 UNIVERSE = [
     {"name": "xyz:TSLA", "szDecimals": 3, "growthMode": "enabled"},
@@ -36,8 +54,11 @@ class _StubAdapter(TradexyzAdapter):
 
     def _post(self, payload):  # type: ignore[override]
         if payload.get("type") == "metaAndAssetCtxs":
-            assert payload.get("dex") == "xyz"
-            return [{"universe": UNIVERSE}, CONTEXTS]
+            if payload.get("dex") == "xyz":
+                return [{"universe": UNIVERSE}, CONTEXTS]
+            # Hyperliquid's core dex is the same call with no `dex` at all.
+            assert "dex" not in payload
+            return [{"universe": CORE_UNIVERSE}, CORE_CONTEXTS]
         if payload.get("type") == "l2Book":
             return BOOK
         raise AssertionError(f"unexpected request {payload}")
@@ -46,6 +67,28 @@ class _StubAdapter(TradexyzAdapter):
 def test_the_dex_prefix_is_not_part_of_the_instrument():
     assert canonical_symbol("xyz:TSLA") == "TSLA"
     assert canonical_symbol("TSLA") == "TSLA"
+
+
+def test_hyperliquid_core_crypto_is_collected_at_the_core_schedule():
+    """trade.xyz's crypto is Hyperliquid's core book, priced at the core rate."""
+
+    markets = {market.symbol: market for market in _StubAdapter().get_markets()}
+
+    assert is_core_market("BTC") and not is_core_market("xyz:TSLA")
+    assert markets["BTC"].asset_class == CORE_CRYPTO_CLASS
+    assert markets["BTC"].symbol_canonical == "BTC"
+    assert markets["BTC"].is_active is True
+    # Renamed to 1000PEPE by data/manual/symbol_overrides.yaml, not here.
+    assert markets["kPEPE"].symbol_canonical == "KPEPE"
+    # A delisted core market never traded under this venue: no row at all.
+    assert "OLDCOIN" not in markets
+
+
+def test_core_crypto_funding_and_volume_read_like_the_xyz_markets():
+    adapter = _StubAdapter()
+
+    assert adapter.get_funding("BTC").funding_rate_annualized == pytest.approx(0.0000125 * 8_760)
+    assert adapter.get_volume("BTC").open_interest_usd == pytest.approx(30000.0 * 77181.5)
 
 
 def test_growth_mode_markets_carry_their_fee_schedule():
