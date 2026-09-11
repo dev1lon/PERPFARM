@@ -302,21 +302,36 @@ export function venueTicker(symbol: string): string {
   if (onScreen !== undefined) return onScreen;
   const bare = symbol.replace(/^[a-z0-9]+:/, "").replace(/(?:-PERP_USDT0|\/USDT-P|\/USDC|-USDC|-USD)$/, "");
   const swap = SWAP_TICKER_ON_VENUE.get(bare);
-  return swap === undefined ? bare : `${swap} swap`;
+  return swap === undefined ? withoutUsdQuote(bare) : `${swap} swap`;
+}
+
+/**
+ * A name with its dollar quote removed: EURUSD -> EUR, USDJPY -> JPY,
+ * BEAM-USD -> BEAM, USD-JPY -> JPY.
+ *
+ * Every market on these venues is quoted in dollars, so a "USD" printed on
+ * some names and not on others only made the names disagree -- EUR on one
+ * venue, EURUSD on the next. The quote is dropped everywhere it is printed.
+ * A dollar that belongs to a token's own name stays: USDE is Ethena's
+ * stablecoin, not "E in dollars", which is why an unseparated USD is removed
+ * only from the currency pairs listed as FX above.
+ */
+function withoutUsdQuote(name: string): string {
+  const separated = name.replace(/[-/]USD$/, "").replace(/^USD[-/]/, "");
+  if (separated !== name) return separated;
+  if (FX.has(name) && name.length === 6) return name.startsWith("USD") ? name.slice(3) : name.slice(0, 3);
+  return name;
 }
 
 /**
  * trade.xyz's on-screen names, where they differ from the coin its API uses.
  * Read from the market catalog in app.trade.xyz's own bundle (2026-09-11): the
  * API's xyz:CL is "WTIOIL" on screen, xyz:SMSN is "SAMSUNG". A reader searches
- * the venue for what the venue shows, so that is what is printed.
+ * the venue for what the venue shows, so that is what is printed -- except the
+ * dollar quote on its currencies (EURUSD on screen), dropped like every other.
  */
 const VENUE_SCREEN_NAME = new Map<string, string>([
   ["xyz:CL", "WTIOIL"],
-  ["xyz:EUR", "EURUSD"],
-  ["xyz:GBP", "GBPUSD"],
-  ["xyz:JPY", "USDJPY"],
-  ["xyz:KRW", "USDKRW"],
   ["xyz:SKHX", "SKHYNIX"],
   ["xyz:SMSN", "SAMSUNG"],
   ["xyz:SP500", "S&P500"],
@@ -333,5 +348,5 @@ const VENUE_SCREEN_NAME = new Map<string, string>([
  * it, and the venue's own "USOIL swap" sits under that venue's name.
  */
 export function displayPair(pair: string): string {
-  return swapUnderlying(pair) ?? pair;
+  return withoutUsdQuote(swapUnderlying(pair) ?? pair);
 }

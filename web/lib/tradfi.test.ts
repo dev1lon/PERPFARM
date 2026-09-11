@@ -8,6 +8,15 @@ describe("displayPair", () => {
     expect(displayPair("US500S")).toBe("SP500");
     expect(displayPair("NVDA")).toBe("NVDA");
   });
+
+  it("drops the dollar quote everywhere, but never from a token's own name", () => {
+    expect(displayPair("EURUSD")).toBe("EUR");
+    expect(displayPair("USDJPY")).toBe("JPY");
+    expect(displayPair("JPYUSD")).toBe("JPY");
+    expect(displayPair("BEAM-USD")).toBe("BEAM");
+    // Ethena's stablecoin, not "E in dollars".
+    expect(displayPair("USDE")).toBe("USDE");
+  });
 });
 
 describe("venueTicker", () => {
@@ -15,6 +24,14 @@ describe("venueTicker", () => {
     expect(venueTicker("xyz:CL")).toBe("WTIOIL");
     expect(venueTicker("xyz:SMSN")).toBe("SAMSUNG");
     expect(venueTicker("xyz:GOLD")).toBe("GOLD");
+  });
+
+  it("prints a currency without its dollar quote on every venue", () => {
+    expect(venueTicker("xyz:EUR")).toBe("EUR");
+    expect(venueTicker("EURUSD-PERP_USDT0")).toBe("EUR");
+    expect(venueTicker("USDJPY-PERP_USDT0")).toBe("JPY");
+    expect(venueTicker("USD-JPY")).toBe("JPY");
+    expect(venueTicker("USDE-USD")).toBe("USDE");
   });
 
   it("strips feed plumbing and keeps the name the venue prints", () => {
