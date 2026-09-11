@@ -75,17 +75,39 @@ export function AssetClassBadge({ assetClass, locale }: { assetClass?: Instrumen
  * restricted hours (docs.variational.io/omni/trading/swaps). Both change what
  * the numbers beside it mean, so the row has to say which one it is.
  */
-export function SwapBadge({ locale }: { locale: Locale }) {
-  return (
+/**
+ * What a swap's trading hours mean for a hedge, in the words a farmer needs.
+ *
+ * Read from docs.variational.io/omni/trading/swaps (2026-09-11): swaps are not
+ * 24/7, and while one is closed "market/limit/trigger orders, TP/SLs, and
+ * liquidations will not process until the market is reopened". A perp hedge leg
+ * does not stop with it -- which is the part that costs money.
+ */
+function swapHoursTip(locale: Locale): string {
+  return tr(
+    locale,
+    "Swaps don't trade 24/7: Mon–Fri 00:00–17:00 and 18:00–24:00 ET (Brent reopens at 20:00), closed on weekends and holidays. While a swap is closed no order on it fills, not even TP/SL, so the hedge can only be closed after it reopens — while a perp leg keeps trading and can still be liquidated. Financing is charged daily at 17:00 ET, triple once a week.",
+    "Свопы торгуются не 24/7: пн–пт 00:00–17:00 и 18:00–24:00 ET (Brent — с 20:00), в выходные и праздники закрыты. Пока своп закрыт, по нему не исполняется ни одна заявка, даже TP/SL, поэтому закрыть связку можно только после открытия — а нога-перп продолжает торговаться и может получить ликвидацию. Финансирование — раз в день в 17:00 ET, раз в неделю тройное.",
+  );
+}
+
+export function SwapBadge({ locale, withTip = false }: { locale: Locale; withTip?: boolean }) {
+  const badge = (
     <span
-      title={tr(
-        locale,
-        "Swap — tracks the underlying's total return; daily financing instead of funding, restricted trading hours",
-        "Своп — повторяет полную доходность актива; суточное финансирование вместо фандинга, ограниченные часы торгов",
-      )}
+      title={swapHoursTip(locale)}
       className="inline-flex items-center whitespace-nowrap rounded-none border border-accent/40 px-2.5 py-1 text-[13px] font-semibold text-accent"
     >
       Swap
+    </span>
+  );
+  // A table row is itself a button and a tip is a button too, and one cannot
+  // sit inside the other -- so rows keep the hover title, and the tip is
+  // offered wherever the badge stands on its own.
+  if (!withTip) return badge;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {badge}
+      <InfoTip text={swapHoursTip(locale)} />
     </span>
   );
 }
@@ -124,19 +146,15 @@ function tickerOn(pair: PairRanking, slug: string): string | undefined {
   return pair.tickers?.[slug];
 }
 
-/** The same, but only where it differs from the name the row is printed under. */
-function differingTicker(pair: PairRanking, slug: string): string | undefined {
-  const ticker = tickerOn(pair, slug);
-  return ticker !== undefined && ticker.toUpperCase() !== pair.pair.toUpperCase() ? ticker : undefined;
-}
-
 /**
  * What to search for on a leg's venue, inside that leg's card.
  *
- * Printed on every leg that carries a ticker, not only the ones that differ:
- * the two cards keep one height, and "Ticker NVDA" under a venue is never a
- * wasted line to someone about to open that venue and look the market up. The
- * table rows, where space is tight, print it only where it differs.
+ * Printed on every leg that carries a ticker, including where it matches the
+ * row's name: "Ticker NVDA" under a venue is never a wasted line to someone
+ * about to open that venue and look the market up. The table rows print the
+ * same ticker under each venue's name. They used to print it only where it
+ * differed, so a swap row showed tickers, the ETH row under it did not, and the
+ * expanded row said something the collapsed one had not.
  */
 function LegTicker({ ticker, locale, compact = false }: { ticker?: string; locale: Locale; compact?: boolean }) {
   if (ticker === undefined) return null;
@@ -151,8 +169,8 @@ function LegTicker({ ticker, locale, compact = false }: { ticker?: string; local
 function swapFundingTip(locale: Locale): string {
   return tr(
     locale,
-    "Swaps accrue daily financing at the 17:00 ET close instead of funding. Variational's public feed does not publish the rate.",
-    "Своп начисляет суточное финансирование на закрытии в 17:00 ET вместо фандинга. Публичный фид Variational ставку не публикует.",
+    "Swaps accrue financing once a day at the 17:00 ET close instead of funding, triple once a week to cover the weekend. Variational's public feed does not publish the rate.",
+    "Своп начисляет финансирование раз в день на закрытии в 17:00 ET вместо фандинга, раз в неделю — тройное за выходные. Публичный фид Variational ставку не публикует.",
   );
 }
 
@@ -1258,7 +1276,7 @@ export function RouteResults({
                 and Dogecoin were both TradFi. One badge now, one answer, and it
                 is the instrument's real class. */}
             <AssetClassBadge assetClass={best.assetClass} locale={locale} />
-            {isSwap(best.pair) ? <SwapBadge locale={locale} /> : null}
+            {isSwap(best.pair) ? <SwapBadge locale={locale} withTip /> : null}
             <ClosedBadge pair={best} />
             {showEligible && best.competitionEligible && (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">
@@ -1437,22 +1455,27 @@ export function RouteResults({
               />
             )}
             {setSwapsOnly && offersSwaps && (
-              <button
-                type="button"
-                aria-pressed={swapsOnly}
-                disabled={swapCount === 0 && !swapsOnly}
-                title={swapCount === 0 ? tr(locale, "No swaps in this answer", "В этом ответе нет свопов") : undefined}
-                onClick={() => {
-                  setExpanded(null);
-                  setShowAllMobile(false);
-                  setPage(0);
-                  setSwapsOnly(!swapsOnly);
-                }}
-                className={`pf-transition flex h-[34px] items-center gap-2 whitespace-nowrap rounded-none border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${swapsOnly ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg text-text-muted hover:text-text-primary"}`}
-              >
-                {tr(locale, "Only swaps", "Только свопы")}
-                <span className="font-mono-num opacity-70">{swapCount}</span>
-              </button>
+              // The trading-hours tip sits beside the toggle, not inside it:
+              // it is the one place the swap set is chosen as a whole.
+              <span className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-pressed={swapsOnly}
+                  disabled={swapCount === 0 && !swapsOnly}
+                  title={swapCount === 0 ? tr(locale, "No swaps in this answer", "В этом ответе нет свопов") : undefined}
+                  onClick={() => {
+                    setExpanded(null);
+                    setShowAllMobile(false);
+                    setPage(0);
+                    setSwapsOnly(!swapsOnly);
+                  }}
+                  className={`pf-transition flex h-[34px] items-center gap-2 whitespace-nowrap rounded-none border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${swapsOnly ? "border-accent bg-accent/10 text-accent" : "border-border bg-bg text-text-muted hover:text-text-primary"}`}
+                >
+                  {tr(locale, "Only swaps", "Только свопы")}
+                  <span className="font-mono-num opacity-70">{swapCount}</span>
+                </button>
+                <InfoTip text={swapHoursTip(locale)} />
+              </span>
             )}
             {/* The shell shows the focus state, so the input suppresses its own
                 inset ring (see .pf-inline-input in globals.css). */}
@@ -1544,16 +1567,16 @@ export function RouteResults({
                         )}
                       </div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
-                      {/* A venue that names the market differently says so under
-                          its own name: Variational's SPY route is "US500" there,
-                          and the row's name alone would not find it. */}
+                      {/* Each venue's own ticker under its name, on every row and
+                          in the expanded card alike: Variational's SPY route is
+                          "US500" there, and the row's name alone would not find it. */}
                       {[legsOf(p).longSlug, legsOf(p).shortSlug].map((slug, leg) => (
                         <div key={leg} className="flex min-w-0 items-center gap-2">
                           <ProtocolMark slug={slug} name={leg === 0 ? legsOf(p).longName : legsOf(p).shortName} size={22} radius={0} />
                           <span className="flex min-w-0 flex-col leading-tight">
                             <span className="text-[13px] text-text-primary">{leg === 0 ? legsOf(p).longName : legsOf(p).shortName}</span>
-                            {differingTicker(p, slug) ? (
-                              <span className="truncate font-mono-num text-[11px] text-text-dim">{differingTicker(p, slug)}</span>
+                            {tickerOn(p, slug) ? (
+                              <span className="truncate font-mono-num text-[11px] text-text-dim">{tickerOn(p, slug)}</span>
                             ) : null}
                           </span>
                         </div>
@@ -1583,9 +1606,9 @@ export function RouteResults({
                         {/* The long leg is chosen per pair by funding, so it is
                             not always the page's own protocol -- this line used to
                             print the page's name as L on every card. */}
-                        <span className="truncate">L {legsOf(p).longName}{differingTicker(p, legsOf(p).longSlug) ? ` (${differingTicker(p, legsOf(p).longSlug)})` : ""}</span>
+                        <span className="truncate">L {legsOf(p).longName}{tickerOn(p, legsOf(p).longSlug) ? ` (${tickerOn(p, legsOf(p).longSlug)})` : ""}</span>
                         <span className="text-text-dim">·</span>
-                        <span className="truncate">S {legsOf(p).shortName}{differingTicker(p, legsOf(p).shortSlug) ? ` (${differingTicker(p, legsOf(p).shortSlug)})` : ""}</span>
+                        <span className="truncate">S {legsOf(p).shortName}{tickerOn(p, legsOf(p).shortSlug) ? ` (${tickerOn(p, legsOf(p).shortSlug)})` : ""}</span>
                         <span className="ml-auto shrink-0">OI {compactUsd(p.openInterestUsd)}</span>
                       </div>
                     </div>
@@ -1593,6 +1616,9 @@ export function RouteResults({
                   {open && (
                     <div className="border-t border-border px-[18px] py-4" style={{ background: "color-mix(in srgb, var(--bg) 60%, transparent)" }}>
                       <div className="flex flex-wrap items-center gap-2 pb-3.5">
+                        {/* Out of the row's button here, so a swap can carry its
+                            trading-hours tip where the route is read in full. */}
+                        {isSwap(p.pair) ? <SwapBadge locale={locale} withTip /> : null}
                         {p.spreadRisk ? <SpreadRiskBadge risk={p.spreadRisk} /> : null}
                         {showEligible && p.competitionEligible && (
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-none border border-positive/30 bg-positive/10 px-2.5 py-1 text-[11px] font-semibold text-positive">

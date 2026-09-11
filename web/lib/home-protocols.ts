@@ -33,8 +33,8 @@ export interface HomeProtocol {
 
 /** Tier S — what is worth farming now. */
 export const TIER_S: HomeProtocol[] = [
-  { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$5–11/pt", otc: "$24", status: "live" },
-  { slug: "tradexyz", name: "TradeXYZ", status: "records" },
+  { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$6–15/pt", otc: "$24", status: "live" },
+  { slug: "tradexyz", name: "TradeXYZ", season: "Season 0", farmEstimate: "from $6/100k volume", status: "records" },
   { slug: "txflow", name: "TxFlow", season: "Season 0", farmEstimate: "from $29/100k volume", status: "retro" },
   { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
   { slug: "qfex", name: "QFEX", season: "Season 0", farmEstimate: "from $43/100k volume", status: "retro" },
@@ -44,14 +44,14 @@ export const TIER_S: HomeProtocol[] = [
  *  without a points programme yet still has to say so in the same words, and a
  *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
-  { slug: "risex", name: "RiseX", farmEstimate: "$1–2/pt", status: "live" },
-  { slug: "polymarket", name: "Polymarket", farmEstimate: "from $28/100k volume", status: "retro-activity" },
+  { slug: "risex", name: "RiseX", season: "Season 1", farmEstimate: "$1–2/pt", status: "live" },
+  { slug: "polymarket", name: "Polymarket", season: "Season 0", farmEstimate: "from $28/100k volume", status: "retro-activity" },
   // Perps on private-market assets (pre-IPO names), not the crypto majors.
   // Carded like QFEX: a season, retro points expected.
   { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k volume", status: "retro" },
   // Priced since 2026-09-10; Hibachi runs a points programme
   // (docs.hibachi.xyz/hibachi-rewards/hibachi-points).
-  { slug: "hibachi", name: "Hibachi", farmEstimate: "from $27/100k volume", status: "live" },
+  { slug: "hibachi", name: "Hibachi", season: "Season PLAYOFFS (4)", farmEstimate: "from $27/100k volume", status: "live" },
 ];
 
 /** Radar — compact tiles, name only. */

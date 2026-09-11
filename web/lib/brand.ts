@@ -152,8 +152,9 @@ export const BRAND: Record<string, BrandAssets> = {
     backgroundCss: "#0D0D10",
   },
   risex: {
-    // green "R" glyph lifted off the logo tile; the "RISEX" wordmark separately
-    mark: "logos/risex/mark.png",
+    // RiseX's current logo: the green brand tile with its black mark, which
+    // fills the mark box as-is, like QFEX's. The "RISEX" wordmark separately.
+    mark: "logos/risex/logo.png",
     nameImage: "logos/risex/name.png",
     // outline caps read a touch light -> small bump
     nameScale: 1.15,
