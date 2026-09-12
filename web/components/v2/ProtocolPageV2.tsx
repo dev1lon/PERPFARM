@@ -262,6 +262,49 @@ function HedgeCard({
   );
 }
 
+/** A concrete two-account checklist for agent pages where the first leg is
+ * placed manually through an execution book rather than on a PerpFarm venue. */
+function ManualHedgeTemplate({ config, partner }: { config: ProtocolPageConfig; partner: HedgePartnerCard }) {
+  const locale = useLocale();
+  const partnerName = protocolName(partner.slug) ?? partner.slug;
+  const executionNames = config.execution?.venues.map((venue) => venue.name).join(tr(locale, " or ", " или ")) ?? config.name;
+  const steps = [
+    tr(
+      locale,
+      `Choose ${executionNames} in ${config.name} and open the first leg.`,
+      `Выберите ${executionNames} в ${config.name} и откройте первую ногу.`,
+    ),
+    tr(
+      locale,
+      `On ${partnerName}, open the same notional in the opposite direction.`,
+      `На ${partnerName} откройте равный номинал в противоположную сторону.`,
+    ),
+    tr(
+      locale,
+      "Use the calculator's pair and order plan, then close both legs together.",
+      "Используйте пару и план ордеров из калькулятора, затем закройте обе ноги вместе.",
+    ),
+  ];
+
+  return (
+    <div className="flex h-full flex-col border border-accent/35 bg-accent/[0.06] p-[22px]">
+      <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Manual hedge template", "Шаблон ручного хеджа")}</h3>
+      <ol className="mt-4 space-y-3">
+        {steps.map((step, index) => (
+          <li key={step} className="flex gap-3 text-[14px] leading-[1.55] text-text-muted">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-accent/35 text-[11px] font-semibold text-accent">{index + 1}</span>
+            <span>{step}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-auto flex flex-wrap gap-2 pt-5">
+        <span className="border border-accent/35 bg-accent/[0.09] px-2.5 py-1 text-[11px] font-semibold text-accent">{tr(locale, "Manual execution", "Ручное исполнение")}</span>
+        <span className="border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">{tr(locale, "Equal notional", "Равный номинал")}</span>
+      </div>
+    </div>
+  );
+}
+
 /** A stored route the server already read, in the shape this card uses. */
 function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: string; cycleCostUsd: number } | null {
   // A partner is accepted only if it resolves to a listed protocol. Anything
@@ -276,8 +319,8 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
   const locale = useLocale();
   // The first card states the CHEAPEST route, which only exists where the
   // worker prices one. On a protocol we do not collect, that card would claim
-  // a comparison that was never made, so only the hand-placed partner card is
-  // shown -- and nothing is asked of an endpoint that would answer 502.
+  // a comparison that was never made. Show the manual checklist and configured
+  // partner instead, and do not ask an endpoint that would answer 502.
   const priced = isReadyVenue(config.slug);
   // The hourly worker has already compared self-match and every venue; the page
   // arrives with that stored result. The fetch below is the fallback for when
@@ -314,11 +357,12 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
 
   const partner: HedgePartnerCard = config.hedge.partner;
   const cheapestSlug = cheapest?.partnerSlug ?? config.slug;
+  const hasManualTemplate = config.execution !== undefined;
   return (
     <div className="mt-11">
       <H2>{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</H2>
       <div className="pb-4 pt-1.5 text-[14px] text-text-muted">{config.hedge.intro}</div>
-      <div className={`grid gap-4 ${priced ? "sm:grid-cols-2" : ""}`}>
+      <div className={`grid gap-4 ${priced || hasManualTemplate ? "sm:grid-cols-2" : ""}`}>
         {!priced ? null : (
         <HedgeCard
           homeSlug={config.slug}
@@ -344,6 +388,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
           }
         />
         )}
+        {hasManualTemplate ? <ManualHedgeTemplate config={config} partner={partner} /> : null}
         <HedgeCard
           homeSlug={config.slug}
           homeName={config.name}
@@ -563,6 +608,9 @@ export function ProtocolPageV2({
   const execution = config.execution;
   const [executionVenue, setExecutionVenue] = useState<ReadyVenueSlug | null>(execution?.defaultVenue ?? null);
   const pricedVenue = executionVenue ?? (isReadyVenue(slug) ? slug : null);
+  // Activity stays on its own selector on an execution page. Changing the
+  // book above therefore refreshes only the calculator, never the chart.
+  const activityVenue = execution?.defaultVenue ?? pricedVenue;
   return (
     <div>
       <SiteHeaderV2 />
@@ -634,11 +682,12 @@ export function ProtocolPageV2({
         {isReadyVenue(slug) ? <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} /> : null}
 
         {/* Market-activity chart (live activity API). */}
-        {pricedVenue ? (
+        {activityVenue ? (
           <MarketActivityV2
-            key={`activity:${pricedVenue}`}
-            venueSlug={pricedVenue}
-            initialData={execution && executionVenue !== execution.defaultVenue ? undefined : initial?.activity}
+            key={`activity:${activityVenue}`}
+            venueSlug={activityVenue}
+            venueOptions={execution?.venues}
+            initialData={initial?.activity}
           />
         ) : (
           <NotPricedYet

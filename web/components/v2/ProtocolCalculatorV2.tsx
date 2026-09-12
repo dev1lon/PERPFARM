@@ -150,18 +150,13 @@ function tickerOn(pair: PairRanking, slug: string): string | undefined {
  * What to search for on a leg's venue, inside that leg's card.
  *
  * Printed on every leg that carries a ticker, including where it matches the
- * row's name: "Ticker NVDA" under a venue is never a wasted line to someone
- * about to open that venue and look the market up. The table rows print the
- * same ticker under each venue's name. They used to print it only where it
- * differed, so a swap row showed tickers, the ETH row under it did not, and the
- * expanded row said something the collapsed one had not.
+ * row's name. The venue name gives enough context, so the screen ticker stands
+ * on its own instead of repeating a low-contrast "Ticker" prefix.
  */
-function LegTicker({ ticker, locale, compact = false }: { ticker?: string; locale: Locale; compact?: boolean }) {
+function LegTicker({ ticker, compact = false }: { ticker?: string; compact?: boolean }) {
   if (ticker === undefined) return null;
   return (
-    <div className={`font-mono-num ${compact ? "text-[11px]" : "text-[12px]"} text-text-muted`}>
-      {tr(locale, "Ticker", "Тикер")} <span className="text-text-primary">{ticker}</span>
-    </div>
+    <div className={`${compact ? "text-[12px]" : "text-[13px]"} font-medium leading-none text-text-primary/90`}>{ticker}</div>
   );
 }
 
@@ -1313,8 +1308,8 @@ export function RouteResults({
                   <ProtocolMark slug={legsOf(best).longSlug} name={legsOf(best).longName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).longName}</div>
                 </div>
-                <LegTicker ticker={tickerOn(best, legsOf(best).longSlug)} locale={locale} />
-                <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
+                <LegTicker ticker={tickerOn(best, legsOf(best).longSlug)} />
+                <div className="text-[12px] font-medium text-text-muted">{bestOrders.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
               </div>
               <div className="flex flex-col gap-2.5 rounded-none border border-negative/25 p-4" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                 <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
@@ -1322,8 +1317,8 @@ export function RouteResults({
                   <ProtocolMark slug={legsOf(best).shortSlug} name={legsOf(best).shortName} size={26} radius={0} />
                   <div className="text-[16px] font-semibold text-text-primary">{legsOf(best).shortName}</div>
                 </div>
-                <LegTicker ticker={tickerOn(best, legsOf(best).shortSlug)} locale={locale} />
-                <div className="font-mono-num text-[12px] text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
+                <LegTicker ticker={tickerOn(best, legsOf(best).shortSlug)} />
+                <div className="text-[12px] font-medium text-text-muted">{bestOrders.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {bestOrders.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
               </div>
             </div>
             {/* The last two tiles (estimated cost, 24h range) get the wider
@@ -1346,7 +1341,7 @@ export function RouteResults({
                       last tile names its source in words ("latest hourly
                       snapshot"), and a nowrap sentence ran out of the panel
                       over the route model. */}
-                  <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[17px]" : "text-[14px] leading-snug"} font-mono-num ${cls}`}>{v}</div>
+                  <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[17px]" : "text-[14px] leading-snug"} font-medium ${cls}`}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1642,8 +1637,8 @@ export function RouteResults({
                             <ProtocolMark slug={legsOf(p).longSlug} name={legsOf(p).longName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).longName}</span>
                           </div>
-                          <LegTicker ticker={tickerOn(p, legsOf(p).longSlug)} locale={locale} compact />
-                          <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
+                          <LegTicker ticker={tickerOn(p, legsOf(p).longSlug)} compact />
+                          <div className="text-[11px] font-medium text-text-muted">{o.entry.split(" / ")[0]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[0]} {tr(locale, "out", "выход")}</div>
                         </div>
                         <div className="flex flex-col gap-2 rounded-none border border-negative/25 p-3.5" style={{ background: "color-mix(in srgb, var(--negative) 6%, transparent)" }}>
                           <div className="font-mono-num text-[10px] tracking-[0.14em] text-negative">SHORT</div>
@@ -1651,8 +1646,8 @@ export function RouteResults({
                             <ProtocolMark slug={legsOf(p).shortSlug} name={legsOf(p).shortName} size={22} radius={0} />
                             <span className="text-[15px] font-semibold text-text-primary">{legsOf(p).shortName}</span>
                           </div>
-                          <LegTicker ticker={tickerOn(p, legsOf(p).shortSlug)} locale={locale} compact />
-                          <div className="font-mono-num text-[11px] text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
+                          <LegTicker ticker={tickerOn(p, legsOf(p).shortSlug)} compact />
+                          <div className="text-[11px] font-medium text-text-muted">{o.entry.split(" / ")[1]} {tr(locale, "in", "вход")} · {o.exit.split(" / ")[1]} {tr(locale, "out", "выход")}</div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 py-4 lg:grid-cols-6">
@@ -1662,7 +1657,7 @@ export function RouteResults({
                               {k}
                               {tip ? <InfoTip text={tip} /> : null}
                             </div>
-                            <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[15px]" : "text-[13px] leading-snug"} font-mono-num ${cls}`}>{v}</div>
+                            <div className={`${/^[$\d]/.test(v) ? "whitespace-nowrap text-[15px]" : "text-[13px] leading-snug"} font-medium ${cls}`}>{v}</div>
                           </div>
                         ))}
                       </div>

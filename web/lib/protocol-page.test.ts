@@ -151,10 +151,13 @@ describe("protocol page reference", () => {
     expect(source).toContain('setRouteStatus("unavailable")');
   });
 
-  it("gives the calculator and activity chart unique keys when the execution venue changes", () => {
+  it("keeps the activity chart independent from the execution-book selection", () => {
     const source = read("ProtocolPageV2.tsx");
 
     expect(source).toContain('key={`calculator:${pricedVenue}`}');
-    expect(source).toContain('key={`activity:${pricedVenue}`}');
+    expect(source).toContain("const activityVenue = execution?.defaultVenue ?? pricedVenue;");
+    expect(source).toContain('key={`activity:${activityVenue}`}');
+    expect(source).toContain("venueOptions={execution?.venues}");
+    expect(source).toContain("Manual hedge template");
   });
 });

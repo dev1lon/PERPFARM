@@ -17,31 +17,50 @@ type Metric = "volume" | "openInterest" | "uniqueTraders";
  * API or a saved observation; unavailable historical ranges stay disabled. */
 export function MarketActivityV2({
   venueSlug = "variational",
+  venueOptions,
   initialData = null,
 }: {
   venueSlug?: ReadyVenueSlug;
+  /** Optional execution books for an agent page. The chart selector is kept
+   *  separate from the route calculator's selected book. */
+  venueOptions?: ReadonlyArray<{ slug: ReadyVenueSlug; name: string }>;
   /** Rendered with the page when the server could read it, so the chart is on
    *  screen at first paint. The fetch below then never runs; it stays for the
    *  case where that server read failed. */
   initialData?: ActivityResponse | null;
 }) {
   const locale = useLocale();
-  const [data, setData] = useState<ActivityResponse | null>(initialData);
-  const [error, setError] = useState(false);
+  const [activityVenue, setActivityVenue] = useState<ReadyVenueSlug>(venueSlug);
+  const [fetchedData, setFetchedData] = useState<ActivityResponse | null>(null);
+  const [fetchedVenue, setFetchedVenue] = useState<ReadyVenueSlug | null>(null);
+  const [failedVenue, setFailedVenue] = useState<ReadyVenueSlug | null>(null);
   const [metric, setMetric] = useState<Metric>("volume");
   const [rangeDays, setRangeDays] = useState<Range>(30);
 
+  // An execution page may render with the default book's server data. Once a
+  // reader clicks the adjacent HL/Ondo control, the chart fetches only that
+  // venue and never changes the calculator's execution-book selection.
+  const serverData = activityVenue === venueSlug ? initialData : null;
+
   useEffect(() => {
-    if (initialData) return;
+    if (serverData || fetchedVenue === activityVenue) return;
     let active = true;
-    fetch(`/api/venues/${venueSlug}/activity`)
+    fetch(`/api/venues/${activityVenue}/activity`)
       .then((r) => (r.ok ? (r.json() as Promise<ActivityResponse>) : Promise.reject(new Error("failed"))))
-      .then((r) => active && setData(r))
-      .catch(() => active && setError(true));
+      .then((r) => {
+        if (!active) return;
+        setFetchedData(r);
+        setFetchedVenue(activityVenue);
+        setFailedVenue(null);
+      })
+      .catch(() => active && setFailedVenue(activityVenue));
     return () => {
       active = false;
     };
-  }, [venueSlug, initialData]);
+  }, [activityVenue, fetchedVenue, serverData]);
+
+  const data = serverData ?? (fetchedVenue === activityVenue ? fetchedData : null);
+  const error = failedVenue === activityVenue;
 
   const users = data?.uniqueTraders;
   // A protocol without a trader history must never be left showing that tab --
@@ -80,7 +99,35 @@ export function MarketActivityV2({
     <div className="mt-11">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
         <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Market activity", "Активность рынка")}</h2>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
+          {venueOptions && venueOptions.length > 1 ? (
+            <div
+              role="group"
+              className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]"
+              aria-label={tr(locale, "Activity venue", "Площадка активности")}
+            >
+              {venueOptions.map((venue) => {
+                const active = venue.slug === activityVenue;
+                const shortName = venue.slug === "hyperliquid" ? "HL" : venue.name;
+                return (
+                  <button
+                    key={venue.slug}
+                    type="button"
+                    aria-pressed={active}
+                    aria-label={venue.name}
+                    title={venue.name}
+                    onClick={() => {
+                      setFailedVenue(null);
+                      setActivityVenue(venue.slug);
+                    }}
+                    className={`pf-transition rounded-none px-3.5 py-1.5 text-[13px] font-semibold ${active ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text-primary"}`}
+                  >
+                    {shortName}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           <div className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]">
             {metrics.map((m) => (
               <button

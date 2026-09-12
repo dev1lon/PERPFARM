@@ -304,13 +304,13 @@ const SWAP_TICKER_ON_VENUE = new Map<string, string>([
  * trade.xyz's GOLD is XAU, Nado's kPEPE is 1000PEPE. Someone looking the route
  * up on the venue searches the venue's name, so the interface prints it. Only
  * feed plumbing is removed -- a HIP-3 dex prefix (`xyz:`) and a dollar quote
- * suffix (`-USD`, `/USDC`, `-PERP_USDT0`) -- never part of the name, so
+ * suffix (`-USD`, `-USD.P`, `/USDC`, `-PERP_USDT0`) -- never part of the name, so
  * QFEX's won-quoted SAMSUNG-KRW keeps its currency.
  */
 export function venueTicker(symbol: string): string {
   const onScreen = VENUE_SCREEN_NAME.get(symbol);
   if (onScreen !== undefined) return onScreen;
-  const bare = symbol.replace(/^[a-z0-9]+:/, "").replace(/(?:-PERP_USDT0|\/USDT-P|\/USDC|-USDC|-USD)$/, "");
+  const bare = symbol.replace(/^[a-z0-9]+:/, "").replace(/(?:-PERP_USDT0|\/USDT-P|\/USDC|-USDC|-USD\.P|-USD)$/, "");
   const swap = SWAP_TICKER_ON_VENUE.get(bare);
   return swap === undefined ? withoutUsdQuote(bare) : `${swap} swap`;
 }

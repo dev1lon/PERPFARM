@@ -43,6 +43,10 @@ describe("venueTicker", () => {
     expect(venueTicker("AAVE/USDC")).toBe("AAVE");
     expect(venueTicker("1000BONK-USDC")).toBe("1000BONK");
     expect(venueTicker("BRK.B-USD")).toBe("BRK.B");
+    // Ondo's REST symbol has a .P contract suffix; its trading screen does
+    // not. A reader should be able to search the exact ticker they see there.
+    expect(venueTicker("XAU-USD.P")).toBe("XAU");
+    expect(venueTicker("US100-USD.P")).toBe("US100");
   });
 
   it("keeps a quote currency that is part of the market's identity", () => {
