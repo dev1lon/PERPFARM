@@ -105,11 +105,17 @@ const ASSET_CLASS_FEES: Record<string, Record<string, VenueFees>> = {
 /** How to name a class in the fee note under a route. */
 const ASSET_CLASS_LABELS: Record<string, string> = {
   EQUITY: "stocks",
+  // Ondo files its own stocks under STOCK; QFEX and the curated map say EQUITY.
+  STOCK: "stocks",
   INDEX: "indices",
+  ETF: "ETFs",
   COMMODITY: "commodities",
   FX: "FX",
   GROWTH_MODE: "growth-mode markets",
-  CRYPTO: "crypto (Hyperliquid core)",
+  // Plain "crypto": the class is stored by three venues now, and the note that
+  // named one of them ("crypto (Hyperliquid core)") read as a claim about Ondo's
+  // book once Ondo started storing it too.
+  CRYPTO: "crypto",
 };
 
 export function assetClassLabel(assetClass: string | null | undefined): string | null {

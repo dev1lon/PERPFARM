@@ -39,7 +39,10 @@ describe("publishedFees", () => {
     expect(publishedFees("tradexyz", "CRYPTO")).toEqual({ makerBps: 1.5, takerBps: 4.5 });
     expect(publishedFees("tradexyz", null)).toEqual({ makerBps: 3.0, takerBps: 9.0 });
     expect(classFees("risex", "CRYPTO")).toBeNull();
-    expect(assetClassLabel("CRYPTO")).toBe("crypto (Hyperliquid core)");
+    // Named without a venue in it: three venues store this class.
+    expect(assetClassLabel("CRYPTO")).toBe("crypto");
+    expect(assetClassLabel("STOCK")).toBe("stocks");
+    expect(assetClassLabel("ETF")).toBe("ETFs");
   });
 
   it("says which venues vary by class, so the fee note can name them", () => {
