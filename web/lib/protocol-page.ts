@@ -806,8 +806,8 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       builderFeeCapBps: BUILDER_FEE_CAP_BPS,
       feeNote: tr(
         locale,
-        `Costs below are the chosen book's own. TrueNorth's builder fee is on top: capped at ${BUILDER_FEE_CAP_BPS} bps on both books, its own rate unpublished.`,
-        `Ниже — расходы самого стакана. Builder fee TrueNorth идёт сверху: оба стакана ограничивают её ${BUILDER_FEE_CAP_BPS} б.п., свою ставку TrueNorth не публикует.`,
+        `Costs below are the chosen book's own. TrueNorth's builder fee is on top: capped at ${BUILDER_FEE_CAP_BPS} bps on both books, its own rate unpublished. Hyperliquid's book is crypto only — stocks, indices, commodities and FX are on Ondo.`,
+        `Ниже — расходы самого стакана. Builder fee TrueNorth идёт сверху: оба стакана ограничивают её ${BUILDER_FEE_CAP_BPS} б.п., свою ставку TrueNorth не публикует. В стакане Hyperliquid только крипта — акции, индексы, сырьё и валюты есть на Ondo.`,
       ),
     },
   };
