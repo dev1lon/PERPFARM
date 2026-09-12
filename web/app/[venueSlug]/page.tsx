@@ -62,14 +62,11 @@ export default async function VenuePage({
   // TrueNorth is a broker rather than a venue: the books it routes to are
   // collected only to price its routes.
   const executionVenues = trueNorthExecutionVenues(venueSlug);
-  // Such a book has no page of its own, so it is offered as a hedge partner
-  // only on the page that actually trades it -- naming it anywhere else would
-  // point a reader at a venue they cannot open.
+  // Such a book is never a hedge partner, on any page: it is collected only to
+  // farm through the broker, and it has no page a reader could open. The broker
+  // page reaches its own books through `execution.venues` instead.
   const otherVenues = allVenues.filter(
-    (item) =>
-      item.slug !== venueSlug &&
-      isReadyVenue(item.slug) &&
-      (executionVenues.length > 0 || !isExecutionOnlyVenue(item.slug)),
+    (item) => item.slug !== venueSlug && isReadyVenue(item.slug) && !isExecutionOnlyVenue(item.slug),
   );
 
   const pricedVenue = isReadyVenue(venueSlug) ? venueSlug : (executionVenues[0]?.slug ?? null);

@@ -742,8 +742,9 @@ export function ProtocolCalculatorV2({
     // other protocol page (QFEX, Polymarket, ...) could not pick itself and the
     // select showed "Select" over a same-venue default it could not display.
     { slug: venueSlug, name: homeName },
-    // A broker's other book is a real counterparty: HL hedged on Ondo.
-    ...(venueOptions ?? []).map((venue) => ({ slug: venue.slug as string, name: venue.name })),
+    // A broker's OTHER book is deliberately absent: both books are collected
+    // only to farm through the broker, so the one that can appear here is the
+    // selected book itself, for a same-venue hedge.
     { slug: "variational", name: "Variational" },
     { slug: "txflow", name: "TxFlow" },
     ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
