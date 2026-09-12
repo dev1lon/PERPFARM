@@ -128,50 +128,41 @@ export type ProtocolPageConfig = {
 };
 
 /**
- * TxFlow's "Trade & Unlock" campaign.
+ * TxFlow's "The Bull Pit", read off app.txflow.com/campaign/bull-pit on
+ * 2026-09-12.
  *
- * Read off the venue's own campaign page and refreshed by hand. Deliberately
- * NOT computed: the prize pool unlocks on the COMBINED volume of every
- * participant and each share is settled on net fees paid, so any figure we
- * derived for one farmer would be a guess dressed as arithmetic. What the page
- * states is the fact that a pool exists and how far the field has got -- the
- * farmer decides what that is worth.
- */
-/**
- * TxFlow's "Daily 100K Heist", read off the campaign page on 2026-08-23.
+ * Two leaderboards, ROI and PnL, $20,000 each. A farmer may be enrolled in only
+ * one at a time, and someone who ranks in both is paid the higher reward only.
  *
- * The rule that matters to a farmer here is the eligibility one, not the pool
- * size: ONLY PERPETUAL TAKER VOLUME COUNTS. Our own hedge route deliberately
- * rests one leg as a maker to pay the cheaper fee, and that leg earns nothing
- * toward this campaign. Stating the pool without stating that would send people
- * to farm it the way that does not count.
+ * The pool is NOT fixed: it unlocks in steps as the whole field's eligible
+ * taker volume grows, and the step reached at the end is what everyone is paid
+ * from. That ladder is the one figure worth drawing, so it is stated here and
+ * rendered as the campaign's progress.
+ *
+ * The combined-volume reading is a hand-refreshed snapshot, like every other
+ * campaign number on this page: TxFlow publishes it on the campaign page and
+ * nowhere machine-readable.
  */
 const TXFLOW_CAMPAIGN = {
-  startUtc: Date.UTC(2026, 7, 21, 0, 0, 0),
-  endUtc: Date.UTC(2026, 7, 31, 0, 0, 0),
-  /** A fixed pool handed out each day, not one unlocked by the field's volume. */
-  dailyPoolUsd: 100_000,
-  days: 10,
-  totalPoolUsd: 1_000_000,
-  /** Daily taker volume -> that day's reward. Highest tier reached only; they
-   *  do not stack, and nothing carries into the next day. */
+  startUtc: Date.UTC(2026, 8, 5, 0, 0, 0),
+  endUtc: Date.UTC(2026, 8, 14, 23, 59, 0),
+  /** Each leaderboard's maximum; the campaign advertises the two together. */
+  poolPerEventUsd: 20_000,
+  totalPoolUsd: 40_000,
+  /** Own eligible taker volume needed to be ranked at all. */
+  minTakerVolumeUsd: 100_000,
+  /** The field's combined taker volume -> the pool it unlocks, per event. */
   tiers: [
-    { volumeUsd: 200_000, rewardUsd: 5 },
-    { volumeUsd: 500_000, rewardUsd: 15 },
-    { volumeUsd: 1_000_000, rewardUsd: 35 },
-    { volumeUsd: 1_500_000, rewardUsd: 60 },
-    { volumeUsd: 2_500_000, rewardUsd: 100 },
+    { atUsd: 50_000_000, poolUsd: 2_500 },
+    { atUsd: 150_000_000, poolUsd: 6_000 },
+    { atUsd: 200_000_000, poolUsd: 8_000 },
+    { atUsd: 250_000_000, poolUsd: 10_000 },
+    { atUsd: 500_000_000, poolUsd: 20_000 },
   ],
+  /** Read off the ROI leaderboard at 2026-09-12 18:16 UTC. */
+  combinedVolumeUsd: 61_730_331,
+  combinedVolumeAsOf: "2026-09-12 18:16 UTC",
 };
-
-/** "$200K → $5 · $500K → $15 · …", built from the ladder above. */
-function txflowTierLine(): string {
-  return TXFLOW_CAMPAIGN.tiers
-    .map((tier) => `$${tier.volumeUsd >= 1_000_000
-      ? `${tier.volumeUsd / 1_000_000}M`
-      : `${tier.volumeUsd / 1_000}K`} → $${tier.rewardUsd}`)
-    .join(" · ");
-}
 
 /** Variational Swaps Trading Competition: 2026-09-10 00:00 UTC to 2026-09-24
  *  00:00 UTC, per omni.variational.io/competition and
@@ -443,14 +434,19 @@ function txflow(locale: Locale): ProtocolPageConfig {
     },
     activity: {
       kind: "campaign",
-      name: "Daily 100K Heist · $1,000,000 USDC",
+      name: "The Bull Pit · $40,000 USDC",
       startUtc: TXFLOW_CAMPAIGN.startUtc,
       endUtc: TXFLOW_CAMPAIGN.endUtc,
-      meta: `$${(TXFLOW_CAMPAIGN.dailyPoolUsd / 1000).toFixed(0)}K ${tr(locale, "every day", "каждый день")} · ${TXFLOW_CAMPAIGN.days} ${tr(locale, "days", "дней")}`,
+      meta: `ROI + PnL · $${(TXFLOW_CAMPAIGN.poolPerEventUsd / 1000).toFixed(0)}K ${tr(locale, "each", "на каждый")}`,
+      progress: {
+        valueUsd: TXFLOW_CAMPAIGN.combinedVolumeUsd,
+        valueLabel: `$${(TXFLOW_CAMPAIGN.combinedVolumeUsd / 1_000_000).toFixed(1)}M · ${TXFLOW_CAMPAIGN.combinedVolumeAsOf}`,
+        tiers: TXFLOW_CAMPAIGN.tiers,
+      },
       body: tr(
         locale,
-        `Only PERPETUAL TAKER volume counts — maker volume is excluded, and so is volume from Fee Credit redemptions or self-matched trades. A position has to be held at least a minute, and trading must be manual. That matters for the hedge below: its resting LIMIT leg is a maker leg and earns nothing here, so only the MARKET leg builds campaign volume. Your total resets at 00:00 UTC every day, and only the highest tier you reach that day pays: ${txflowTierLine()}. The $100,000 daily pool is allocated from the highest volumes down until it runs out, and whatever is left does not carry over.`,
-        `Засчитывается только ТЕЙКЕРСКИЙ объём по перпам — мейкерский не считается, как и объём, оплаченный Fee Credits, и сделки сам с собой. Позицию нужно держать хотя бы минуту, торговля должна быть ручной. Для маршрута ниже это важно: пассивная LIMIT-нога — это мейкер, она здесь не засчитывается, объём кампании набирает только MARKET-нога. Счётчик обнуляется каждый день в 00:00 UTC, и платят только за верхнюю достигнутую за день ступень: ${txflowTierLine()}. Дневной пул $100 000 раздаётся сверху вниз, от самых больших объёмов, пока не кончится; остаток на следующий день не переносится.`,
+        `Two leaderboards, ROI and PnL, $${(TXFLOW_CAMPAIGN.poolPerEventUsd / 1000).toFixed(0)}K each. You can be in only one at a time, and someone who ranks in both is paid the higher reward only. Only PERPETUAL TAKER volume counts — maker volume, Fee Credit volume and self-matched trades are all excluded, a position has to be held at least a minute, and trading must be manual. The pool everyone shares unlocks with the field's combined volume (above), and the top 50 of each board are paid; $${(TXFLOW_CAMPAIGN.minTakerVolumeUsd / 1000).toFixed(0)}K of your own taker volume is the floor to be ranked at all. Read the hedge below with that in mind: a delta-neutral route nets about zero by design, so it clears the floor and grows the shared pool but climbs neither board.`,
+        `Два рейтинга, ROI и PnL, по $${(TXFLOW_CAMPAIGN.poolPerEventUsd / 1000).toFixed(0)}K. Участвовать можно только в одном за раз, а если попал в оба — заплатят только большую из наград. Засчитывается только ТЕЙКЕРСКИЙ объём по перпам: мейкерский, оплаченный Fee Credits и сделки сам с собой не считаются, позицию нужно держать хотя бы минуту, торговля — ручная. Общий пул раскрывается по мере роста объёма всех участников (шкала выше), платят топ-50 каждого рейтинга, а чтобы вообще попасть в рейтинг, нужно $${(TXFLOW_CAMPAIGN.minTakerVolumeUsd / 1000).toFixed(0)}K собственного тейкерского объёма. Отсюда важное про хедж ниже: дельта-нейтральный маршрут по своей природе даёт около нуля, поэтому он проходит порог и увеличивает общий пул, но в рейтинги не поднимается.`,
       ),
       eligibleLabel: tr(locale, "Counts toward it", "Что засчитывается"),
       eligibleValue: tr(locale, "Perp taker volume", "Тейкерский объём"),
@@ -458,11 +454,11 @@ function txflow(locale: Locale): ProtocolPageConfig {
       // (`/r/CODE`) and a `?ref=` here was not honoured, so carrying one only
       // made the link look like it did something it did not. The referral lives
       // on the trade link above, which is the one people sign up through.
-      rulesUrl: "https://app.txflow.com/campaign",
+      rulesUrl: "https://app.txflow.com/campaign/bull-pit",
       endedNote: tr(
         locale,
-        "This campaign has ended. Check TxFlow for the next one.",
-        "Эта кампания завершилась. Следующую смотрите у TxFlow.",
+        "The Bull Pit ended on 2026-09-14. Check TxFlow for the next one.",
+        "The Bull Pit завершился 14.09.2026. Следующую кампанию смотрите у TxFlow.",
       ),
     },
     points: { kind: "none" },

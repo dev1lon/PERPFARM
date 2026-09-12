@@ -3,24 +3,9 @@
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { EmptyNote } from "@/components/v2/EmptyNote";
+import { fdvEvent, UNREADABLE_MARKET_PAGE, type FdvMarketResponse } from "@/lib/fdv-market";
 import { formatUtcDateTime } from "@/lib/format";
-import type { ReadyVenueSlug } from "@/lib/venue-status";
-
-const POLYMARKET_EVENT_URL = "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y";
-
-type FdvMarket = {
-  threshold: string;
-  probability: number;
-  volume: number;
-  /** 24h move, in the same units as `probability`. */
-  dayChange: number | null;
-};
-
-type FdvMarketResponse = {
-  asOf: string;
-  eventVolume: number | null;
-  markets: FdvMarket[];
-};
+import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 
 /**
  * The 24h move on one threshold.
@@ -72,8 +57,13 @@ export function FdvMarketsV2({
   const locale = useLocale();
   const [data, setData] = useState<FdvMarketResponse | null>(initialData);
   const [error, setError] = useState(false);
-  // Only Variational has a listed Polymarket event today.
-  const hasMarket = venueSlug === "variational";
+  // Which question this protocol's market actually asks, if it has one.
+  const event = fdvEvent(venueSlug);
+  const hasMarket = event !== null;
+  const isLaunchMarket = (data?.kind ?? event?.kind) === "launch";
+  const name = protocolName(venueSlug) ?? venueSlug;
+  // A market we can link to but not read (predict.fun wants an API key).
+  const elsewhere = UNREADABLE_MARKET_PAGE[venueSlug];
 
   useEffect(() => {
     if (!hasMarket || initialData) return;
@@ -99,17 +89,21 @@ export function FdvMarketsV2({
       <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
         <div>
           <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">
-            {tr(locale, "Market-implied FDV", "Рыночные ожидания FDV")}
+            {isLaunchMarket
+              ? tr(locale, "Market-implied token launch", "Рыночные ожидания запуска токена")
+              : tr(locale, "Market-implied FDV", "Рыночные ожидания FDV")}
           </h2>
           <p className="pt-1.5 text-[14px] text-text-muted">
-            {hasMarket
-              ? tr(locale, "Chance that Variational exceeds each FDV threshold one day after launch.", "Вероятность того, что FDV Variational превысит каждый порог через день после запуска.")
-              : tr(locale, "Probability markets for this protocol's post-launch FDV.", "Вероятностные рынки для FDV этого протокола после запуска.")}
+            {!hasMarket
+              ? tr(locale, "Probability markets for this protocol's token.", "Вероятностные рынки по токену этого протокола.")
+              : isLaunchMarket
+                ? tr(locale, `Chance that ${name} has launched a token by each date.`, `Вероятность того, что ${name} запустит токен к каждой дате.`)
+                : tr(locale, `Chance that ${name} exceeds each FDV threshold one day after launch.`, `Вероятность того, что FDV ${name} превысит каждый порог через день после запуска.`)}
           </p>
         </div>
-        {hasMarket && (
+        {event && (
           <a
-            href={POLYMARKET_EVENT_URL}
+            href={event.page}
             target="_blank"
             rel="noreferrer"
             className="pf-transition text-[13px] font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
@@ -124,13 +118,31 @@ export function FdvMarketsV2({
             does not jump or collapse depending on which state it lands in. */}
         {!hasMarket && (
           <EmptyNote className="min-h-[148px] py-6">
-            {tr(locale, "No public FDV prediction market is available for this protocol yet.", "Публичного prediction market по FDV этого протокола пока нет.")}
+            {elsewhere ? (
+              <>
+                {tr(
+                  locale,
+                  `The only market on ${name}'s token is on predict.fun, which does not publish its odds without an API key.`,
+                  `Единственный рынок по токену ${name} — на predict.fun, а он не отдаёт котировки без API-ключа.`,
+                )}{" "}
+                <a
+                  href={elsewhere}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pf-transition font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
+                >
+                  {tr(locale, "Open on predict.fun ↗", "Открыть на predict.fun ↗")}
+                </a>
+              </>
+            ) : (
+              tr(locale, "No public prediction market on this protocol's token yet.", "Публичного prediction market по токену этого протокола пока нет.")
+            )}
           </EmptyNote>
         )}
         {hasMarket && !data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
         {error && (
           <EmptyNote className="min-h-[148px] py-6">
-            {tr(locale, "Polymarket FDV data is unavailable right now.", "Данные Polymarket по FDV сейчас недоступны.")}
+            {tr(locale, "Polymarket data is unavailable right now.", "Данные Polymarket сейчас недоступны.")}
           </EmptyNote>
         )}
         {data && (
