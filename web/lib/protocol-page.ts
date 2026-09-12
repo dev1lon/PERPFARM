@@ -748,7 +748,8 @@ function lighterrh(locale: Locale): ProtocolPageConfig {
  * agents place fill on the perp venues it connects -- Hyperliquid and Ondo
  * Perps today. Its docs (docs.truenorth.xyz) cover the analysis app and the MCP
  * connector. The calculator prices the chosen execution book, not a fictional
- * TrueNorth book, and keeps its 0-bps builder fee separate from venue fees.
+ * TrueNorth book, and keeps the currently modelled 0-bps broker surcharge
+ * separate from venue fees.
  */
 function truenorth(locale: Locale): ProtocolPageConfig {
   const base = pendingProtocol(
@@ -780,8 +781,8 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       ...base.guidance,
       intro: tr(
         locale,
-        "TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on Hyperliquid or Ondo Perps, so the calculator prices that selected venue's fees, spread and funding. TrueNorth's builder fee is modelled separately at 0 bps.",
-        "TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на Hyperliquid или Ondo Perps, поэтому калькулятор берёт комиссии, спред и фандинг выбранной площадки. Builder-комиссия TrueNorth считается отдельно и равна 0 б.п.",
+        "TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on Hyperliquid or Ondo Perps, so the calculator prices that selected venue's fees, spread and funding. No public TrueNorth per-fill surcharge is available, so the separate broker fee is currently modelled at 0 bps.",
+        "TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на Hyperliquid или Ondo Perps, поэтому калькулятор берёт комиссии, спред и фандинг выбранной площадки. Публичной ставки TrueNorth за исполнение не найдено, поэтому отдельная комиссия брокера пока моделируется как 0 б.п.",
       ),
     },
     hedge: {
@@ -803,8 +804,8 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       builderFeeBps: trueNorthBuilderFeeBps(TRUE_NORTH_DEFAULT_EXECUTION_VENUE),
       feeNote: tr(
         locale,
-        "TrueNorth builder fee: 0 bps. The route includes the selected exchange's maker/taker fees, spread and funding, plus the chosen hedge venue's costs.",
-        "Builder-комиссия TrueNorth: 0 б.п. В маршрут входят maker/taker-комиссии, спред и фандинг выбранной площадки, а также расходы выбранного хеджа.",
+        "TrueNorth surcharge modelled: 0 bps (no public per-fill rate found). The route includes the selected exchange's maker/taker fees, spread and funding, plus the chosen hedge venue's costs.",
+        "Комиссия TrueNorth в модели: 0 б.п. (публичная ставка за исполнение не найдена). В маршрут входят maker/taker-комиссии, спред и фандинг выбранной площадки, а также расходы выбранного хеджа.",
       ),
     },
   };

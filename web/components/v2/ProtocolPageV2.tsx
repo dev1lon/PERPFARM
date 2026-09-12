@@ -607,7 +607,7 @@ export function ProtocolPageV2({
             there is a data path to price. */}
         {pricedVenue ? (
           <ProtocolCalculatorV2
-            key={pricedVenue}
+            key={`calculator:${pricedVenue}`}
             otherVenues={otherVenues}
             venueSlug={pricedVenue}
             executionContext={execution ? { feeNote: execution.feeNote } : undefined}
@@ -636,7 +636,7 @@ export function ProtocolPageV2({
         {/* Market-activity chart (live activity API). */}
         {pricedVenue ? (
           <MarketActivityV2
-            key={pricedVenue}
+            key={`activity:${pricedVenue}`}
             venueSlug={pricedVenue}
             initialData={execution && executionVenue !== execution.defaultVenue ? undefined : initial?.activity}
           />

@@ -9,7 +9,7 @@ describe("TrueNorth execution venues", () => {
     expect(TRUE_NORTH_EXECUTION_VENUES.map((venue) => venue.slug)).toEqual(["hyperliquid", "ondo"]);
   });
 
-  it("does not add a TrueNorth builder fee to either route", () => {
+  it("models no TrueNorth surcharge until a rate can be verified", () => {
     expect(trueNorthBuilderFeeBps("hyperliquid")).toBe(0);
     expect(trueNorthBuilderFeeBps("ondo")).toBe(0);
   });

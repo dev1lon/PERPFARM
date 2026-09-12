@@ -186,6 +186,10 @@ export const BRAND: Record<string, BrandAssets> = {
     mark: "logos/ondo/logo.png",
     invertMarkOnLight: true,
   },
+  hyperliquid: {
+    // Aqua Hyperliquid mark on its original dark brand tile.
+    mark: "logos/HL/logo.jpg",
+  },
   qfex: {
     // teal brand tile fills the mark box as-is
     mark: "logos/qfex/logo.jpg",

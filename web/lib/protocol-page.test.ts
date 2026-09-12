@@ -150,4 +150,11 @@ describe("protocol page reference", () => {
     expect(source).toContain('routeStatus === "ready"');
     expect(source).toContain('setRouteStatus("unavailable")');
   });
+
+  it("gives the calculator and activity chart unique keys when the execution venue changes", () => {
+    const source = read("ProtocolPageV2.tsx");
+
+    expect(source).toContain('key={`calculator:${pricedVenue}`}');
+    expect(source).toContain('key={`activity:${pricedVenue}`}');
+  });
 });
