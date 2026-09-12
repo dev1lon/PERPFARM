@@ -264,8 +264,30 @@ function HedgeCard({
 
 /** A concrete two-account checklist for agent pages where the first leg is
  * placed manually through an execution book rather than on a PerpFarm venue. */
-function ManualHedgeTemplate({ config, partner }: { config: ProtocolPageConfig; partner: HedgePartnerCard }) {
+function ManualHedgeTemplate({
+  config,
+  partner,
+  asRouteCard = false,
+}: {
+  config: ProtocolPageConfig;
+  partner: HedgePartnerCard;
+  /** On an execution-agent page the manual route uses the reference route-card
+   * layout: it belongs beside the calculated cheapest route, not ahead of it. */
+  asRouteCard?: boolean;
+}) {
   const locale = useLocale();
+  if (asRouteCard) {
+    return (
+      <HedgeCard
+        homeSlug={config.slug}
+        homeName={config.name}
+        partnerSlug={partner.slug}
+        linked
+        body={partner.body}
+        tags={partner.tags}
+      />
+    );
+  }
   const partnerName = protocolName(partner.slug) ?? partner.slug;
   const executionNames = config.execution?.venues.map((venue) => venue.name).join(tr(locale, " or ", " или ")) ?? config.name;
   const steps = [
@@ -317,11 +339,10 @@ function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: 
 
 function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageConfig; initialRoute?: CheapestRoute | null }) {
   const locale = useLocale();
-  // The first card states the CHEAPEST route, which only exists where the
-  // worker prices one. On a protocol we do not collect, that card would claim
-  // a comparison that was never made. Show the manual checklist and configured
-  // partner instead, and do not ask an endpoint that would answer 502.
-  const priced = isReadyVenue(config.slug);
+  // TrueNorth has no book of its own, so its comparison comes from the default
+  // connected book. The server has already prefetched that exact answer.
+  const pricingSlug = config.execution?.defaultVenue ?? config.slug;
+  const priced = isReadyVenue(pricingSlug);
   // The hourly worker has already compared self-match and every venue; the page
   // arrives with that stored result. The fetch below is the fallback for when
   // the server could not read it.
@@ -335,7 +356,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
   useEffect(() => {
     if (initialRoute || !priced) return;
     let active = true;
-    fetch(`/api/venues/${config.slug}/cheapest-route`)
+    fetch(`/api/venues/${pricingSlug}/cheapest-route`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!active) return;
@@ -353,7 +374,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     return () => {
       active = false;
     };
-  }, [config.slug, initialRoute, priced]);
+  }, [initialRoute, priced, pricingSlug]);
 
   const partner: HedgePartnerCard = config.hedge.partner;
   const cheapestSlug = cheapest?.partnerSlug ?? config.slug;
@@ -388,15 +409,18 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
           }
         />
         )}
-        {hasManualTemplate ? <ManualHedgeTemplate config={config} partner={partner} /> : null}
-        <HedgeCard
-          homeSlug={config.slug}
-          homeName={config.name}
-          partnerSlug={partner.slug}
-          linked
-          body={partner.body}
-          tags={partner.tags}
-        />
+        {hasManualTemplate ? (
+          <ManualHedgeTemplate config={config} partner={partner} asRouteCard />
+        ) : (
+          <HedgeCard
+            homeSlug={config.slug}
+            homeName={config.name}
+            partnerSlug={partner.slug}
+            linked
+            body={partner.body}
+            tags={partner.tags}
+          />
+        )}
       </div>
     </div>
   );

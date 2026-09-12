@@ -90,6 +90,7 @@ describe("protocol page reference", () => {
       expect(execution?.venues.map((venue) => venue.slug)).toEqual(["hyperliquid", "ondo"]);
       expect(execution?.builderFeeBps).toBe(0);
       expect(protocolPageConfig(slug, "en").tradeUrl).toBe("https://truenorth.xyz/ref/C7T2BX");
+      expect(protocolPageConfig(slug, "en").hedge.partner.slug).toBe("txflow");
     }
     // A catalogued protocol with no data path is still never ready.
     expect(isReadyVenue("hotstuff")).toBe(false);
@@ -160,7 +161,8 @@ describe("protocol page reference", () => {
     expect(source).toContain("const activityVenue = execution?.defaultVenue ?? pricedVenue;");
     expect(source).toContain('key={`activity:${activityVenue}`}');
     expect(source).toContain("venueOptions={execution?.venues}");
-    expect(source).toContain("Manual hedge template");
+    expect(source).toContain("const pricingSlug = config.execution?.defaultVenue ?? config.slug;");
+    expect(source).toContain("asRouteCard");
     expect(activity).toContain('import { ProtocolMark }');
     expect(activity).toContain('<ProtocolMark slug={venue.slug} name={venue.name} size={20} radius={0} />');
   });

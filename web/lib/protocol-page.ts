@@ -788,13 +788,16 @@ function truenorth(locale: Locale): ProtocolPageConfig {
     hedge: {
       ...base.hedge,
       partner: {
-        slug: "variational",
+        slug: "txflow",
         body: tr(
           locale,
-          "A TrueNorth trade fills on Hyperliquid or Ondo Perps. Variational charges 0% on both sides, so the hedge leg against it costs only its spread.",
-          "Сделка через TrueNorth исполняется на Hyperliquid или Ondo Perps. Variational берёт 0% с обеих сторон, так что хедж-нога к ней стоит только спреда.",
+          "Manual two-account route: execute through TrueNorth on Hyperliquid or Ondo, then open the same notional in the opposite direction on TxFlow.",
+          "Ручной маршрут на два аккаунта: исполните первую ногу через TrueNorth на Hyperliquid или Ondo, затем откройте такой же номинал в противоположную сторону на TxFlow.",
         ),
-        tags: [[tr(locale, "0% fees", "0% комиссии"), "ok"]],
+        tags: [
+          [tr(locale, "Farm retro points", "Ретро-активность"), "ok"],
+          [tr(locale, "Manual execution", "Ручное исполнение"), "neutral"],
+        ],
       },
     },
     execution: {
