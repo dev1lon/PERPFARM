@@ -89,6 +89,7 @@ describe("protocol page reference", () => {
       const execution = protocolPageConfig(slug, "en").execution;
       expect(execution?.venues.map((venue) => venue.slug)).toEqual(["hyperliquid", "ondo"]);
       expect(execution?.builderFeeBps).toBe(0);
+      expect(protocolPageConfig(slug, "en").tradeUrl).toBe("https://truenorth.xyz/ref/C7T2BX");
     }
     // A catalogued protocol with no data path is still never ready.
     expect(isReadyVenue("hotstuff")).toBe(false);
@@ -153,11 +154,14 @@ describe("protocol page reference", () => {
 
   it("keeps the activity chart independent from the execution-book selection", () => {
     const source = read("ProtocolPageV2.tsx");
+    const activity = read("MarketActivityV2.tsx");
 
     expect(source).toContain('key={`calculator:${pricedVenue}`}');
     expect(source).toContain("const activityVenue = execution?.defaultVenue ?? pricedVenue;");
     expect(source).toContain('key={`activity:${activityVenue}`}');
     expect(source).toContain("venueOptions={execution?.venues}");
     expect(source).toContain("Manual hedge template");
+    expect(activity).toContain('import { ProtocolMark }');
+    expect(activity).toContain('<ProtocolMark slug={venue.slug} name={venue.name} size={20} radius={0} />');
   });
 });

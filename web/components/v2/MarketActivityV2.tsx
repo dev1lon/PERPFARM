@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
+import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { compactCount, compactUsd, dayLabel } from "@/lib/format";
 import type { ReadyVenueSlug } from "@/lib/venue-status";
 import type { ActivityPoint, ActivityResponse } from "@/lib/activity/types";
@@ -98,14 +99,10 @@ export function MarketActivityV2({
   return (
     <div className="mt-11">
       <div className="flex flex-wrap items-end justify-between gap-3 pb-4">
-        <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Market activity", "Активность рынка")}</h2>
-        <div className="flex flex-wrap items-center justify-end gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{tr(locale, "Market activity", "Активность рынка")}</h2>
           {venueOptions && venueOptions.length > 1 ? (
-            <div
-              role="group"
-              className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]"
-              aria-label={tr(locale, "Activity venue", "Площадка активности")}
-            >
+            <div className="flex flex-wrap items-center gap-2" aria-label={tr(locale, "Activity venue", "Площадка активности")}>
               {venueOptions.map((venue) => {
                 const active = venue.slug === activityVenue;
                 const shortName = venue.slug === "hyperliquid" ? "HL" : venue.name;
@@ -120,14 +117,17 @@ export function MarketActivityV2({
                       setFailedVenue(null);
                       setActivityVenue(venue.slug);
                     }}
-                    className={`pf-transition rounded-none px-3.5 py-1.5 text-[13px] font-semibold ${active ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text-primary"}`}
+                    className={`pf-transition inline-flex min-h-9 items-center gap-2 border px-2.5 py-1.5 text-[13px] font-semibold ${active ? "border-accent/55 bg-accent/15 text-accent" : "border-border bg-surface-1 text-text-muted hover:border-text-dim hover:text-text-primary"}`}
                   >
+                    <ProtocolMark slug={venue.slug} name={venue.name} size={20} radius={0} />
                     {shortName}
                   </button>
                 );
               })}
             </div>
           ) : null}
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
           <div className="flex gap-0.5 rounded-none border border-border bg-bg p-[3px]">
             {metrics.map((m) => (
               <button

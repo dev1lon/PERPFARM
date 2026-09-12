@@ -758,7 +758,7 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       name: "TrueNorth",
       twitterUrl: "https://x.com/get_truenorth",
       docsUrl: "https://docs.truenorth.xyz/",
-      tradeUrl: "https://truenorth.xyz", // TODO(manual): referral link
+      tradeUrl: "https://truenorth.xyz/ref/C7T2BX",
       season: "0",
       // The same status the home card publishes, so the two cannot disagree.
       farmEstimate: {
