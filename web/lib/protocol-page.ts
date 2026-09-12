@@ -15,9 +15,9 @@
 import { tr, type Locale } from "@/components/LocaleProvider";
 import { farmEstimateTip, otcPointTip } from "@/components/v2/InfoTip";
 import {
+  BUILDER_FEE_CAP_BPS,
   TRUE_NORTH_DEFAULT_EXECUTION_VENUE,
   TRUE_NORTH_EXECUTION_VENUES,
-  trueNorthBuilderFeeBps,
   type TrueNorthExecutionVenue,
 } from "@/lib/truenorth-execution";
 
@@ -88,13 +88,12 @@ export type PointsConfig =
     }
   | { kind: "none" };
 
-/** A broker page chooses one real exchange book to price. */
+/** A broker page prices the real exchange book the farmer picks. */
 export type ExecutionConfig = {
-  label: string;
-  venues: ReadonlyArray<{ slug: TrueNorthExecutionVenue; name: string }>;
+  venues: ReadonlyArray<{ slug: TrueNorthExecutionVenue; name: string; short: string }>;
   defaultVenue: TrueNorthExecutionVenue;
-  /** The broker surcharge is exposed separately from the venue's maker/taker rates. */
-  builderFeeBps: number;
+  /** The most a builder may add on top of the book's own maker/taker fee. */
+  builderFeeCapBps: number;
   feeNote: string;
 };
 
@@ -748,8 +747,9 @@ function lighterrh(locale: Locale): ProtocolPageConfig {
  * agents place fill on the perp venues it connects -- Hyperliquid and Ondo
  * Perps today. Its docs (docs.truenorth.xyz) cover the analysis app and the MCP
  * connector. The calculator prices the chosen execution book, not a fictional
- * TrueNorth book, and keeps the currently modelled 0-bps broker surcharge
- * separate from venue fees.
+ * TrueNorth book. A builder fee IS charged on top of it -- every fill routes
+ * through TrueNorth's builder integration -- but its rate is unpublished, so
+ * the page names the ceiling both books enforce instead of pricing a guess.
  */
 function truenorth(locale: Locale): ProtocolPageConfig {
   const base = pendingProtocol(
@@ -781,8 +781,8 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       ...base.guidance,
       intro: tr(
         locale,
-        "TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on Hyperliquid or Ondo Perps, so the calculator prices that selected venue's fees, spread and funding. No public TrueNorth per-fill surcharge is available, so the separate broker fee is currently modelled at 0 bps.",
-        "TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на Hyperliquid или Ondo Perps, поэтому калькулятор берёт комиссии, спред и фандинг выбранной площадки. Публичной ставки TrueNorth за исполнение не найдено, поэтому отдельная комиссия брокера пока моделируется как 0 б.п.",
+        `TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on Hyperliquid or Ondo Perps, so the calculator prices the book you pick — its fees, spread and funding. TrueNorth takes a builder fee on top of that: both books cap it at ${BUILDER_FEE_CAP_BPS} bps, and TrueNorth has not published its own rate.`,
+        `TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на Hyperliquid или Ondo Perps, поэтому калькулятор считает выбранный стакан — его комиссии, спред и фандинг. Сверху TrueNorth берёт builder fee: оба стакана ограничивают её ${BUILDER_FEE_CAP_BPS} б.п., а свою ставку TrueNorth не публикует.`,
       ),
     },
     hedge: {
@@ -801,14 +801,13 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       },
     },
     execution: {
-      label: tr(locale, "Execution account", "Аккаунт исполнения"),
       venues: TRUE_NORTH_EXECUTION_VENUES,
       defaultVenue: TRUE_NORTH_DEFAULT_EXECUTION_VENUE,
-      builderFeeBps: trueNorthBuilderFeeBps(TRUE_NORTH_DEFAULT_EXECUTION_VENUE),
+      builderFeeCapBps: BUILDER_FEE_CAP_BPS,
       feeNote: tr(
         locale,
-        "TrueNorth surcharge modelled: 0 bps (no public per-fill rate found). The route includes the selected exchange's maker/taker fees, spread and funding, plus the chosen hedge venue's costs.",
-        "Комиссия TrueNorth в модели: 0 б.п. (публичная ставка за исполнение не найдена). В маршрут входят maker/taker-комиссии, спред и фандинг выбранной площадки, а также расходы выбранного хеджа.",
+        `Costs below are the chosen book's own. TrueNorth's builder fee is on top: capped at ${BUILDER_FEE_CAP_BPS} bps on both books, its own rate unpublished.`,
+        `Ниже — расходы самого стакана. Builder fee TrueNorth идёт сверху: оба стакана ограничивают её ${BUILDER_FEE_CAP_BPS} б.п., свою ставку TrueNorth не публикует.`,
       ),
     },
   };

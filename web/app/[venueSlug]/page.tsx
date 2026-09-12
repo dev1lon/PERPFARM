@@ -7,12 +7,12 @@ import { TxFlowV2 } from "@/components/v2/TxFlowV2";
 import { loadStoredActivity } from "@/lib/activity/stored";
 import { loadTxflowActivity } from "@/lib/activity/txflow";
 import { loadVariationalActivity } from "@/lib/activity/variational";
-import { loadCheapestRoute } from "@/lib/cheapest-route";
+import { loadCheapestRoute, type CheapestRoute } from "@/lib/cheapest-route";
 import { getVenueDetail, getVenues } from "@/lib/data-source";
 import { loadFdvMarkets } from "@/lib/fdv-market";
 import { loadOiComposition } from "@/lib/oi-composition";
 import { hasProtocolPage } from "@/lib/protocol-page";
-import { trueNorthExecutionVenue } from "@/lib/truenorth-execution";
+import { isExecutionOnlyVenue, trueNorthExecutionVenues } from "@/lib/truenorth-execution";
 import { isReadyVenue } from "@/lib/venue-status";
 import { findProtocol } from "@/lib/home-protocols";
 
@@ -59,11 +59,20 @@ export default async function VenuePage({
   const catalog = findProtocol(venueSlug);
   if (!catalog) notFound();
 
-  const otherVenues = allVenues.filter((item) => item.slug !== venueSlug && isReadyVenue(item.slug));
+  // TrueNorth is a broker rather than a venue: the books it routes to are
+  // collected only to price its routes.
+  const executionVenues = trueNorthExecutionVenues(venueSlug);
+  // Such a book has no page of its own, so it is offered as a hedge partner
+  // only on the page that actually trades it -- naming it anywhere else would
+  // point a reader at a venue they cannot open.
+  const otherVenues = allVenues.filter(
+    (item) =>
+      item.slug !== venueSlug &&
+      isReadyVenue(item.slug) &&
+      (executionVenues.length > 0 || !isExecutionOnlyVenue(item.slug)),
+  );
 
-  // TrueNorth is a broker rather than a venue: prefetch its default execution
-  // book (Hyperliquid) while the client still lets the user switch to Ondo.
-  const pricedVenue = isReadyVenue(venueSlug) ? venueSlug : trueNorthExecutionVenue(venueSlug);
+  const pricedVenue = isReadyVenue(venueSlug) ? venueSlug : (executionVenues[0]?.slug ?? null);
   if (hasProtocolPage(venueSlug) && pricedVenue) {
     // The cards' numbers, read HERE rather than by four separate requests from
     // the browser after the page has painted. This page is regenerated hourly,
@@ -72,21 +81,35 @@ export default async function VenuePage({
     // `allSettled`, and each result handed over only if it arrived: a card
     // whose read failed falls back to asking for itself, exactly as before, so
     // one unavailable source can never blank a page that has everything else.
-    const [activity, cheapestRoute, fdvMarkets, oiComposition] = await Promise.allSettled([
+    // Every book this page can price, compared: a broker's cheapest hedge on
+    // Hyperliquid and on Ondo are different answers and both are shown.
+    const routeVenues = executionVenues.length ? executionVenues.map((venue) => venue.slug) : [pricedVenue];
+    const [activity, routes, fdvMarkets, oiComposition] = await Promise.allSettled([
       pricedVenue === "txflow"
         ? loadTxflowActivity()
         : pricedVenue === "variational"
           ? loadVariationalActivity()
           : loadStoredActivity(pricedVenue),
-      loadCheapestRoute(pricedVenue),
+      Promise.all(
+        routeVenues.map(
+          async (slug) => [slug, await loadCheapestRoute(slug).catch(() => null)] as const,
+        ),
+      ),
       loadFdvMarkets(pricedVenue),
       pricedVenue === "variational" ? loadOiComposition(pricedVenue) : Promise.resolve(null),
     ]);
     const settled = <T,>(result: PromiseSettledResult<T>): T | undefined =>
       result.status === "fulfilled" ? result.value : undefined;
+    // A book whose read failed is left out entirely, so its card falls back to
+    // asking for itself instead of rendering as "no comparison".
+    const cheapestRoutes: Record<string, CheapestRoute> = {};
+    for (const [slug, route] of settled(routes) ?? []) {
+      if (route) cheapestRoutes[slug] = route;
+    }
     const initial = {
       activity: settled(activity),
-      cheapestRoute: settled(cheapestRoute),
+      cheapestRoute: cheapestRoutes[pricedVenue],
+      cheapestRoutes,
       fdvMarkets: settled(fdvMarkets),
     };
     if (venueSlug === "variational") {

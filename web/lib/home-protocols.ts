@@ -72,7 +72,6 @@ export const RADAR: HomeProtocol[] = [
   { slug: "extended", name: "Extended" },
   { slug: "pacifica", name: "Pacifica" },
   { slug: "nado", name: "Nado" },
-  { slug: "ondo", name: "Ondo" },
 ];
 
 /** Tracked protocols for the hero badge: the two tiers the home page shows. */

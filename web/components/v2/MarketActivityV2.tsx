@@ -24,7 +24,7 @@ export function MarketActivityV2({
   venueSlug?: ReadyVenueSlug;
   /** Optional execution books for an agent page. The chart selector is kept
    *  separate from the route calculator's selected book. */
-  venueOptions?: ReadonlyArray<{ slug: ReadyVenueSlug; name: string }>;
+  venueOptions?: ReadonlyArray<{ slug: ReadyVenueSlug; name: string; short?: string }>;
   /** Rendered with the page when the server could read it, so the chart is on
    *  screen at first paint. The fetch below then never runs; it stays for the
    *  case where that server read failed. */
@@ -105,7 +105,7 @@ export function MarketActivityV2({
             <div className="flex flex-wrap items-center gap-2" aria-label={tr(locale, "Activity venue", "Площадка активности")}>
               {venueOptions.map((venue) => {
                 const active = venue.slug === activityVenue;
-                const shortName = venue.slug === "hyperliquid" ? "HL" : venue.name;
+                const shortName = venue.short ?? venue.name;
                 return (
                   <button
                     key={venue.slug}

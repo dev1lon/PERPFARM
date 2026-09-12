@@ -88,7 +88,11 @@ describe("protocol page reference", () => {
       expect(isReadyVenue(slug)).toBe(false);
       const execution = protocolPageConfig(slug, "en").execution;
       expect(execution?.venues.map((venue) => venue.slug)).toEqual(["hyperliquid", "ondo"]);
-      expect(execution?.builderFeeBps).toBe(0);
+      // A builder fee IS charged; the page states the ceiling both books
+      // enforce because TrueNorth publishes no rate of its own.
+      expect(execution?.builderFeeCapBps).toBe(10);
+      expect(execution?.feeNote).toMatch(/10 bps/);
+      expect(execution?.venues.map((venue) => venue.short)).toEqual(["HL", "Ondo"]);
       expect(protocolPageConfig(slug, "en").tradeUrl).toBe("https://truenorth.xyz/ref/C7T2BX");
       expect(protocolPageConfig(slug, "en").hedge.partner.slug).toBe("txflow");
     }
@@ -153,17 +157,26 @@ describe("protocol page reference", () => {
     expect(source).toContain('setRouteStatus("unavailable")');
   });
 
-  it("keeps the activity chart independent from the execution-book selection", () => {
-    const source = read("ProtocolPageV2.tsx");
+  it("keeps the book choice in one control and prices each book on its own", () => {
+    const page = read("ProtocolPageV2.tsx");
+    const calculator = read("ProtocolCalculatorV2.tsx");
     const activity = read("MarketActivityV2.tsx");
 
-    expect(source).toContain('key={`calculator:${pricedVenue}`}');
-    expect(source).toContain("const activityVenue = execution?.defaultVenue ?? pricedVenue;");
-    expect(source).toContain('key={`activity:${activityVenue}`}');
-    expect(source).toContain("venueOptions={execution?.venues}");
-    expect(source).toContain("const pricingSlug = config.execution?.defaultVenue ?? config.slug;");
-    expect(source).toContain("asRouteCard");
-    expect(activity).toContain('import { ProtocolMark }');
-    expect(activity).toContain('<ProtocolMark slug={venue.slug} name={venue.name} size={20} radius={0} />');
+    // The choice of execution book belongs to the calculator's own field,
+    // beside "Hedge with". A separate panel above it said the same thing twice
+    // and left the route card and the chart disagreeing with it.
+    expect(page).not.toContain("Execution account");
+    expect(page).not.toContain("setExecutionVenue");
+    expect(page).toContain("venueOptions={execution?.venues}");
+    expect(calculator).toContain("venueOptions && venueOptions.length > 1");
+    expect(calculator).toContain("onChange={pickVenue}");
+    // One comparison per book: a broker's cheapest hedge differs between them,
+    // so a single card could only ever state one of the two.
+    expect(page).toContain("<CheapestRouteCard");
+    expect(page).toContain("execution.venues");
+    // The manual-template component reduced to a HedgeCard and was removed.
+    expect(page).not.toContain("ManualHedgeTemplate");
+    expect(page).not.toContain("asRouteCard");
+    expect(activity).toContain("venue.short ?? venue.name");
   });
 });

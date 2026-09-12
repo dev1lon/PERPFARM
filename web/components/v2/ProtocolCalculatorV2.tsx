@@ -715,15 +715,24 @@ function HedgeDropdown({
 
 export function ProtocolCalculatorV2({
   otherVenues,
-  venueSlug = "variational",
+  venueSlug: initialVenueSlug = "variational",
+  venueOptions,
   executionContext,
 }: {
   otherVenues: VenueSummary[];
   venueSlug?: ReadyVenueSlug;
+  /**
+   * The books a broker routes to. Given more than one, the "Farm points on"
+   * field becomes a picker over them -- the same control as "Hedge with",
+   * beside it, instead of a separate panel repeating the choice above.
+   */
+  venueOptions?: ReadonlyArray<{ slug: ReadyVenueSlug; name: string }>;
   /** A broker (such as TrueNorth) routes to `venueSlug` but charges separately. */
   executionContext?: { feeNote: string };
 }) {
   const locale = useLocale();
+  // Which book the route is priced on. A page with one book never changes it.
+  const [venueSlug, setVenueSlug] = useState<ReadyVenueSlug>(initialVenueSlug);
   // From the catalog, never a branch: a third protocol used to be silently
   // labelled "Variational" by the fallback side of that ternary.
   const homeName = protocolName(venueSlug) ?? venueSlug;
@@ -733,6 +742,8 @@ export function ProtocolCalculatorV2({
     // other protocol page (QFEX, Polymarket, ...) could not pick itself and the
     // select showed "Select" over a same-venue default it could not display.
     { slug: venueSlug, name: homeName },
+    // A broker's other book is a real counterparty: HL hedged on Ondo.
+    ...(venueOptions ?? []).map((venue) => ({ slug: venue.slug as string, name: venue.name })),
     { slug: "variational", name: "Variational" },
     { slug: "txflow", name: "TxFlow" },
     ...otherVenues.map((v) => ({ slug: v.slug, name: v.name })),
@@ -794,6 +805,22 @@ export function ProtocolCalculatorV2({
     };
   }, [status, notionalUsd, ranHedge, locale, venueSlug]);
 
+  /** Move the route to another of the broker's books. */
+  function pickVenue(next: string) {
+    const picked = (venueOptions ?? []).find((option) => option.slug === next);
+    if (!picked || picked.slug === venueSlug) return;
+    // A result belongs to the book it was priced on, so the previous run is
+    // dropped rather than left sitting under the new book's name.
+    setHedge((current) => (current === venueSlug ? picked.slug : current));
+    setVenueSlug(picked.slug);
+    setRanHedge(picked.slug);
+    setNotionalUsd(null);
+    setData(null);
+    setExpanded(null);
+    setErrorMessage(null);
+    setStatus("idle");
+  }
+
   function run() {
     if (!validVolume) {
       setErrorMessage(tr(locale, "Enter volume from $1,000 to $200,000 per account.", "Введите объём от $1 000 до $200 000 на аккаунт."));
@@ -836,11 +863,19 @@ export function ProtocolCalculatorV2({
         <div className="grid items-end gap-5 lg:grid-cols-[1fr_1fr_1fr_132px]">
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{isTxFlow ? tr(locale, "Trade on", "Торгуем на") : tr(locale, "Farm points on", "Фармим поинты на")}</div>
-            <div className="flex h-[50px] items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/10 px-3.5">
-              <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={0} />
-              <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
-              <span className="ml-auto font-mono-num text-[10px] tracking-[0.08em] text-accent">SELECTED</span>
-            </div>
+            {venueOptions && venueOptions.length > 1 ? (
+              <HedgeDropdown
+                options={venueOptions.map((venue) => ({ slug: venue.slug as string, name: venue.name }))}
+                value={venueSlug}
+                onChange={pickVenue}
+              />
+            ) : (
+              <div className="flex h-[50px] items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/10 px-3.5">
+                <ProtocolMark slug={venueSlug} name={homeName} size={26} radius={0} />
+                <span className="text-[15px] font-semibold text-text-primary">{homeName}</span>
+                <span className="ml-auto font-mono-num text-[10px] tracking-[0.08em] text-accent">SELECTED</span>
+              </div>
+            )}
           </div>
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Hedge with", "Хедж с")}</div>

@@ -13,9 +13,9 @@ import { SiteHeaderV2 } from "@/components/v2/SiteHeaderV2";
 import type { ActivityResponse } from "@/lib/activity/types";
 import type { CheapestRoute } from "@/lib/cheapest-route";
 import type { FdvMarketResponse } from "@/lib/fdv-market";
-import { protocolPageConfig, type ActivityConfig, type HedgePartnerCard, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
+import { hasProtocolPage, protocolPageConfig, type ActivityConfig, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
 import type { VenueSummary } from "@/lib/types";
-import { isReadyVenue, protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
+import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
 /**
  * THE protocol page. One layout, one set of words, one set of controls, for
@@ -44,6 +44,8 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1_000;
 export type ProtocolPageData = {
   activity?: ActivityResponse | null;
   cheapestRoute?: CheapestRoute | null;
+  /** A broker's comparisons, one per connected book, keyed by venue slug. */
+  cheapestRoutes?: Record<string, CheapestRoute>;
   fdvMarkets?: FdvMarketResponse | null;
 };
 
@@ -225,6 +227,9 @@ function HedgeCard({
   tip?: string;
 }) {
   const partner = protocolName(partnerSlug) ?? homeName;
+  // A book collected only to price a broker's routes has no page of its own,
+  // so it is named without a link rather than sent to a 404.
+  const canOpen = linked && hasProtocolPage(partnerSlug);
   return (
     <div className="relative flex h-full flex-col gap-3.5 rounded-none border border-border bg-surface-1 p-[22px]">
       {tip ? <div className="absolute right-4 top-4"><InfoTip text={tip} /></div> : null}
@@ -232,7 +237,7 @@ function HedgeCard({
         <ProtocolMark slug={homeSlug} name={homeName} size={22} radius={0} />
         <span>{homeName} ×</span>
         <ProtocolMark slug={partnerSlug} name={partner} size={22} radius={0} />
-        {linked ? (
+        {canOpen ? (
           <Link href={`/${partnerSlug}`} className="pf-transition hover:text-accent">
             <span className="underline decoration-accent/70 underline-offset-4">{partner}</span>
             <span aria-hidden>↗</span>
@@ -262,71 +267,6 @@ function HedgeCard({
   );
 }
 
-/** A concrete two-account checklist for agent pages where the first leg is
- * placed manually through an execution book rather than on a PerpFarm venue. */
-function ManualHedgeTemplate({
-  config,
-  partner,
-  asRouteCard = false,
-}: {
-  config: ProtocolPageConfig;
-  partner: HedgePartnerCard;
-  /** On an execution-agent page the manual route uses the reference route-card
-   * layout: it belongs beside the calculated cheapest route, not ahead of it. */
-  asRouteCard?: boolean;
-}) {
-  const locale = useLocale();
-  if (asRouteCard) {
-    return (
-      <HedgeCard
-        homeSlug={config.slug}
-        homeName={config.name}
-        partnerSlug={partner.slug}
-        linked
-        body={partner.body}
-        tags={partner.tags}
-      />
-    );
-  }
-  const partnerName = protocolName(partner.slug) ?? partner.slug;
-  const executionNames = config.execution?.venues.map((venue) => venue.name).join(tr(locale, " or ", " или ")) ?? config.name;
-  const steps = [
-    tr(
-      locale,
-      `Choose ${executionNames} in ${config.name} and open the first leg.`,
-      `Выберите ${executionNames} в ${config.name} и откройте первую ногу.`,
-    ),
-    tr(
-      locale,
-      `On ${partnerName}, open the same notional in the opposite direction.`,
-      `На ${partnerName} откройте равный номинал в противоположную сторону.`,
-    ),
-    tr(
-      locale,
-      "Use the calculator's pair and order plan, then close both legs together.",
-      "Используйте пару и план ордеров из калькулятора, затем закройте обе ноги вместе.",
-    ),
-  ];
-
-  return (
-    <div className="flex h-full flex-col border border-accent/35 bg-accent/[0.06] p-[22px]">
-      <h3 className="text-[17px] font-semibold text-text-primary">{tr(locale, "Manual hedge template", "Шаблон ручного хеджа")}</h3>
-      <ol className="mt-4 space-y-3">
-        {steps.map((step, index) => (
-          <li key={step} className="flex gap-3 text-[14px] leading-[1.55] text-text-muted">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-accent/35 text-[11px] font-semibold text-accent">{index + 1}</span>
-            <span>{step}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-auto flex flex-wrap gap-2 pt-5">
-        <span className="border border-accent/35 bg-accent/[0.09] px-2.5 py-1 text-[11px] font-semibold text-accent">{tr(locale, "Manual execution", "Ручное исполнение")}</span>
-        <span className="border border-border bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-text-muted">{tr(locale, "Equal notional", "Равный номинал")}</span>
-      </div>
-    </div>
-  );
-}
-
 /** A stored route the server already read, in the shape this card uses. */
 function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: string; cycleCostUsd: number } | null {
   // A partner is accepted only if it resolves to a listed protocol. Anything
@@ -337,12 +277,27 @@ function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: 
     : null;
 }
 
-function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageConfig; initialRoute?: CheapestRoute | null }) {
+/**
+ * The hourly cheapest route for ONE priced book, as its own card.
+ *
+ * A broker page renders one per connected book: TrueNorth's cheapest hedge on
+ * Hyperliquid and on Ondo are different comparisons, and a single card could
+ * only ever state one of them -- it used to state Hyperliquid's while the
+ * calculator was set to Ondo.
+ */
+function CheapestRouteCard({
+  pricingSlug,
+  homeSlug,
+  homeName,
+  initialRoute,
+}: {
+  /** The book actually compared -- the page's own venue, or a broker's book. */
+  pricingSlug: string;
+  homeSlug: ProtocolSlug;
+  homeName: string;
+  initialRoute?: CheapestRoute | null;
+}) {
   const locale = useLocale();
-  // TrueNorth has no book of its own, so its comparison comes from the default
-  // connected book. The server has already prefetched that exact answer.
-  const pricingSlug = config.execution?.defaultVenue ?? config.slug;
-  const priced = isReadyVenue(pricingSlug);
   // The hourly worker has already compared self-match and every venue; the page
   // arrives with that stored result. The fetch below is the fallback for when
   // the server could not read it.
@@ -354,7 +309,7 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     server ? "ready" : initialRoute ? "unavailable" : "loading",
   );
   useEffect(() => {
-    if (initialRoute || !priced) return;
+    if (initialRoute) return;
     let active = true;
     fetch(`/api/venues/${pricingSlug}/cheapest-route`)
       .then((r) => (r.ok ? r.json() : null))
@@ -374,57 +329,92 @@ function HedgeRecommendations({ config, initialRoute }: { config: ProtocolPageCo
     return () => {
       active = false;
     };
-  }, [initialRoute, priced, pricingSlug]);
+  }, [initialRoute, pricingSlug]);
 
-  const partner: HedgePartnerCard = config.hedge.partner;
-  const cheapestSlug = cheapest?.partnerSlug ?? config.slug;
-  const hasManualTemplate = config.execution !== undefined;
+  const cheapestSlug = cheapest?.partnerSlug ?? homeSlug;
+  return (
+    <HedgeCard
+      homeSlug={homeSlug}
+      homeName={homeName}
+      partnerSlug={cheapestSlug}
+      linked={cheapestSlug !== homeSlug}
+      tip={tr(locale, "Updates hourly.", "Обновляется раз в час.")}
+      body={
+        routeStatus === "ready"
+          ? tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью.")
+          : routeStatus === "loading"
+            ? tr(locale, "Comparing routes…", "Сравниваем маршруты…")
+            : tr(
+                locale,
+                "Approved delta-neutral setup with two accounts. The hourly route comparison is unavailable right now, so no cheapest route is claimed.",
+                "Одобренный дельта-нейтральный сетап с двумя аккаунтами. Часовое сравнение маршрутов сейчас недоступно, поэтому самый дешёвый маршрут не заявляется.",
+              )
+      }
+      tags={
+        routeStatus === "ready"
+          ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
+          : [[tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
+      }
+    />
+  );
+}
+
+function HedgeRecommendations({
+  config,
+  initialRoute,
+  initialRoutes,
+}: {
+  config: ProtocolPageConfig;
+  initialRoute?: CheapestRoute | null;
+  /** A broker's prefetched comparisons, one per connected book, by slug. */
+  initialRoutes?: Record<string, CheapestRoute>;
+}) {
+  const locale = useLocale();
+  const execution = config.execution;
+  // A broker has no book of its own, so each connected book is compared on its
+  // own and named by it: "TrueNorth HL", "TrueNorth Ondo".
+  const books = execution
+    ? execution.venues
+        .filter((venue) => isReadyVenue(venue.slug))
+        .map((venue) => ({
+          slug: venue.slug as string,
+          name: `${config.name} ${venue.short}`,
+          route: initialRoutes?.[venue.slug],
+        }))
+    : isReadyVenue(config.slug)
+      ? [{ slug: config.slug as string, name: config.name, route: initialRoute ?? undefined }]
+      : [];
+  const partner = config.hedge.partner;
+  // The hand-placed partner card always shows; the computed ones only where a
+  // comparison exists, so the grid is sized from what is actually rendered.
+  const columns = books.length + 1;
   return (
     <div className="mt-11">
       <H2>{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</H2>
       <div className="pb-4 pt-1.5 text-[14px] text-text-muted">{config.hedge.intro}</div>
-      <div className={`grid gap-4 ${priced || hasManualTemplate ? "sm:grid-cols-2" : ""}`}>
-        {!priced ? null : (
+      <div className={`grid gap-4 ${columns > 2 ? "sm:grid-cols-2 lg:grid-cols-3" : columns === 2 ? "sm:grid-cols-2" : ""}`}>
+        {books.map((book) => (
+          <CheapestRouteCard
+            key={book.slug}
+            pricingSlug={book.slug}
+            homeSlug={config.slug}
+            homeName={book.name}
+            initialRoute={book.route}
+          />
+        ))}
         <HedgeCard
           homeSlug={config.slug}
           homeName={config.name}
-          partnerSlug={cheapestSlug}
-          linked={cheapestSlug !== config.slug}
-          tip={tr(locale, "Updates hourly.", "Обновляется раз в час.")}
-          body={
-            routeStatus === "ready"
-              ? tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью.")
-              : routeStatus === "loading"
-                ? tr(locale, "Comparing routes…", "Сравниваем маршруты…")
-                : tr(
-                    locale,
-                    "Approved delta-neutral setup with two accounts. The hourly route comparison is unavailable right now, so no cheapest route is claimed.",
-                    "Одобренный дельта-нейтральный сетап с двумя аккаунтами. Часовое сравнение маршрутов сейчас недоступно, поэтому самый дешёвый маршрут не заявляется.",
-                  )
-          }
-          tags={
-            routeStatus === "ready"
-              ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
-              : [[tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
-          }
+          partnerSlug={partner.slug}
+          linked
+          body={partner.body}
+          tags={partner.tags}
         />
-        )}
-        {hasManualTemplate ? (
-          <ManualHedgeTemplate config={config} partner={partner} asRouteCard />
-        ) : (
-          <HedgeCard
-            homeSlug={config.slug}
-            homeName={config.name}
-            partnerSlug={partner.slug}
-            linked
-            body={partner.body}
-            tags={partner.tags}
-          />
-        )}
       </div>
     </div>
   );
 }
+
 
 /**
  * The unlock ladder: how far the whole field has traded, and which prize step
@@ -630,11 +620,10 @@ export function ProtocolPageV2({
   const locale = useLocale();
   const config = protocolPageConfig(slug, locale);
   const execution = config.execution;
-  const [executionVenue, setExecutionVenue] = useState<ReadyVenueSlug | null>(execution?.defaultVenue ?? null);
-  const pricedVenue = executionVenue ?? (isReadyVenue(slug) ? slug : null);
-  // Activity stays on its own selector on an execution page. Changing the
-  // book above therefore refreshes only the calculator, never the chart.
-  const activityVenue = execution?.defaultVenue ?? pricedVenue;
+  // A broker page opens on its default book. The choice itself lives in the
+  // calculator's own "Farm points on" field, beside "Hedge with", rather than
+  // in a separate panel that said the same thing twice.
+  const pricedVenue = execution?.defaultVenue ?? (isReadyVenue(slug) ? slug : null);
   return (
     <div>
       <SiteHeaderV2 />
@@ -644,44 +633,20 @@ export function ProtocolPageV2({
 
         {/* General hedge guidance comes before the calculator, so the reader
             can choose the right counterparty before running a route. */}
-        <HedgeRecommendations config={config} initialRoute={initial?.cheapestRoute} />
+        <HedgeRecommendations
+          config={config}
+          initialRoute={initial?.cheapestRoute}
+          initialRoutes={initial?.cheapestRoutes}
+        />
 
-        {execution ? (
-          <section className="mt-11 rounded-none border border-accent/25 bg-surface-1 p-5 sm:p-6">
-            <div className="flex flex-col gap-1.5 pb-4 sm:flex-row sm:items-baseline sm:justify-between">
-              <h2 className="text-[22px] font-bold tracking-[-0.018em] text-text-primary">{execution.label}</h2>
-              <p className="text-[13px] text-text-muted">{tr(locale, "TrueNorth routes the order; PerpFarm prices this book.", "TrueNorth маршрутизирует ордер; PerpFarm считает этот стакан.")}</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {execution.venues.map((venue) => {
-                const selected = venue.slug === executionVenue;
-                return (
-                  <button
-                    key={venue.slug}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setExecutionVenue(venue.slug)}
-                    className={`pf-transition flex items-center gap-3 rounded-none border px-4 py-3.5 text-left ${selected ? "border-accent bg-accent/10" : "border-border bg-bg hover:border-accent/45"}`}
-                  >
-                    <ProtocolMark slug={venue.slug} name={venue.name} size={28} radius={0} />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-[15px] font-semibold text-text-primary">{venue.name}</span>
-                      <span className="font-mono-num text-[11px] text-text-muted">{selected ? tr(locale, "SELECTED", "ВЫБРАН") : tr(locale, "SELECT", "ВЫБРАТЬ")}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         {/* Live calculator + recommended route + 10-pairs table -- only where
             there is a data path to price. */}
         {pricedVenue ? (
           <ProtocolCalculatorV2
-            key={`calculator:${pricedVenue}`}
             otherVenues={otherVenues}
             venueSlug={pricedVenue}
+            venueOptions={execution?.venues}
             executionContext={execution ? { feeNote: execution.feeNote } : undefined}
           />
         ) : (
@@ -706,10 +671,9 @@ export function ProtocolPageV2({
         {isReadyVenue(slug) ? <FdvMarketsV2 venueSlug={slug} initialData={initial?.fdvMarkets} /> : null}
 
         {/* Market-activity chart (live activity API). */}
-        {activityVenue ? (
+        {pricedVenue ? (
           <MarketActivityV2
-            key={`activity:${activityVenue}`}
-            venueSlug={activityVenue}
+            venueSlug={pricedVenue}
             venueOptions={execution?.venues}
             initialData={initial?.activity}
           />
