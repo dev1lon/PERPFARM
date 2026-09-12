@@ -22,6 +22,7 @@
 import { getPool } from "@/lib/db";
 import { asNumber } from "@/lib/dune";
 import { loadDailyStats, type DailyStatsRow } from "@/lib/activity/daily-stats";
+import { mergeHistory } from "@/lib/activity/merge";
 import { oiDisplayFactor } from "@/lib/route-model";
 import { VARIATIONAL_ACTIVITY_BACKFILL } from "@/lib/variational-activity-backfill";
 import { HISTORY_DAYS, type ActivityPoint, type ActivityResponse } from "@/lib/activity/types";
@@ -84,18 +85,6 @@ function getVerifiedBackfill(metric: "volume" | "openInterest"): ActivityPoint[]
   return VARIATIONAL_ACTIVITY_BACKFILL
     .map((point) => ({ date: point.date, value: metric === "volume" ? point.volume : point.openInterest }))
     .filter((point): point is ActivityPoint => point.value !== null)
-    .slice(-HISTORY_DAYS);
-}
-
-/** Later sources win per date; each series keeps one point per day. */
-function mergeHistory(...sources: ActivityPoint[][]): ActivityPoint[] {
-  const values = new Map<string, number>();
-  for (const source of sources) {
-    for (const point of source) values.set(point.date, point.value);
-  }
-  return [...values]
-    .map(([date, value]) => ({ date, value }))
-    .sort((left, right) => left.date.localeCompare(right.date))
     .slice(-HISTORY_DAYS);
 }
 
