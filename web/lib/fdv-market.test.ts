@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FDV_REVALIDATE_SECONDS, fdvEvent, hasFdvMarket, UNREADABLE_MARKET_PAGE } from "./fdv-market";
+import { afterEach, vi } from "vitest";
+import { FDV_REVALIDATE_SECONDS, fdvEvent, hasFdvMarket, loadFdvMarkets, UNREADABLE_MARKET_PAGE } from "./fdv-market";
 import { isReadyVenue } from "./venue-status";
 
 /**
@@ -54,5 +55,44 @@ describe("prediction markets by protocol", () => {
     // own token market is linked rather than quoted.
     expect(hasFdvMarket("polymarket")).toBe(false);
     expect(UNREADABLE_MARKET_PAGE.polymarket).toMatch(/^https:\/\/predict\.fun\/market\//);
+  });
+});
+
+/** One gamma event, trimmed to the fields the loader reads. */
+function gammaEvent(markets: unknown[]) {
+  return { volume: 4864.38, markets };
+}
+
+function launchMarket(title: string, yes: string, closed = false) {
+  return { groupItemTitle: title, outcomes: ["Yes", "No"], outcomePrices: [yes, "0.5"], volume: "100", closed };
+}
+
+describe("reading a launch market", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the venue's dates, shortened, and in order", async () => {
+    // Out of order and with a resolved market in the middle, exactly as
+    // Polymarket returns Hibachi's event.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(gammaEvent([
+      launchMarket("December 31, 2027", "0.905"),
+      launchMarket("March 31, 2026", "0", true),
+      launchMarket("September 30, 2026", "0.019"),
+    ])))));
+
+    const answer = await loadFdvMarkets("hibachi");
+
+    expect(answer?.kind).toBe("launch");
+    // A date must never walk back a day through the machine's timezone, and a
+    // market that already resolved is not an expectation any more.
+    expect(answer?.markets.map((market) => market.threshold)).toEqual([
+      "Sep 30, 2026",
+      "Dec 31, 2027",
+    ]);
+  });
+
+  it("has nothing to say for a protocol with no event", async () => {
+    expect(await loadFdvMarkets("txflow")).toBeNull();
   });
 });

@@ -116,9 +116,15 @@ function thresholdValue(label: string): number {
   return Number.isFinite(amount) ? amount * (match[2].toUpperCase() === "B" ? 1_000 : 1) : Number.MAX_SAFE_INTEGER;
 }
 
-/** "September 30, 2026" -> "Sep 30, 2026"; anything else is left alone. */
+/**
+ * "September 30, 2026" -> "Sep 30, 2026"; anything else is left alone.
+ *
+ * Parsed AND printed in UTC. Parsed as local time it lands at midnight in the
+ * machine's zone, and printing that in UTC walks a date east of Greenwich back
+ * a day -- "September 30" rendered as "Sep 29" on this machine.
+ */
 function shortDate(label: string): string {
-  const at = Date.parse(label);
+  const at = Date.parse(`${label} UTC`);
   if (!Number.isFinite(at)) return label;
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(at);
 }
