@@ -161,6 +161,8 @@ describe("reading Predict", () => {
     ]);
     expect(answer?.markets[0].volume).toBe(1_632_518.91);
     expect(answer?.eventVolume).toBe(6398671.66);
+    // Stats are opt-in: without asking, the event answers without its volume.
+    expect(seen[0].url).toContain("includeStats=true");
     // The key is bound to one origin, and the API refuses a call without it.
     expect(seen[0].key).toBe("pred_sk_test");
     expect(seen[0].origin).toBe("https://perpfarm.vercel.app");

@@ -200,7 +200,8 @@ function yesChance(market: Record<string, unknown>): number | null {
  * derived from a history this panel does not keep.
  */
 async function loadPredictEvent(event: MarketEvent): Promise<FdvMarketResponse> {
-  const data = await predictGet(`/categories/${event.slug}`);
+  // Without `includeStats` the event answers without its volume at all.
+  const data = await predictGet(`/categories/${event.slug}?includeStats=true`);
   const rows = Array.isArray(data.markets) ? data.markets : [];
 
   const markets = await Promise.all(rows.flatMap((row): Array<Promise<FdvMarket>> => {
