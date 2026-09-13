@@ -19,52 +19,68 @@
  */
 export type FdvEventKind = "fdv" | "launch";
 
-type PolymarketEvent = {
+/** Which book the odds are read from. Each answers a different API. */
+export type MarketSource = "polymarket" | "predictfun";
+
+type MarketEvent = {
   kind: FdvEventKind;
-  /** The event slug, which is also its gamma-api path and its page URL. */
+  source: MarketSource;
+  /** The event slug, which is also its API path and its page URL. */
   slug: string;
   /** The page a reader opens; Variational's carries the referral it shipped with. */
   page: string;
 };
 
-const EVENTS: Record<string, PolymarketEvent> = {
+const EVENTS: Record<string, MarketEvent> = {
   variational: {
     kind: "fdv",
+    source: "polymarket",
     slug: "variational-fdv-above-one-day-after-launch",
     page: "https://polymarket.com/event/variational-fdv-above-one-day-after-launch?r=DEVIL0N#vPCdW9Y",
   },
   qfex: {
     kind: "fdv",
+    source: "polymarket",
     slug: "qfex-fdv-above-one-day-after-launch",
     page: "https://polymarket.com/event/qfex-fdv-above-one-day-after-launch",
   },
   risex: {
     kind: "launch",
+    source: "polymarket",
     slug: "will-risex-launch-a-token-by-20260708174012702",
     page: "https://polymarket.com/event/will-risex-launch-a-token-by-20260708174012702",
   },
   hibachi: {
     kind: "launch",
+    source: "polymarket",
     slug: "will-hibachi-launch-a-token-by",
     page: "https://polymarket.com/event/will-hibachi-launch-a-token-by",
+  },
+  // Polymarket's own token trades on Predict, not on Polymarket itself.
+  polymarket: {
+    kind: "fdv",
+    source: "predictfun",
+    slug: "polymarket-official-token-fdv-above-one-day-after-launch",
+    page: "https://predict.fun/market/polymarket-official-token-fdv-above-one-day-after-launch",
   },
 };
 
 /**
- * A market that exists but cannot be read: predict.fun answers its own API only
- * with a key (`401 unauthorized` on 2026-09-12), so the panel links to it
- * instead of printing odds it never read.
+ * Predict answers its REST API only with a key, and the key we hold is bound to
+ * one browser origin -- so a server call has to state that origin itself or the
+ * API refuses it (401). The key is a secret and lives in the environment; the
+ * origin is not, and is written here so a deploy cannot forget half of the pair.
  */
-export const UNREADABLE_MARKET_PAGE: Record<string, string> = {
-  polymarket: "https://predict.fun/market/polymarket-official-token-fdv-above-one-day-after-launch",
-};
+const PREDICT_FUN_API = "https://api.predict.fun/v1";
+const PREDICT_FUN_ORIGIN = process.env.PREDICT_FUN_ORIGIN ?? "https://perpfarm.vercel.app";
 
 export const FDV_REVALIDATE_SECONDS = 3600;
 
 export type FdvMarket = {
   threshold: string;
   probability: number;
-  volume: number;
+  /** Total traded on that threshold; null where the source publishes none. */
+  volume: number | null;
   /**
    * How far the odds moved in the last 24 hours, in the same units as
    * `probability` -- so 44 with a change of 11 means it read 33 yesterday.
@@ -76,6 +92,7 @@ export type FdvMarket = {
 export type FdvMarketResponse = {
   asOf: string;
   kind: FdvEventKind;
+  source: MarketSource;
   eventVolume: number | null;
   markets: FdvMarket[];
 };
@@ -85,7 +102,7 @@ export function hasFdvMarket(slug: string): boolean {
 }
 
 /** The event a protocol has, or null -- the panel asks before it draws. */
-export function fdvEvent(slug: string): PolymarketEvent | null {
+export function fdvEvent(slug: string): MarketEvent | null {
   return EVENTS[slug] ?? null;
 }
 
@@ -141,7 +158,82 @@ function sortMarkets(markets: FdvMarket[], kind: FdvEventKind): FdvMarket[] {
 export async function loadFdvMarkets(slug: string): Promise<FdvMarketResponse | null> {
   const event = EVENTS[slug];
   if (!event) return null;
+  return event.source === "predictfun" ? loadPredictEvent(event) : loadPolymarketEvent(event);
+}
 
+/**
+ * One Predict call, authorised the way that API wants it.
+ *
+ * The key is a secret and never reaches the browser: this runs on the server,
+ * and the panel receives only the odds it returns.
+ */
+async function predictGet(path: string): Promise<Record<string, unknown>> {
+  const key = process.env.PREDICT_FUN_API_KEY;
+  if (!key) throw new Error("PREDICT_FUN_API_KEY is not set");
+
+  const response = await fetch(`${PREDICT_FUN_API}${path}`, {
+    headers: { "x-api-key": key, Origin: PREDICT_FUN_ORIGIN, Accept: "application/json" },
+    next: { revalidate: FDV_REVALIDATE_SECONDS },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) throw new Error(`Predict returned ${response.status}`);
+
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || !isRecord(payload.data)) throw new Error("Predict returned an invalid answer");
+  return payload.data;
+}
+
+/** The mid of the Yes side, which is the market's own read on the chance. */
+function yesChance(market: Record<string, unknown>): number | null {
+  const outcomes = Array.isArray(market.outcomes) ? market.outcomes : [];
+  const yes = outcomes.find((outcome) => isRecord(outcome) && outcome.name === "Yes");
+  if (!isRecord(yes)) return null;
+  const bid = isRecord(yes.bestBid) ? asNumber(yes.bestBid.price) : null;
+  const ask = isRecord(yes.bestAsk) ? asNumber(yes.bestAsk.price) : null;
+  if (bid !== null && ask !== null) return (bid + ask) / 2;
+  return bid ?? ask;
+}
+
+/**
+ * Predict publishes no 24h price move and no per-market volume on the event, so
+ * the volume is asked for per market and the move is left absent rather than
+ * derived from a history this panel does not keep.
+ */
+async function loadPredictEvent(event: MarketEvent): Promise<FdvMarketResponse> {
+  const data = await predictGet(`/categories/${event.slug}`);
+  const rows = Array.isArray(data.markets) ? data.markets : [];
+
+  const markets = await Promise.all(rows.flatMap((row): Array<Promise<FdvMarket>> => {
+    if (!isRecord(row)) return [];
+    // A resolved market prices at 0 or 1 and is no longer an expectation.
+    if (row.resolution !== null && row.resolution !== undefined) return [];
+    const threshold = typeof row.title === "string" ? row.title : "";
+    const chance = yesChance(row);
+    if (!threshold || chance === null) return [];
+    const id = asNumber(row.id);
+    return [(async () => ({
+      threshold,
+      probability: Math.round(chance * 100),
+      // A failed stats call costs the volume line, not the odds.
+      volume: id === null ? null : await predictGet(`/markets/${id}/stats`)
+        .then((stats) => asNumber(stats.volumeTotalUsd))
+        .catch(() => null),
+      dayChange: null,
+    }))()];
+  }));
+  if (markets.length === 0) throw new Error("Predict did not return any open markets");
+
+  const stats = isRecord(data.stats) ? data.stats : {};
+  return {
+    asOf: new Date().toISOString(),
+    kind: event.kind,
+    source: event.source,
+    eventVolume: asNumber(stats.volumeTotalUsd),
+    markets: sortMarkets(markets, event.kind),
+  };
+}
+
+async function loadPolymarketEvent(event: MarketEvent): Promise<FdvMarketResponse> {
   const response = await fetch(`https://gamma-api.polymarket.com/events/slug/${event.slug}`, {
     next: { revalidate: FDV_REVALIDATE_SECONDS },
     signal: AbortSignal.timeout(8_000),
@@ -182,6 +274,7 @@ export async function loadFdvMarkets(slug: string): Promise<FdvMarketResponse | 
   return {
     asOf: new Date().toISOString(),
     kind: event.kind,
+    source: event.source,
     eventVolume: asNumber(payload.volume),
     markets,
   };

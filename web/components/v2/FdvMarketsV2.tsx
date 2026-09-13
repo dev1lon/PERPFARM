@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { tr, useLocale } from "@/components/LocaleProvider";
 import { EmptyNote } from "@/components/v2/EmptyNote";
-import { fdvEvent, UNREADABLE_MARKET_PAGE, type FdvMarketResponse } from "@/lib/fdv-market";
+import { fdvEvent, type FdvMarketResponse } from "@/lib/fdv-market";
 import { formatUtcDateTime } from "@/lib/format";
 import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
 
@@ -62,8 +62,8 @@ export function FdvMarketsV2({
   const hasMarket = event !== null;
   const isLaunchMarket = (data?.kind ?? event?.kind) === "launch";
   const name = protocolName(venueSlug) ?? venueSlug;
-  // A market we can link to but not read (predict.fun wants an API key).
-  const elsewhere = UNREADABLE_MARKET_PAGE[venueSlug];
+  // Whose book the odds come from: Polymarket's own token trades on Predict.
+  const source = (data?.source ?? event?.source) === "predictfun" ? "Predict" : "Polymarket";
 
   useEffect(() => {
     if (!hasMarket || initialData) return;
@@ -108,7 +108,7 @@ export function FdvMarketsV2({
             rel="noreferrer"
             className="pf-transition text-[13px] font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
           >
-            {tr(locale, "View on Polymarket ↗", "Открыть Polymarket ↗")}
+            {tr(locale, `View on ${source} ↗`, `Открыть ${source} ↗`)}
           </a>
         )}
       </div>
@@ -118,31 +118,13 @@ export function FdvMarketsV2({
             does not jump or collapse depending on which state it lands in. */}
         {!hasMarket && (
           <EmptyNote className="min-h-[148px] py-6">
-            {elsewhere ? (
-              <>
-                {tr(
-                  locale,
-                  `The only market on ${name}'s token is on predict.fun, which does not publish its odds without an API key.`,
-                  `Единственный рынок по токену ${name} — на predict.fun, а он не отдаёт котировки без API-ключа.`,
-                )}{" "}
-                <a
-                  href={elsewhere}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pf-transition font-semibold text-accent underline decoration-accent/70 underline-offset-4 hover:text-accent-hover"
-                >
-                  {tr(locale, "Open on predict.fun ↗", "Открыть на predict.fun ↗")}
-                </a>
-              </>
-            ) : (
-              tr(locale, "No public prediction market on this protocol's token yet.", "Публичного prediction market по токену этого протокола пока нет.")
-            )}
+            {tr(locale, "No public prediction market on this protocol's token yet.", "Публичного prediction market по токену этого протокола пока нет.")}
           </EmptyNote>
         )}
         {hasMarket && !data && !error && <div className="pf-skeleton h-[148px] rounded-xl border border-border bg-surface-2" />}
         {error && (
           <EmptyNote className="min-h-[148px] py-6">
-            {tr(locale, "Polymarket data is unavailable right now.", "Данные Polymarket сейчас недоступны.")}
+            {tr(locale, `${source} data is unavailable right now.`, `Данные ${source} сейчас недоступны.`)}
           </EmptyNote>
         )}
         {data && (
@@ -163,7 +145,7 @@ export function FdvMarketsV2({
               ))}
             </div>
             <div className="pt-4 text-[12px] text-text-dim">
-              {tr(locale, "Polymarket · refreshes hourly · change over 24h", "Polymarket · обновляется каждый час · изменение за 24ч")}
+              {tr(locale, `${source} · refreshes hourly`, `${source} · обновляется каждый час`)}
               {" · "}
               <span className="font-mono-num text-text-muted">
                 {formatUtcDateTime(data.asOf)}
