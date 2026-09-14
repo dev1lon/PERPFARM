@@ -5,11 +5,28 @@ import { hasProtocolPage, protocolPageConfig, type ProtocolSlug } from "./protoc
 import { ALL_PROTOCOLS } from "./home-protocols";
 import { isReadyVenue } from "./venue-status";
 
-/** Protocols whose guidance has been written. The rest have the reference's
- *  empty slots waiting for it. */
-const WRITTEN_GUIDANCE: ProtocolSlug[] = ["variational", "txflow"];
+/**
+ * Protocols whose guidance has been written.
+ *
+ * Every page now carries real words -- the last eight were written on
+ * 2026-09-14 out of August and September reports -- so this is every page
+ * there is, and a protocol added with the reference's empty slots fails here
+ * until someone writes it up.
+ */
+const WRITTEN_GUIDANCE: ProtocolSlug[] = [
+  "variational",
+  "txflow",
+  "qfex",
+  "risex",
+  "polymarket",
+  "entropy",
+  "tradexyz",
+  "hibachi",
+  "lighterrh",
+  "truenorth",
+];
 /** Every protocol that has a page, priced or not. */
-const SLUGS: ProtocolSlug[] = [...WRITTEN_GUIDANCE, "qfex", "risex", "polymarket", "entropy", "tradexyz", "hibachi", "lighterrh"];
+const SLUGS: ProtocolSlug[] = ["variational", "txflow", "qfex", "risex", "polymarket", "entropy", "tradexyz", "hibachi", "lighterrh"];
 /** TrueNorth has no book of its own, but its connected execution books are
  * collected and selectable in the shared calculator. */
 const EXECUTION_PAGES: ProtocolSlug[] = ["truenorth"];
@@ -88,8 +105,8 @@ describe("protocol page reference", () => {
       expect(isReadyVenue(slug)).toBe(false);
       const execution = protocolPageConfig(slug, "en").execution;
       expect(execution?.venues.map((venue) => venue.slug)).toEqual(["hyperliquid", "ondo"]);
-      // A builder fee IS charged; the page states the ceiling both books
-      // enforce because TrueNorth publishes no rate of its own.
+      // The ceiling is stated as what TrueNorth is NOT charging: it advertises
+      // a zero builder fee, where both books would allow this much.
       expect(execution?.builderFeeCapBps).toBe(10);
       expect(execution?.feeNote).toMatch(/10 bps/);
       expect(execution?.venues.map((venue) => venue.short)).toEqual(["HL", "Ondo"]);

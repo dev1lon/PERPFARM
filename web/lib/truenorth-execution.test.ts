@@ -22,8 +22,8 @@ describe("TrueNorth execution venues", () => {
   });
 
   it("states the builder-fee ceiling both books publish", () => {
-    // A TrueNorth fill does pay a builder fee; the rate is unpublished, so the
-    // page names this cap instead of pricing a guess.
+    // The ceiling is what TrueNorth is NOT charging: it advertises a zero
+    // builder fee, where both books would allow up to this much.
     expect(BUILDER_FEE_CAP_BPS).toBe(10);
   });
 

@@ -44,17 +44,21 @@ export const TIER_S: HomeProtocol[] = [
  *  without a points programme yet still has to say so in the same words, and a
  *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
-  { slug: "risex", name: "RiseX", season: "Season 1", farmEstimate: "$1–2/pt", status: "live" },
+  // September weeks 6-7: $0.43 a point at the best, $0.70-1.00 typical.
+  { slug: "risex", name: "RiseX", season: "Season 1", farmEstimate: "$0.4–1/pt", status: "live" },
   { slug: "polymarket", name: "Polymarket", season: "Season 0", farmEstimate: "from $28/100k volume", status: "retro-activity" },
   // Perps on private-market assets (pre-IPO names), not the crypto majors.
   // Carded like QFEX: a season, retro points expected.
   { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k volume", status: "retro" },
   // Priced since 2026-09-10; Hibachi runs a points programme
   // (docs.hibachi.xyz/hibachi-rewards/hibachi-points).
-  { slug: "hibachi", name: "Hibachi", season: "Season PLAYOFFS (4)", farmEstimate: "from $27/100k volume", status: "live" },
+  // Farmers' own reading: about $0.03 a point on 9 September (about $0.10
+  // through mid-August), which is what the protocol page states too.
+  { slug: "hibachi", name: "Hibachi", season: "Season PLAYOFFS (4)", farmEstimate: "$0.03/pt", status: "live" },
   // Lighter on Robinhood Chain, priced since 2026-09-11. Runs live points (its
   // API serves an account's "RH live points"); no season or cost measured yet.
-  { slug: "lighterrh", name: "Lighter RH", season: "Season 1", status: "live" },
+  // $3.91 a point on 9 September and $3.20 on the 10th, after $4-8 earlier.
+  { slug: "lighterrh", name: "Lighter RH", season: "Season 1", farmEstimate: "$3–4/pt", status: "live" },
 ];
 
 /**

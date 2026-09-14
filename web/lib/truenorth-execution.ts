@@ -24,10 +24,10 @@ export const TRUE_NORTH_DEFAULT_EXECUTION_VENUE: TrueNorthExecutionVenue = "hype
  * same 10 bps ceiling on Hyperliquid perps (hyperliquid.gitbook.io, "Builder
  * codes").
  *
- * A builder fee IS charged on a TrueNorth fill -- every trade routes through
- * its builder integration -- but TrueNorth publishes no rate, so the route
- * figures carry exchange costs only and the page states this ceiling instead of
- * folding an invented number into the cost.
+ * TrueNorth charges NONE of it, and says so as a selling point: "builder fee
+ * the whole way: zero" (its own post, June 2026), and "$0 builder fee" with
+ * "executes at 0%" in September 2026. So a route through it costs what the
+ * exchange costs, and this ceiling is kept only to say what it is NOT charging.
  */
 export const BUILDER_FEE_CAP_BPS = 10;
 
