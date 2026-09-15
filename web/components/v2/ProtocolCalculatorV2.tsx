@@ -626,7 +626,11 @@ function CostTile({ label, value, tip, signed = false }: { label: string; value:
     : null;
   return (
     <div className="flex min-w-0 flex-col gap-1.5 rounded-none border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between">
-      <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-muted">
+      {/* One line on desktop, always. A label that wrapped made its tile two
+          lines tall and the grid stretched the other three to match, so a
+          route with long figures ($48.01, +$8.12) got a row of tall boxes
+          where a route with short ones got a neat strip. */}
+      <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-muted sm:whitespace-nowrap">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
       </span>
@@ -1026,7 +1030,7 @@ const RECOMMENDATION_POLICY: Record<string, RecommendationPolicy> = {
 };
 
 /** Recommended strategy duration, where one has been written. It is independent
- *  from Funding · 12h.
+ *  from the Funding tile.
  *
  *  A protocol with no published guidance shows an em dash rather than borrowing
  *  another protocol's holding time: how long to hold is a points-mechanics
@@ -1387,7 +1391,7 @@ export function RouteResults({
               <CostTile label={tr(locale, "Spread", "Спред")} value={best.spreadCostUsd} />
               <CostTile label={tr(locale, "Slippage", "Проскальзывание")} value={best.slippageCostUsd} />
               <CostTile
-                label={tr(locale, "Funding · 12h", "Фандинг · 12ч")}
+                label={tr(locale, "Funding", "Фандинг")}
                 value={isSwap(best.pair) ? null : best.fundingUsd ?? 0}
                 tip={isSwap(best.pair) ? swapFundingTip(locale) : fundingTip(locale)}
                 signed
@@ -1708,7 +1712,7 @@ export function RouteResults({
                             [tr(locale, "Spread", "Спред"), p.spreadCostUsd, undefined],
                             [tr(locale, "Slippage", "Проскальзывание"), p.slippageCostUsd, undefined],
                             [
-                              tr(locale, "Funding · 12h", "Фандинг · 12ч"),
+                              tr(locale, "Funding", "Фандинг"),
                               // Same-protocol routes hold an equal long and
                               // short on one book, so funding is a measured
                               // zero; cross routes retain their signed value.
