@@ -40,6 +40,19 @@ services:
     schedule: "0 * * * *" # hourly
     buildCommand: pip install -e .
     startCommand: perpfarm job sync-snapshots
+    # rootDir alone makes Render skip an autodeploy when a commit touches no
+    # file under worker/. The hourly catalog refresh reads
+    # data/manual/symbol_overrides.yaml from the REPOSITORY root (cli.py
+    # resolves REPO_ROOT / data / manual), so a commit that only adds a
+    # canonical-symbol override never reached this cron, and the rename it was
+    # meant to apply silently never happened: Entropy io:ANTH kept the
+    # canonical ANTH and never paired with QFEX ANTHROPIC. Build filter paths
+    # are relative to the repository root even when rootDir is set, so both
+    # directories are listed here.
+    buildFilter:
+      paths:
+        - worker/**
+        - data/**
     envVars:
       - key: DATABASE_URL
         sync: false
