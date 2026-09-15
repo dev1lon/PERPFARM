@@ -223,6 +223,22 @@ overrides:
     symbol: BBX-PERP_USDT0
     symbol_canonical: BB
 
+  # Entropy abbreviates the pre-IPO names; Lighter RH, QFEX and Variational all
+  # spell them out, so the spelling three venues share is the canonical one.
+  # Without these two, Entropy's six live markets could only ever pair on four.
+  # Checked 2026-09-15 on mids: io:ANTH 2160.30 against Lighter RH's ANTHROPIC
+  # 2163.40, and io:OAI 1543.10 against its OPENAI 1553.61. QFEX and
+  # Variational mark both about 4-7% lower (2075/2074 and 1444/1444) -- that is
+  # a basis between two venue clusters on an illiquid pre-IPO contract, not a
+  # different instrument or a different scale, and the pair's spread risk is
+  # where it shows up.
+  - venue: entropy
+    symbol: io:ANTH
+    symbol_canonical: ANTHROPIC
+  - venue: entropy
+    symbol: io:OAI
+    symbol_canonical: OPENAI
+
   # Currencies by PAIR, the way Nado and the curated FX list already name them.
   # Hibachi quotes every currency in dollars (EUR 1.16, JPY 0.006478), so CAD
   # and JPY there are CADUSD / JPYUSD -- inverse to USDCAD / USDJPY. trade.xyz's

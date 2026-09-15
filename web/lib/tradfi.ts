@@ -88,7 +88,10 @@ const EQUITY = new Set([
 /**
  * Companies trading before they list. A share, but not a listed one.
  *
- * ANTH and OAI are Entropy's tickers for the two Variational spells out.
+ * ANTH and OAI were Entropy's tickers until data/manual/symbol_overrides.yaml
+ * mapped them onto the spelling three other venues use -- without that, its
+ * Anthropic and OpenAI books could never pair with anyone's. They stay listed
+ * here in case a venue turns up using the short form.
  */
 const PRELISTING = new Set([
   "ANTH", "ANTHROPIC", "OAI", "OPENAI",
