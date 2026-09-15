@@ -46,6 +46,15 @@ API_BASE = "https://api.qfex.com"
 _METRICS_INTERVAL_NS = 3_600_000_000_000
 _METRICS_WINDOW_HOURS = 24
 FEE_SOURCE_URL = "https://docs.qfex.com/qfex/fees"
+#: Stored as `asset_class` on a market QFEX has put in Growth Mode, so the site
+#: prices it at that schedule. Keep in lockstep with ASSET_CLASS_FEES in
+#: web/lib/venue-fees.ts and jobs/hedge_recommendations.py.
+GROWTH_MODE_CLASS = "GROWTH_MODE"
+#: The dearest taker rate Growth Mode has charged (0.015% on the equities;
+#: crude oil pays 0.006%). A zero maker alone is not enough to call it Growth
+#: Mode -- a venue-wide maker rebate would look the same and cost ten times
+#: more on the taker side.
+GROWTH_MODE_MAX_TAKER_BPS = 1.5
 _HOURS_PER_YEAR = 8760.0
 #: QFEX settles funding every 60 minutes (docs.qfex.com/qfex/funding).
 _FUNDING_INTERVAL_HOURS = 1.0
@@ -117,6 +126,7 @@ class QfexAdapter(VenueAdapter):
     def __init__(self) -> None:
         self._contracts: dict[str, Mapping[str, object]] | None = None
         self._refdata: dict[str, Mapping[str, object]] | None = None
+        self._fee_table: dict[str, tuple[float, float]] | None = None
 
     def _get(self, path: str) -> object:
         response = httpx.get(
@@ -144,6 +154,32 @@ class QfexAdapter(VenueAdapter):
             }
         return self._contracts
 
+    def _fees(self) -> dict[str, tuple[float, float]]:
+        """Each symbol's own maker/taker, in bps, from `/fees`.
+
+        QFEX prices PER MARKET, not per venue: `/fees` answered 5/10 bps on 189
+        equities, 2/5 on indices and commodities, 1/2 on the four FX pairs and
+        0/1.5 or 0/0.6 on the three markets it put in Growth Mode (checked
+        2026-09-15). Reading it is what keeps a discount the venue announces in
+        its Discord from having to be typed in here.
+        """
+
+        if self._fee_table is None:
+            payload = self._get("/fees")
+            rows = payload.get("fees") if isinstance(payload, Mapping) else None
+            if not isinstance(rows, Mapping):
+                raise ValueError("qfex: /fees returned no fees")
+            table: dict[str, tuple[float, float]] = {}
+            for symbol, row in rows.items():
+                if not isinstance(symbol, str) or not isinstance(row, Mapping):
+                    continue
+                maker = _float(row.get("maker_fee"))
+                taker = _float(row.get("taker_fee"))
+                if maker is not None and taker is not None:
+                    table[symbol] = (maker * 10_000.0, taker * 10_000.0)
+            self._fee_table = table
+        return self._fee_table
+
     def _reference(self) -> dict[str, Mapping[str, object]]:
         """Per-symbol reference data: the venue's own status and asset class.
 
@@ -169,6 +205,26 @@ class QfexAdapter(VenueAdapter):
             raise MarketUnavailable(f"qfex: unknown market {symbol}")
         return contract
 
+    def _fee_class(self, ticker: str, category: object) -> str | None:
+        """Which schedule this market is charged on.
+
+        `asset_class` is the field the site prices by, so it carries the fee
+        bucket rather than the instrument's kind: a market QFEX has put in
+        GROWTH MODE pays 0 bps maker and 0.6-1.5 bps taker, which is a tenth of
+        its category's rate, and pricing SNDK as an ordinary equity would
+        overstate it sevenfold. The bucket is read from the venue's own fee
+        table, not from a list typed in here, so the next market it discounts
+        needs no code change.
+
+        The instrument's kind is not lost: the site classifies QFEX markets
+        from its own curated map (web/lib/tradfi.ts), which answers first.
+        """
+
+        maker, taker = self._fees().get(ticker, (None, None))
+        if maker == 0.0 and taker is not None and taker <= GROWTH_MODE_MAX_TAKER_BPS:
+            return GROWTH_MODE_CLASS
+        return category if isinstance(category, str) else None
+
     def get_markets(self) -> list[MarketInfo]:
         reference = self._reference()
         markets: list[MarketInfo] = []
@@ -183,7 +239,7 @@ class QfexAdapter(VenueAdapter):
                 continue
             details = reference.get(ticker, {})
             status = details.get("status")
-            asset_class = details.get("product_category")
+            category = details.get("product_category")
             markets.append(
                 MarketInfo(
                     symbol=ticker,
@@ -193,7 +249,7 @@ class QfexAdapter(VenueAdapter):
                     # missing from refdata keeps collecting rather than being
                     # retired on the strength of one endpoint's silence.
                     is_active=status in (None, "ACTIVE"),
-                    asset_class=asset_class if isinstance(asset_class, str) else None,
+                    asset_class=self._fee_class(ticker, category),
                 )
             )
         return markets
@@ -308,14 +364,21 @@ class QfexAdapter(VenueAdapter):
         )
 
     def get_fees(self) -> FeeData:
-        """Tier 5 SINGLE STOCKS: 0.05% maker, 0.10% taker.
+        """The dearest schedule any QFEX market is on, read from `/fees`.
 
-        QFEX prices by asset class as well as by volume, and our model carries
-        one pair per venue -- so it carries the class this venue actually is.
-        Nearly every QFEX market is a single stock, and that class is also the
-        most expensive: indices and commodities pay 0.02% / 0.05% and FX 0.01% /
-        0.02%, so a route on one of those is priced ABOVE what it costs, never
-        below. Tier 5 is the entry tier, no discount applied.
+        The venue-wide row is one pair, and QFEX charges five different ones, so
+        this row takes the highest -- 0.05% maker / 0.10% taker on a single
+        stock today. A market on a cheaper schedule (indices and commodities at
+        0.02% / 0.05%, FX at 0.01% / 0.02%, Growth Mode at 0% / 0.015%) is
+        priced per market through its stored `asset_class`, so nothing is
+        charged less here than it costs.
         """
 
-        return FeeData(maker_bps=5.0, taker_bps=10.0, source_url=FEE_SOURCE_URL)
+        table = self._fees()
+        if not table:
+            raise MarketUnavailable("qfex: /fees returned no schedule")
+        return FeeData(
+            maker_bps=max(maker for maker, _ in table.values()),
+            taker_bps=max(taker for _, taker in table.values()),
+            source_url=FEE_SOURCE_URL,
+        )

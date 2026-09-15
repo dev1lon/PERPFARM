@@ -85,6 +85,13 @@ const ASSET_CLASS_FEES: Record<string, Record<string, VenueFees>> = {
     INDEX: { makerBps: 2.0, takerBps: 5.0 },
     COMMODITY: { makerBps: 2.0, takerBps: 5.0 },
     FX: { makerBps: 1.0, takerBps: 2.0 },
+    // GROWTH MODE, announced 2026-09-14 and read per market from
+    // api.qfex.com/fees: 0 bps maker, with 1.5 bps taker on the equities
+    // (SNDK, ANTHROPIC) against 0.6 on crude. Priced at the dearer end, so
+    // crude is charged above its cost rather than below it. The discount now
+    // lands at the time of trade; it used to arrive later as a rebate, which
+    // this model never counted anyway.
+    GROWTH_MODE: { makerBps: 0.0, takerBps: 1.5 },
   },
   // Not an instrument class: trade.xyz charges by FEE MODE, and Hyperliquid
   // states the mode per market. The collector stores GROWTH_MODE on each market

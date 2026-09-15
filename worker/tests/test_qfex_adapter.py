@@ -70,6 +70,18 @@ REFDATA = {
         {"symbol": "ADBE-USD", "status": "INACTIVE", "product_category": "EQUITY"},
     ]
 }
+#: `/fees` prices each market on its own: the equities at 5/10 bps, FX at 1/2
+#: and the handful QFEX puts in Growth Mode at 0 maker with a taker of 1.5 bps
+#: or less. The adapter reads the bucket from here, never from a typed list.
+FEES = {
+    "fees": {
+        "AAPL-USD": {"maker_fee": 0.0005, "taker_fee": 0.001},
+        "EUR-USD": {"maker_fee": 0.0001, "taker_fee": 0.0002},
+        "ADBE-USD": {"maker_fee": 0.0005, "taker_fee": 0.001},
+        "SNDK-USD": {"maker_fee": 0, "taker_fee": 0.00015},
+        "CL-USD": {"maker_fee": 0, "taker_fee": 0.00006},
+    }
+}
 BOOK = {
     "ticker_id": "AAPL-USD",
     "bids": [["320.53", "53.77"], ["320.51", "0"], ["320.43", "64.133"]],
@@ -85,6 +97,8 @@ class _StubAdapter(QfexAdapter):
             return CONTRACTS
         if path == "/refdata":
             return REFDATA
+        if path == "/fees":
+            return FEES
         if path.startswith("/md/orderbook/"):
             return BOOK
         raise AssertionError(f"unexpected request {path}")
@@ -118,6 +132,38 @@ def test_each_market_carries_the_class_that_sets_its_fee():
 
     assert by_symbol["AAPL-USD"].asset_class == "EQUITY"
     assert by_symbol["EUR-USD"].asset_class == "FX"
+
+
+def test_a_discounted_market_carries_the_growth_mode_bucket():
+    """A Growth Mode market pays a tenth of its category's rate, so pricing it
+    as an ordinary equity would overstate it sevenfold. The bucket comes from
+    the venue's own fee table, so the next market it discounts needs no edit."""
+
+    growth = {
+        "data": [
+            {"symbol": "SNDK-USD", "status": "ACTIVE", "product_category": "EQUITY"},
+            {"symbol": "CL-USD", "status": "ACTIVE", "product_category": "COMMODITY"},
+        ]
+    }
+    contracts = {
+        "data": [
+            {"ticker_id": "SNDK-USD", "base_currency": "SNDK", "product_type": "Perpetual"},
+            {"ticker_id": "CL-USD", "base_currency": "CL", "product_type": "Perpetual"},
+        ]
+    }
+
+    class _Growth(_StubAdapter):
+        def _get(self, path):  # type: ignore[override]
+            if path == "/md/contracts":
+                return contracts
+            if path == "/refdata":
+                return growth
+            return super()._get(path)
+
+    by_symbol = {market.symbol: market for market in _Growth().get_markets()}
+
+    assert by_symbol["SNDK-USD"].asset_class == "GROWTH_MODE"
+    assert by_symbol["CL-USD"].asset_class == "GROWTH_MODE"
 
 
 def test_open_interest_is_taken_as_published_in_usd():
@@ -157,12 +203,12 @@ def test_an_unknown_market_never_reaches_the_network():
 
 
 def test_fees_are_the_entry_tier_for_single_stocks():
-    """The venue-level pair is the single-stock tier -- 170 of the 193 markets.
+    """The venue-level pair is the dearest schedule any market is on.
 
     It is the fallback, not the whole story: each market carries its own class
     and is priced from the per-class table (ASSET_CLASS_FEES in the pricing
-    jobs and on the site), so indices and commodities pay 0.02%/0.05% and FX
-    0.01%/0.02% rather than the stock rate."""
+    jobs and on the site), so indices and commodities pay 0.02%/0.05%, FX
+    0.01%/0.02% and Growth Mode 0%/0.015% rather than the stock rate."""
 
     fees = _StubAdapter().get_fees()
 

@@ -695,11 +695,11 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
       {
-        title: tr(locale, "The fee tier you locked", "Зафиксированный тариф"),
+        title: tr(locale, "Growth Mode markets", "Рынки Growth Mode"),
         body: tr(
           locale,
-          "An account funded before the 24 August snapshot keeps 0% maker and 0.015% / 0.006% taker on stocks / indices for good. Without it the same volume costs several times more, which decides whether this page is worth farming at all.",
-          "Аккаунт, пополненный до снепшота 24 августа, навсегда сохраняет 0% maker и 0.015% / 0.006% taker на акциях / индексах. Без него тот же объём стоит в разы дороже — от этого и зависит, стоит ли вообще фармить эту страницу.",
+          "Growth Mode charges 0 bps maker and 0.6–1.5 bps taker where an ordinary equity costs 5/10. Since 14 September SNDK, ANTHROPIC and crude are in it for everyone, an account funded before the 24 August snapshot keeps all 19, and the discount now lands at the time of trade instead of arriving later as a rebate.",
+          "В Growth Mode берут 0 bps maker и 0.6–1.5 bps taker там, где обычная акция стоит 5/10. С 14 сентября в нём для всех SNDK, ANTHROPIC и нефть, аккаунт, пополненный до снепшота 24 августа, сохраняет все 19 рынков, а скидка теперь применяется прямо в сделке, а не возвращается ребейтом позже.",
         ),
       },
     ],
@@ -724,8 +724,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Work the 24/7 RWA book", "Работайте по RWA, который открыт 24/7"),
         body: tr(
           locale,
-          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and maker fills are free on the locked tier.",
-          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а мейкерские исполнения на зафиксированном тарифе бесплатны.",
+          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and the table below prices each market on the schedule it is actually charged — including the Growth Mode ones at 0 bps maker.",
+          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а таблица ниже считает каждый рынок по тому тарифу, по которому его и берут, — включая Growth Mode с 0 bps maker.",
         ),
       },
       {

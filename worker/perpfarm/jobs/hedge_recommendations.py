@@ -67,6 +67,9 @@ ASSET_CLASS_FEES: dict[str, dict[str, tuple[float, float]]] = {
         "INDEX": (2.0, 5.0),
         "COMMODITY": (2.0, 5.0),
         "FX": (1.0, 2.0),
+        # Growth Mode, read per market from api.qfex.com/fees: 0 maker, 1.5
+        # taker on the equities against 0.6 on crude, priced at the dearer end.
+        "GROWTH_MODE": (0.0, 1.5),
     },
     # trade.xyz: Growth Mode is a tenth of Standard Mode (adapters/tradexyz.py).
     "tradexyz": {
