@@ -682,24 +682,24 @@ function qfex(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "QFEX has awarded no points at all. The team says the programme starts in autumn or winter 2026 and that everything traded until then is tracked retroactively, with a TGE talked about for December. So there is no cost per point to quote and no OTC price to quote either — what you are buying is a record on a venue that is still invite-only.",
-      "QFEX не начислил ни одного поинта. Команда говорит, что программа стартует осенью-зимой 2026, а всё, что наторговано до этого, учтётся ретроспективно; TGE обсуждают в районе декабря. Поэтому ни себестоимости поинта, ни OTC-цены тут быть не может — вы покупаете историю на площадке, куда пока пускают по инвайтам.",
+      "Nothing is awarded yet: the programme is promised for autumn or winter, and everything until then counts retroactively.",
+      "Пока не начисляют ничего: программу обещают осенью-зимой, а всё до неё зачтут ретроспективно.",
     ),
     priorities: [
       {
-        title: tr(locale, "History built early", "История, набранная рано"),
+        title: tr(locale, "$100k+, spread over weeks", "$100k+, растянутые на недели"),
         body: tr(
           locale,
-          "Nothing is awarded yet, so the bet is the record left before the crowd arrives: farmers aim for $100k+ of organic volume while the field is small.",
-          "Пока не начисляют ничего, поэтому ставка — след, оставленный до прихода толпы: фармеры целятся в $100k+ органического объёма, пока участников мало.",
+          "The asset is the record itself — $100k or more of it, built while the book is still invite-only and the field is small. Spread it across weeks: one burst of turnover reads as a farm, a habit reads as a user.",
+          "Ценность — сама история: $100k и больше, набранные пока вход по инвайтам и участников мало. Растягивайте это на недели: один залп оборота читается как ферма, привычка — как пользователь.",
         ),
       },
       {
         title: tr(locale, "The fee tier you locked", "Зафиксированный тариф"),
         body: tr(
           locale,
-          "Accounts that deposited before the 24 August snapshot kept 0% maker and 0.015% / 0.006% taker on stocks / indices for good. That is what makes the volume affordable at all.",
-          "Аккаунты, пополнившиеся до снепшота 24 августа, навсегда сохранили 0% maker и 0.015% / 0.006% taker на акциях / индексах. Именно это делает объём здесь подъёмным.",
+          "An account funded before the 24 August snapshot keeps 0% maker and 0.015% / 0.006% taker on stocks / indices for good. Without it the same volume costs several times more, which decides whether this page is worth farming at all.",
+          "Аккаунт, пополненный до снепшота 24 августа, навсегда сохраняет 0% maker и 0.015% / 0.006% taker на акциях / индексах. Без него тот же объём стоит в разы дороже — от этого и зависит, стоит ли вообще фармить эту страницу.",
         ),
       },
     ],
@@ -708,32 +708,32 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Register with an invite code", "Регистрируйтесь по инвайт-коду"),
         body: tr(
           locale,
-          "The book is invite-only, and a code carries a 10% discount on trading fees.",
-          "Площадка пускает только по приглашениям, а код даёт 10% скидки на торговые комиссии.",
+          "The book is invite-only, and a code takes another 10% off trading fees.",
+          "Вход только по приглашению, а код снимает ещё 10% с торговых комиссий.",
         ),
       },
       {
-        title: tr(locale, "Deposit through Connect Wallet", "Вносите депозит через Connect Wallet"),
+        title: tr(locale, "Fund it through Connect Wallet", "Заносите через Connect Wallet"),
         body: tr(
           locale,
-          "USDC on Arbitrum from your own wallet, $10 and up. Sending straight from an exchange address gets stopped by compliance with a “Deposit blocked”.",
-          "USDC в сети Arbitrum со своего кошелька, от $10. Перевод прямо с биржевого адреса режет комплаенс сообщением «Deposit blocked».",
+          "USDC on Arbitrum from your own wallet, $10 and up. A transfer straight from an exchange address comes back as “Deposit blocked”.",
+          "USDC в сети Arbitrum со своего кошелька, от $10. Перевод прямо с биржевого адреса возвращается как «Deposit blocked».",
         ),
       },
       {
-        title: tr(locale, "Build the volume gradually", "Набирайте объём постепенно"),
+        title: tr(locale, "Work the 24/7 RWA book", "Работайте по RWA, который открыт 24/7"),
         body: tr(
           locale,
-          "A retroactive review looks at a history, not at one burst: $100k+ spread over time reads as a user, one session reads as a farm.",
-          "Ретроспективный разбор смотрит на историю, а не на один залп: $100k+, размазанные по времени, выглядят как пользователь, один заход — как ферма.",
+          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and maker fills are free on the locked tier.",
+          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а мейкерские исполнения на зафиксированном тарифе бесплатны.",
         ),
       },
       {
-        title: tr(locale, "Trade the RWA book on limit orders", "Торгуйте RWA лимитками"),
+        title: tr(locale, "Pre-IPO opened on 10 September", "Pre-IPO открылись 10 сентября"),
         body: tr(
           locale,
-          "Stocks, indices, metals and FX run 24/7 here, and the Pre-IPO pair OPENAI and ANTHROPIC opened on 10 September at 10x. Maker fills are free on the locked tier.",
-          "Акции, индексы, металлы и валюты идут здесь 24/7, а пары Pre-IPO — OPENAI и ANTHROPIC — открылись 10 сентября с плечом 10x. На зафиксированном тарифе мейкерские исполнения бесплатны.",
+          "OPENAI and ANTHROPIC list at 10x — the newest books on the venue and the least crowded ones.",
+          "OPENAI и ANTHROPIC идут с плечом 10x — самые свежие стаканы площадки и самые незаполненные.",
         ),
       },
     ],
@@ -765,58 +765,58 @@ function entropy(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "Entropy has not started its points programme — the fields are already in its code, the team says early activity is credited retroactively, and a token is talked about for 2027. So there is no cost per point yet. The rule that is not a rumour: only Entropy's own io: markets count. Volume on Hyperliquid's native pairs through the same screen is not Entropy's activity.",
-      "Программа поинтов у Entropy ещё не запущена — поля уже есть в коде, команда говорит, что ранняя активность зачтётся ретроспективно, а токен обсуждают на 2027 год. Поэтому себестоимости поинта пока нет. Что не слух: считаются только собственные рынки Entropy с префиксом io:. Объём по нативным парам Hyperliquid в том же окне — это не активность Entropy.",
+      "Points are not live yet, so what matters is which markets will count when they are.",
+      "Поинтов пока нет, поэтому важно другое — какие рынки зачтут, когда они появятся.",
     ),
     priorities: [
       {
-        title: tr(locale, "Only the io: markets", "Только рынки io:"),
+        title: tr(locale, "Only the io: pairs", "Только пары io:"),
         body: tr(
           locale,
-          "Retroactive credit is for Entropy's own Pre-IPO and RWA contracts — io:ANTH, io:OAI, io:SNDK. Everything else on the screen belongs to Hyperliquid.",
-          "Ретро-зачёт идёт за собственные контракты Entropy на Pre-IPO и RWA — io:ANTH, io:OAI, io:SNDK. Всё остальное на экране принадлежит Hyperliquid.",
+          "Retroactive credit is for Entropy's own contracts — io:ANTH, io:OAI, io:SNDK. Hyperliquid's native pairs sit on the same screen and do not count as Entropy activity, which is the one mistake that wastes a whole month here.",
+          "Ретро-зачёт идёт за собственные контракты Entropy — io:ANTH, io:OAI, io:SNDK. Нативные пары Hyperliquid лежат в том же окне и активностью Entropy не считаются: именно эта ошибка стоит впустую потраченного месяца.",
         ),
       },
       {
-        title: tr(locale, "Volume and open interest, by report", "Объём и открытый интерес — по слухам"),
+        title: tr(locale, "Hold 1–2 days, by report", "Удержание 1–2 дня, по слухам"),
         body: tr(
           locale,
-          "No formula is published. Farmers who asked in September were told open interest will matter alongside volume, which is why most hold a pre-IPO position a day or two instead of churning it.",
-          "Формулы нет. Тем, кто спрашивал в сентябре, отвечали, что вместе с объёмом будет важен открытый интерес — поэтому большинство держит позицию по pre-IPO сутки-двое, а не крутит её.",
+          "No formula is published. Farmers who asked in September were told open interest will count beside volume, so the field's answer is a pre-IPO position left open a day or two rather than turnover.",
+          "Формулы нет. Тем, кто спрашивал в сентябре, отвечали, что вместе с объёмом будет считаться открытый интерес, — поэтому общий ответ такой: позиция по pre-IPO на сутки-двое, а не оборот.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Trade the Pre-IPO book", "Торгуйте книгой Pre-IPO"),
+        title: tr(locale, "Rest maker orders at 0.003%", "Стойте мейкером под 0.003%"),
         body: tr(
           locale,
-          "Anthropic's contract held $19–25M of open interest in September, the deepest venue for that asset anywhere — which is also why the spread there is workable.",
-          "Контракт на Anthropic держал в сентябре $19–25M открытого интереса — самая глубокая площадка по этому активу в мире, отсюда и рабочий спред.",
+          "Maker is 0.003% against 0.009% taker — about $3 per $100k on the passive side, before the rebate below.",
+          "Мейкер — 0.003% против 0.009% тейкера: около $3 на $100k пассивной стороной, ещё до ребейта ниже.",
         ),
       },
       {
-        title: tr(locale, "Place maker orders", "Ставьте мейкерские ордера"),
+        title: tr(locale, "Anthropic is the deepest book", "Самый глубокий стакан — Anthropic"),
         body: tr(
           locale,
-          "0.003% maker against 0.009% taker: about $3 per $100k of volume on the maker side, before any rebate.",
-          "0.003% мейкер против 0.009% тейкер: около $3 на $100k объёма мейкерской стороной, ещё до ребейтов.",
+          "It held $19–25M of open interest in September, more than anywhere else for that asset, which is why size fills there without moving the price.",
+          "В сентябре в нём было $19–25M открытого интереса — больше, чем где-либо ещё по этому активу, поэтому крупный размер входит без сдвига цены.",
         ),
       },
       {
-        title: tr(locale, "Hold it for a day or two", "Держите сутки-двое"),
+        title: tr(locale, "Claim the 20–50% fee rebate", "Заберите возврат комиссий 20–50%"),
         body: tr(
           locale,
-          "Empty turnover is the expensive way to be counted here, and a delta-neutral pre-IPO position cost about $4 per $10k to open against Lighter in early September.",
-          "Пустой оборот — самый дорогой способ быть учтённым, а дельта-нейтральная позиция по pre-IPO против Lighter в начале сентября стоила около $4 на $10k.",
+          "The referral programme returns a fifth to a half of Entropy's share of your fees — on a venue with no points yet, that is the only certain payout.",
+          "Реферальная программа возвращает от пятой части до половины платформенной доли ваших комиссий — на площадке без поинтов это единственная гарантированная выплата.",
         ),
       },
       {
-        title: tr(locale, "Take the fee rebate", "Берите возврат комиссий"),
+        title: tr(locale, "Expect a regional block", "Ждите региональной блокировки"),
         body: tr(
           locale,
-          "Entropy's referral programme returns 20–50% of the platform's share of your fees, which is the difference between a cheap route and a costly one.",
-          "Реферальная программа Entropy возвращает 20–50% от платформенной доли ваших комиссий — это и есть разница между дешёвым и дорогим маршрутом.",
+          "EU and US addresses were refused in August; farmers registered and deposited through Asian exits instead.",
+          "В августе адреса из ЕС и США не пускали; регистрировались и заносили депозит через азиатские выходы.",
         ),
       },
     ],
@@ -851,58 +851,58 @@ function risex(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "RiseX pays for volume and for open interest, and it is TIME that carries the points: a $10k position held twelve hours earned twelve times what the same position held one hour did. Its tournaments score volume, open interest and PnL as an equal third each. Support confirmed on 6 September that parking funds in a vault earns nothing by itself — only trading and holding count.",
-      "RiseX начисляет и за объём, и за открытый интерес, но основное дают ЧАСЫ в позиции: $10k, удержанные 12 часов, принесли ровно в 12 раз больше, чем те же $10k за час. В турнирах счёт складывается из объёма, открытого интереса и PnL равными долями. 6 сентября поддержка подтвердила: просто держать деньги в вольте бессмысленно — считаются только торговля и удержание.",
+      "Hold time drives the points; volume follows it rather than the other way round.",
+      "Поинты двигает время в позиции; объём идёт следом, а не наоборот.",
     ),
     priorities: [
       {
-        title: tr(locale, "Open interest, held for days", "Открытый интерес, удержанный сутками"),
+        title: tr(locale, "One position, 24–48h hold", "Одна позиция, удержание 24–48ч"),
         body: tr(
           locale,
-          "Points grow with the hours a position stays open, so 24–48 hours on one position is worth far more than the same size churned through the book.",
-          "Поинты растут вместе с часами в позиции, поэтому одна позиция на 24–48 часов стоит намного больше, чем тот же размер, прокрученный через стакан.",
+          "The award is linear in time: the same $10k paid twelve times more at twelve hours than at one. Keep one delta-neutral position open for a day or two instead of cycling it, and add the second leg elsewhere rather than closing this one.",
+          "Начисление линейно по времени: те же $10k за 12 часов дали в 12 раз больше, чем за час. Держите одну дельта-нейтральную позицию сутки-двое, а не перезаходите, и вторую ногу открывайте на другой площадке, а не закрывайте эту.",
         ),
       },
       {
-        title: tr(locale, "Volume, but only organic", "Объём, но только органический"),
+        title: tr(locale, "Volume, a third of the score", "Объём — треть счёта"),
         body: tr(
           locale,
-          "Volume is a third of a tournament's score and still earns, but stacking turnover burns fees faster than it pays: one farmer's $1.04M of volume cost $220 in fees for 87.8 points.",
-          "Объём — треть турнирного счёта и он тоже приносит поинты, но набивать оборот дороже, чем он платит: у одного фармера $1.04M объёма стоили $220 комиссий и дали 87.8 поинта.",
+          "A tournament scores volume, open interest and PnL as an equal third each, so turnover matters but never pays for itself: $1.04M of it cost $220 in fees for 87.8 points. Build it as a by-product of the position above, not as a target.",
+          "В турнире объём, открытый интерес и PnL весят по трети, поэтому оборот важен, но сам себя не отбивает: $1.04M дали 87.8 поинта при $220 комиссий. Набирайте его как побочный эффект позиции выше, а не как цель.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Enter and leave on limit orders", "Входите и выходите лимитками"),
+        title: tr(locale, "Enter with passive LIMIT orders", "Заходите пассивными LIMIT-ордерами"),
         body: tr(
           locale,
-          "Maker fills are what hold the cost per point near the bottom of its range; a market order pays the spread on both legs of the hedge.",
-          "Именно мейкерские исполнения держат себестоимость поинта у нижней границы; маркет-ордер платит спред на обеих ногах хеджа.",
+          "Maker fills are the difference between $0.43 and $1.80 a point — the same spread farmers reported across September and late August.",
+          "Мейкерские исполнения — это разница между $0.43 и $1.80 за поинт: именно такой разброс фармеры показывали в сентябре и в конце августа.",
         ),
       },
       {
-        title: tr(locale, "Hold the position, don't churn it", "Держите позицию, а не крутите её"),
+        title: tr(locale, "Skip SOL, take BTC, ETH or HYPE", "Не берите SOL — берите BTC, ETH или HYPE"),
         body: tr(
           locale,
-          "Open-and-close cycles pay little. Farmers who held 24–48 hours reported $0.43–1.00 a point in September, against $1.50–1.80 in late August when conditions tightened.",
-          "Циклы «открыл-закрыл» платят мало. Те, кто держал 24–48 часов, в сентябре отчитывались о $0.43–1.00 за поинт против $1.50–1.80 в конце августа, когда условия ужесточились.",
+          "A SOL pair cut the award by about 17% in August's measurements; the majors above were the pairs farmers were pointed to instead.",
+          "Пара по SOL в августовских замерах срезала начисление примерно на 17%; вместо неё советовали как раз мейджоры выше.",
         ),
       },
       {
-        title: tr(locale, "Hedge it on another venue", "Хеджируйте на другой площадке"),
+        title: tr(locale, "Put the other leg where it also earns", "Вторую ногу ставьте туда, где тоже платят"),
         body: tr(
           locale,
-          "The usual setup runs RiseX against Lighter RH, Variational or Ondo on the same RWA pair — gold, oil, SPY, QQQ — so both sides earn while the direction cancels out.",
-          "Обычная схема — RiseX против Lighter RH, Variational или Ondo по одной и той же RWA-паре: золото, нефть, SPY, QQQ. Обе стороны фармят, направление гасится.",
+          "Lighter RH, Variational and Ondo all list the same RWA pairs — gold, oil, SPY, QQQ — so the hedge farms a second programme instead of only cancelling risk.",
+          "Lighter RH, Variational и Ondo торгуют те же RWA-пары — золото, нефть, SPY, QQQ, — поэтому хедж фармит вторую программу, а не только гасит риск.",
         ),
       },
       {
-        title: tr(locale, "Take the boosts that cost nothing", "Берите бусты, которые ничего не стоят"),
+        title: tr(locale, "Stack the referral with the season's boost", "Складывайте реферал с сезонным бустом"),
         body: tr(
           locale,
-          "A referral link carries a standing +12.5% to +20%, and RiseX runs more on top — a +20% RWA boost through late August, a $34,000 USDC competition into 18 September.",
-          "Реферальная ссылка даёт постоянные +12.5%…+20%, а сверху RiseX проводит ещё — +20% за RWA во второй половине августа, соревнование с пулом $34 000 USDC до 18 сентября.",
+          "A link carries a standing +12.5% to +20%; on top of that RiseX ran +20% on RWA pairs through late August and a $34,000 USDC competition into 18 September.",
+          "Ссылка даёт постоянные +12.5%…+20%; сверху RiseX давал +20% за RWA-пары во второй половине августа и проводил соревнование на $34 000 USDC до 18 сентября.",
         ),
       },
     ],
@@ -934,58 +934,58 @@ function polymarket(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "Polymarket runs no points programme on its perps and has promised no token. It raised at a $21B valuation and takes fees on a product that already works, so a retro drop is a guess, not a plan. What it does pay, every day, is $75,000 to market makers — which is the one thing on this page you can actually farm.",
-      "На перпах Polymarket нет программы поинтов, и токен никто не обещал. Компания подняла раунд по оценке $21B и зарабатывает на комиссиях продукта, который и так работает, — так что ретро-дроп здесь догадка, а не план. Что площадка действительно платит каждый день, так это $75 000 маркет-мейкерам: это единственное на этой странице, что реально фармится.",
+      "There is no points programme and no token pledge — the only thing paid here is liquidity.",
+      "Программы поинтов нет и токен не обещан — платят здесь только за ликвидность.",
     ),
     priorities: [
       {
-        title: tr(locale, "Market-maker rewards", "Награды маркет-мейкеру"),
+        title: tr(locale, "Resting liquidity, not turnover", "Стоять в стакане, а не крутить оборот"),
         body: tr(
           locale,
-          "$75,000 a day goes to resting liquidity. It is paid in cash, today, and it does not depend on a token that may never exist.",
-          "$75 000 в день уходят тем, кто стоит в стакане. Это деньги сегодня, и они не зависят от токена, которого может не быть.",
+          "$75,000 a day goes to market makers, and that is the only activity this venue pays for. It also pushed the taker delay from 50 ms to 150 ms on 3 September, which makes the other side of the book worse still.",
+          "Маркет-мейкерам раздают $75 000 в день — это единственная активность, за которую здесь платят. Плюс 3 сентября задержку тейкера подняли с 50 мс до 150 мс, что делает другую сторону стакана ещё хуже.",
         ),
       },
       {
-        title: tr(locale, "A retro drop nobody promised", "Ретро-дроп, который никто не обещал"),
+        title: tr(locale, "A drop nobody promised", "Дроп, которого никто не обещал"),
         body: tr(
           locale,
-          "Activity is recorded, and farmers are betting on a future $POLY. Treat it as a maybe: do not burn an account for a drop the venue has never mentioned.",
-          "Активность записывается, и фармеры ставят на будущий $POLY. Относитесь к этому как к «может быть»: не сжигайте аккаунт ради дропа, о котором площадка ни разу не говорила.",
+          "The company raised at $21B and lives on the fees it already collects, so a drop is an option nobody has offered. Leave a record if you want that option, but do not spend for it — the rewards above are paid in cash today.",
+          "Компания подняла раунд по $21B и живёт на комиссиях, которые уже собирает, так что дроп — опция, которую никто не предлагал. Оставляйте след, если хотите её иметь, но не тратьтесь ради неё: награды выше платят деньгами уже сегодня.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Rest orders instead of taking them", "Стойте в стакане, а не бейте по нему"),
-        body: tr(
-          locale,
-          "A resting order earns from the daily maker pool; a market order pays the fee instead. That inverts the usual advice on this site.",
-          "Стоящий ордер зарабатывает из дневного пула мейкера, а маркет-ордер, наоборот, платит комиссию. Это переворачивает привычный совет на этом сайте.",
-        ),
-      },
-      {
-        title: tr(locale, "Allow for the taker delay", "Учитывайте задержку тейкера"),
-        body: tr(
-          locale,
-          "On 3 September the taker delay went from 50 ms to 150 ms to protect liquidity — one more reason the taker side is the wrong one here.",
-          "3 сентября задержку тейкера подняли с 50 мс до 150 мс ради защиты ликвидности — ещё одна причина не вставать на тейкерскую сторону.",
-        ),
-      },
-      {
         title: tr(locale, "Take the joining promo once", "Возьмите стартовое промо один раз"),
         body: tr(
           locale,
-          "Early September paid $10 USDC for a $20 deposit, a $20 prediction and $2,000 of perp volume — enough to open an account without burning anything.",
-          "В начале сентября за депозит $20, ставку на $20 и $2 000 объёма на перпах платили $10 USDC — этого хватает, чтобы открыть аккаунт, ничего не сжигая.",
+          "Early September paid $10 USDC for a $20 deposit, a $20 prediction and $2,000 of perp volume — an account opened for free.",
+          "В начале сентября за депозит $20, ставку на $20 и $2 000 объёма на перпах платили $10 USDC — аккаунт открывается бесплатно.",
         ),
       },
       {
-        title: tr(locale, "Spread the activity out", "Растяните активность"),
+        title: tr(locale, "Let other people's takers fill you", "Пусть вас исполняют чужие тейкеры"),
         body: tr(
           locale,
-          "Wash volume in one session is what a review looks for. Trade the markets you would trade anyway, across days.",
-          "Накрученный за одну сессию объём — именно то, что ищут при разборе. Торгуйте те рынки, что торговали бы и так, и растягивайте это по дням.",
+          "Orders resting a tick either side of the market built volume at almost no cost in August's reports, and sometimes closed slightly positive.",
+          "Ордера, стоящие в тик от рынка, в августовских отчётах набирали объём почти без затрат, а иногда закрывались с небольшим плюсом.",
+        ),
+      },
+      {
+        title: tr(locale, "Leave a clean fingerprint", "Оставляйте чистый отпечаток"),
+        body: tr(
+          locale,
+          "The beta was a few thousand accounts, so a month of volume pushed through one session is exactly what a review looks for.",
+          "В бете было несколько тысяч аккаунтов, поэтому месячный объём, продавленный за одну сессию, — ровно то, что ищут при разборе.",
+        ),
+      },
+      {
+        title: tr(locale, "$100k was the beta's bar", "Планка беты — $100k"),
+        body: tr(
+          locale,
+          "While access ran on invite codes farmers aimed past $100,000 of volume to stand out among 7,000–11,000 accounts.",
+          "Пока вход шёл по инвайт-кодам, фармеры целились за $100 000 объёма, чтобы выделиться среди 7 000–11 000 аккаунтов.",
         ),
       },
     ],
@@ -1020,58 +1020,58 @@ function tradexyz(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "trade.xyz has announced no points programme and no season: it is the largest HIP-3 deployer on Hyperliquid, holding over 90% of the open interest in stock, index, commodity and pre-IPO perps, and it records what you trade without saying how it would be scored. So the thing to get right here is cost, and cost depends on the market: $1M traded in gold cost about $1,100 in early September, the same $1M in the US100 index about $150.",
-      "trade.xyz не анонсировал ни программу поинтов, ни сезон: это крупнейший деплоер HIP-3 на Hyperliquid, у него больше 90% открытого интереса в перпах на акции, индексы, сырьё и pre-IPO, и он просто записывает, что вы торговали, не объясняя, как это оценит. Поэтому здесь главное — стоимость, а она зависит от рынка: $1M по золоту в начале сентября стоил около $1 100, тот же $1M по индексу US100 — около $150.",
+      "No points programme is announced, so the only thing left to optimise is what the volume costs.",
+      "Программа поинтов не анонсирована, поэтому оптимизировать остаётся одно — во что обходится объём.",
     ),
     priorities: [
       {
-        title: tr(locale, "The market you pick, not the volume", "Выбранный рынок, а не объём"),
+        title: tr(locale, "Indices over metals", "Индексы вместо металлов"),
         body: tr(
           locale,
-          "The same notional costs about seven times more in metals than in the indices. The pair table below prices every market of this venue, so pick from it before trading size.",
-          "Один и тот же номинал в металлах стоит примерно в семь раз дороже, чем в индексах. Таблица пар ниже считает каждый рынок площадки — выбирайте по ней, прежде чем торговать объёмом.",
+          "The market decides the bill here: $1M traded cost about $150 on the US100 index and about $1,100 in gold in early September. Pick the pair off the table below before trading size — nothing else on this page moves the cost that much.",
+          "Счёт здесь определяет рынок: в начале сентября $1M стоил около $150 по индексу US100 и около $1 100 по золоту. Выбирайте пару по таблице ниже, прежде чем торговать объёмом, — больше ничто на этой странице так не меняет стоимость.",
         ),
       },
       {
-        title: tr(locale, "Recorded activity", "Записанная активность"),
+        title: tr(locale, "Recorded activity, no formula", "Активность пишется, формулы нет"),
         body: tr(
           locale,
-          "No formula and no season, only a record. The one published effect of volume is the account tier, which lifts past $100k, and a deposit carries a welcome bonus.",
-          "Ни формулы, ни сезона — только запись. Единственный опубликованный эффект объёма — уровень аккаунта, который поднимается после $100k, а за депозит дают приветственный бонус.",
+          "The venue records what you traded and says nothing about how it would count it. The one published effect of volume is the account tier, which lifts past $100k — so there is no target to chase beyond trading where it is cheap.",
+          "Площадка записывает, что вы торговали, и молчит о том, как это зачтёт. Единственный опубликованный эффект объёма — уровень аккаунта после $100k, так что гнаться больше не за чем: торгуйте там, где дешевле.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Compare markets before trading size", "Сравните рынки до крупного объёма"),
+        title: tr(locale, "Deposit, then pass $100k", "Занесите депозит, потом пройдите $100k"),
         body: tr(
           locale,
-          "Run the calculator below first: the cheapest market on this venue and the dearest one differ by a factor a farmer feels immediately.",
-          "Сначала прогоните калькулятор ниже: самый дешёвый и самый дорогой рынок площадки различаются в разы, и это чувствуется сразу.",
+          "A deposit carries a welcome bonus, and volume past $100,000 lifts the account tier — the two published perks of the venue.",
+          "За депозит дают приветственный бонус, а объём выше $100 000 поднимает уровень аккаунта — две опубликованные выгоды площадки.",
         ),
       },
       {
-        title: tr(locale, "Pass $100k for the higher tier", "Пройдите $100k ради тира выше"),
+        title: tr(locale, "Scan funding against Variational", "Сканируйте фандинг против Variational"),
         body: tr(
           locale,
-          "Reported on 18 August: volume past $100,000 raises the account tier, and a deposit carries a welcome bonus on top.",
-          "По сообщениям от 18 августа: объём выше $100 000 поднимает уровень аккаунта, а за депозит сверху дают приветственный бонус.",
+          "Funding scanners cover this venue, and a paired position against Variational was August's standard way to make the volume pay for itself.",
+          "Сканеры фандинга покрывают эту площадку, и связка против Variational была в августе стандартным способом заставить объём себя отбить.",
         ),
       },
       {
-        title: tr(locale, "Use the depth it actually has", "Пользуйтесь его настоящей глубиной"),
+        title: tr(locale, "Use the depth nobody else has", "Пользуйтесь глубиной, которой нет у других"),
         body: tr(
           locale,
-          "Over 90% of all HIP-3 open interest sits here, which is why size moves the price less on this book than anywhere else in the RWA segment.",
-          "Здесь сидит больше 90% всего открытого интереса HIP-3, поэтому крупный размер двигает цену в этом стакане меньше, чем где-либо ещё в RWA-сегменте.",
+          "Over 90% of all HIP-3 open interest sits in this book, so size moves the price less here than on any other RWA venue.",
+          "В этом стакане больше 90% всего открытого интереса HIP-3, поэтому крупный размер двигает цену здесь меньше, чем на любой другой RWA-площадке.",
         ),
       },
       {
-        title: tr(locale, "Know what Events are", "Знайте, что такое Events"),
+        title: tr(locale, "Events are a separate product", "Events — отдельный продукт"),
         body: tr(
           locale,
-          "Since 10 September trade.xyz also runs HIP-4 outcome markets — up or down, no leverage, no funding, no liquidation — settled against its own perp prices rather than an outside oracle.",
-          "С 10 сентября trade.xyz ведёт ещё и рынки исходов HIP-4 — вверх или вниз, без плеча, фандинга и ликвидаций, — которые рассчитываются по ценам его же перпов, а не по внешнему оракулу.",
+          "Since 10 September it also runs HIP-4 outcome markets — up or down, no leverage, no funding, no liquidation — settled against its own perp prices, so the calculator below does not cover them.",
+          "С 10 сентября здесь ещё и рынки исходов HIP-4 — вверх или вниз, без плеча, фандинга и ликвидаций, — они считаются по ценам его же перпов, поэтому калькулятор ниже их не покрывает.",
         ),
       },
     ],
@@ -1106,58 +1106,58 @@ function hibachi(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "Hibachi pays for TAKER volume: farmers agreed through August that limit orders earn almost nothing here, so the points come from market orders and the multipliers decide how far they go. One caution belongs on this page — on 1 September $1.5M left a Hibachi vault through an accounting and oracle fault, and the venue went down for maintenance.",
-      "Hibachi платит за ТЕЙКЕРСКИЙ объём: в августе фармеры сходились на том, что лимитки здесь почти ничего не дают, поэтому поинты приносят маркет-ордера, а множители решают, насколько далеко они уедут. Одно предупреждение по делу: 1 сентября из вольта Hibachi ушло $1.5M из-за ошибки учёта и оракула, после чего площадка встала на техработы.",
+      "Taker volume drives the points here, so the usual instinct to rest a limit order is the wrong one.",
+      "Поинты здесь двигает тейкерский объём, поэтому привычка ставить лимитку — здесь ошибка.",
     ),
     priorities: [
       {
-        title: tr(locale, "Taker volume", "Тейкерский объём"),
+        title: tr(locale, "MARKET orders, taker volume", "MARKET-ордера, тейкерский объём"),
         body: tr(
           locale,
-          "One farmer's August tally: $4M of market volume for $1.8k of fees returned about 70,000 points, while limit fills returned next to nothing.",
-          "Подсчёт фармера за август: $4M объёма маркетом при $1.8k комиссий дали около 70 000 поинтов, а лимитные исполнения — почти ноль.",
+          "One farmer's August tally puts a scale on it: $4M of market volume and $1.8k of fees returned about 70,000 points, where limit fills of the same size returned next to nothing.",
+          "Масштаб виден по августовскому подсчёту фармера: $4M объёма маркетом при $1.8k комиссий дали около 70 000 поинтов, а лимитные исполнения того же размера — почти ноль.",
         ),
       },
       {
-        title: tr(locale, "Multipliers on the same volume", "Множители на том же объёме"),
+        title: tr(locale, "The week's multiplier", "Множитель недели"),
         body: tr(
           locale,
-          "A referral code adds 50% and takes 5% off fees, the boosted FX pairs paid 1.5x in early September (JPY/USD paid 1.8x in August), and the daily streak carries a standing boost of its own.",
-          "Реферальный код добавляет 50% и снимает 5% комиссии, бустнутые FX-пары в начале сентября платили 1.5x (JPY/USD в августе — 1.8x), а ежедневная серия даёт свой постоянный буст.",
+          "Referral (+50%, and −5% on fees) and the boosted FX pair (1.5x on CAD/USD and JPY/USD in early September, 1.8x on JPY/USD in August) apply to volume you were trading anyway — check both before the session, not after.",
+          "Реферал (+50% и −5% к комиссиям) и бустнутая FX-пара (1.5x на CAD/USD и JPY/USD в начале сентября, 1.8x на JPY/USD в августе) действуют на объём, который вы и так делаете, — смотрите их до сессии, а не после.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Trade with market orders", "Торгуйте маркет-ордерами"),
-        body: tr(
-          locale,
-          "This is the one protocol on PerpFarm where the cheaper maker leg is the wrong choice: the points follow the taker side.",
-          "Это единственный протокол на PerpFarm, где более дешёвая мейкерская нога — неправильный выбор: поинты идут за тейкерской стороной.",
-        ),
-      },
-      {
-        title: tr(locale, "Register with a referral code", "Регистрируйтесь по реферальному коду"),
-        body: tr(
-          locale,
-          "+50% on every point and −5% on fees, on everything you do afterwards. It is the largest free multiplier here.",
-          "+50% к каждому поинту и −5% к комиссиям — на всё, что делаете дальше. Самый крупный бесплатный множитель здесь.",
-        ),
-      },
-      {
-        title: tr(locale, "Check the boosted pair before the session", "Смотрите бустнутую пару перед сессией"),
-        body: tr(
-          locale,
-          "The multiplier moves week to week — CAD/USD and JPY/USD carried 1.5x in the first week of September — and it applies to volume you were going to trade anyway.",
-          "Множитель меняется от недели к неделе — в первую неделю сентября 1.5x давали CAD/USD и JPY/USD — и применяется к объёму, который вы и так собирались сделать.",
-        ),
-      },
-      {
         title: tr(locale, "Claim the daily streak", "Забирайте ежедневную серию"),
         body: tr(
           locale,
-          "It costs a click, pays gems, and keeps a standing boost running underneath the volume you farm.",
-          "Стоит одного клика, приносит гемы и держит постоянный буст под тем объёмом, который вы фармите.",
+          "One click a day pays gems and keeps a standing boost running under everything else you do.",
+          "Один клик в день приносит гемы и держит постоянный буст под всем остальным, что вы делаете.",
+        ),
+      },
+      {
+        title: tr(locale, "Refer yourself for the rebate", "Сделайте самореферал ради ребейта"),
+        body: tr(
+          locale,
+          "A self-referral returned part of the fees and extra points in August's reports — the cheapest way to soften a taker-only programme.",
+          "Самореферал в августовских отчётах возвращал часть комиссий и добавлял поинты — самый дешёвый способ смягчить программу, где платят только за тейкера.",
+        ),
+      },
+      {
+        title: tr(locale, "Weigh the vaults against the risk", "Вольты — только с оглядкой на риск"),
+        body: tr(
+          locale,
+          "FLP paid about 20% APY plus points, but the cap filled on 10 August and on 1 September $1.5M left a vault through an accounting and oracle fault.",
+          "FLP платил около 20% годовых плюс поинты, но 10 августа лимит закрылся, а 1 сентября из вольта ушло $1.5M из-за ошибки учёта и оракула.",
+        ),
+      },
+      {
+        title: tr(locale, "Remember this is the last season", "Помните, что сезон последний"),
+        body: tr(
+          locale,
+          "Playoffs is the final season before Arc's mainnet, $HIB and $HEAT premarkets opened on 26 August, and the drop is under 25% of supply weighted by volume, activity and vaults.",
+          "Playoffs — финальный сезон перед мейннетом Arc, премаркеты $HIB и $HEAT открылись 26 августа, а на дроп идёт меньше 25% сапплая с весами по объёму, активности и вольтам.",
         ),
       },
     ],
@@ -1195,58 +1195,58 @@ function lighterrh(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "Lighter does not publish its formula. What farmers measured through September: open interest on the Pre-IPO and RWA books weighs most, an order placed from the Robinhood Wallet app counts double, and the weekly distributions have lately leaned further toward raw volume and Premium accounts. The prices quoted for a point — $20 and up — are arithmetic off the $LIT price and the 11M $LIT pool, not trades: nobody is buying these points OTC.",
-      "Lighter не раскрывает формулу. Что намерили фармеры за сентябрь: больше всего весит открытый интерес на Pre-IPO и RWA, ордер из приложения Robinhood Wallet считается вдвойне, а в последних недельных распределениях вес сместился к «сырому» объёму и Premium-аккаунтам. Цены поинта, которые называют ($20 и выше), — это арифметика от курса $LIT и пула в 11M $LIT, а не сделки: на OTC эти поинты никто не покупает.",
+      "Lighter publishes no formula; this is what farmers measured through September.",
+      "Формулу Lighter не публикует — это то, что фармеры намерили за сентябрь.",
     ),
     priorities: [
       {
-        title: tr(locale, "Open interest on Pre-IPO and RWA", "Открытый интерес на Pre-IPO и RWA"),
+        title: tr(locale, "Phone order, 1h+ hold", "Ордер с телефона, удержание от часа"),
         body: tr(
           locale,
-          "Hold past an hour, and a day or two is better. The Pre-IPO contracts (OpenAI, Anthropic) weigh more in the weekly split than the crypto majors.",
-          "Держите дольше часа, а лучше сутки-двое. Контракты Pre-IPO (OpenAI, Anthropic) весят в недельном распределении больше, чем крипто-мейджоры.",
+          "An order sent from the Robinhood Wallet app counts double against the web interface, and open interest only starts weighing properly past an hour — a day or two is what moved farmers from $5–10 a point to about $3.20.",
+          "Ордер из приложения Robinhood Wallet считается вдвое против веба, а открытый интерес начинает весить только после часа: сутки-двое и опустили фармеров с $5–10 за поинт примерно до $3.20.",
         ),
       },
       {
-        title: tr(locale, "Volume and the account tier", "Объём и уровень аккаунта"),
+        title: tr(locale, "Premium tier and volume", "Premium-тир и объём"),
         body: tr(
           locale,
-          "Since 10 September the weekly split has paid more for raw volume, and a Premium account multiplies what the same activity earns — farmers measured roughly six times.",
-          "С 10 сентября недельное распределение стало больше платить за сырой объём, а Premium-аккаунт умножает отдачу от той же активности — фармеры намерили примерно в шесть раз.",
+          "Since 10 September the weekly split has paid more for raw volume, and the same activity on a Premium account returned roughly six times as much in farmers' measurements. A standard account is simply a worse rate for the same fees.",
+          "С 10 сентября недельное распределение больше платит за сырой объём, а та же активность на Premium-аккаунте по замерам фармеров давала примерно в шесть раз больше. Standard — просто худший курс за те же комиссии.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Send the order from the Robinhood Wallet app", "Отправляйте ордер из приложения Robinhood Wallet"),
+        title: tr(locale, "Trade Pre-IPO, not the majors", "Торгуйте Pre-IPO, а не мейджоры"),
         body: tr(
           locale,
-          "It is a 2x multiplier against the web interface. The common setup is to watch the book on a desktop and place the order from the phone.",
-          "Это множитель 2x против веб-интерфейса. Обычная схема: следить за стаканом с компьютера, а ордер ставить с телефона.",
+          "OpenAI and Anthropic weigh more in the weekly split than BTC or ETH — Lighter's own team pointed farmers at those books in late August.",
+          "OpenAI и Anthropic весят в недельном распределении больше, чем BTC или ETH, — на эти стаканы в конце августа указывала сама команда Lighter.",
         ),
       },
       {
-        title: tr(locale, "Hold past an hour on the Pre-IPO book", "Держите дольше часа на Pre-IPO"),
+        title: tr(locale, "Hedge on Lighter Core for 2.5x", "Хеджируйте на Lighter Core ради 2.5x"),
         body: tr(
           locale,
-          "Churning in and out earns little. Holding is what moved the cost per point from $5–10 early in September down to about $3.20.",
-          "Постоянные входы-выходы дают мало. Именно удержание опустило себестоимость поинта с $5–10 в начале сентября примерно до $3.20.",
+          "From 10 September a long held here against a short on Lighter Core carried a 2.5x boost on this side of the trade.",
+          "С 10 сентября лонг здесь против шорта на Lighter Core давал буст 2.5x на этой стороне сделки.",
         ),
       },
       {
-        title: tr(locale, "Hedge it delta-neutral", "Держите дельта-нейтрально"),
+        title: tr(locale, "Watch the weekly dilution", "Следите за размытием недели"),
         body: tr(
           locale,
-          "Against Lighter Core, Variational or RiseX. From 10 September a hedge held on Lighter Core carried a 2.5x boost on this side.",
-          "Против Lighter Core, Variational или RiseX. С 10 сентября хедж на Lighter Core давал здесь буст 2.5x.",
+          "A point cost $7.1–10k of volume in early September and $19.9k by the 10th as the field grew — re-check the rate before scaling size up.",
+          "В начале сентября поинт стоил $7.1–10k объёма, а к 10-му — уже $19.9k из-за притока участников; пересчитывайте курс, прежде чем наращивать размер.",
         ),
       },
       {
-        title: tr(locale, "Move to Premium and enter a referral code", "Перейдите на Premium и введите реферальный код"),
+        title: tr(locale, "Don't price the point off $LIT", "Не считайте цену поинта от $LIT"),
         body: tr(
           locale,
-          "Premium changes how much the same volume earns, and the referral code is a standing bonus on top of it.",
-          "Premium меняет отдачу от того же объёма, а реферальный код — постоянный бонус сверху.",
+          "The $20–50 figures going around are arithmetic off the $LIT price and the 11M $LIT pool. Nobody is buying these points OTC, so that is a hope, not a bid.",
+          "Ходящие $20–50 — это арифметика от курса $LIT и пула в 11M $LIT. На OTC эти поинты никто не покупает, так что это надежда, а не заявка.",
         ),
       },
     ],
@@ -1292,58 +1292,58 @@ function truenorth(locale: Locale): ProtocolPageConfig {
   const written = withGuidance(base, locale, {
     intro: tr(
       locale,
-      `TrueNorth is an AI trading agent, not an exchange: it has no order book of its own. Trades placed through its agents fill on Hyperliquid or Ondo Perps, so the calculator prices the book you pick — its fees, spread and funding. It adds nothing of its own on top: a zero builder fee is TrueNorth's own pitch ("builder fee the whole way: zero" in June, "$0 builder fee" in September), where both books would allow up to ${BUILDER_FEE_CAP_BPS} bps. No points season has been announced.`,
-      `TrueNorth — это ИИ-агент для торговли, а не биржа: своего стакана у него нет. Сделки через его агентов исполняются на Hyperliquid или Ondo Perps, поэтому калькулятор считает выбранный стакан — его комиссии, спред и фандинг. Сверху он не берёт ничего: нулевой builder fee — это собственный аргумент TrueNorth («builder fee the whole way: zero» в июне, «$0 builder fee» в сентябре), при том что оба стакана разрешают до ${BUILDER_FEE_CAP_BPS} б.п. Сезон поинтов не анонсирован.`,
+      "An agent, not an exchange: it holds no book of its own, and every fill lands on Hyperliquid or Ondo.",
+      "Это агент, а не биржа: своего стакана у него нет, и каждое исполнение уходит на Hyperliquid или Ondo.",
     ),
     priorities: [
       {
-        title: tr(locale, "The book underneath", "Стакан под агентом"),
+        title: tr(locale, "Two records per trade", "Две записи за одну сделку"),
         body: tr(
           locale,
-          "Every fill lands on Hyperliquid or Ondo, so one trade leaves a record on the agent AND on the venue it was routed to. That double record is the actual reason to trade here.",
-          "Каждое исполнение уходит на Hyperliquid или Ondo, поэтому одна сделка оставляет след и у агента, И у площадки, куда она ушла. Эта двойная запись и есть смысл торговать здесь.",
+          "One position is therefore logged twice — by TrueNorth and by the venue it was routed to. Connect both accounts, and the choice of book becomes the choice of which second programme you are farming.",
+          "Одну позицию поэтому записывают дважды — и TrueNorth, и площадка, куда она ушла. Подключите оба аккаунта, и выбор стакана станет выбором второй программы, которую вы фармите.",
         ),
       },
       {
-        title: tr(locale, "Early use, no formula", "Ранняя активность без формулы"),
+        title: tr(locale, "Free to use, nothing published", "Бесплатно, но правил нет"),
         body: tr(
           locale,
-          "No season is announced and nothing about scoring is published; TruthSayer Rewards are discretionary USDC payouts. What is being farmed is the history of using it before the crowd arrives.",
-          "Сезон не анонсирован, про подсчёт ничего не опубликовано, а TruthSayer Rewards — выплаты в USDC на усмотрение команды. Фармится именно история использования до прихода толпы.",
+          "Nothing about scoring is published, so there is no formula to optimise against. What makes being here early cheap is that TrueNorth charges no builder fee: a route costs the exchange's own fees and not a basis point more.",
+          "Правил подсчёта нет — оптимизировать не под что. Ранняя активность дешёвая по другой причине: builder fee TrueNorth не берёт, маршрут стоит ровно биржевых комиссий и ни базисного пункта сверху.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Connect both books", "Подключите оба стакана"),
+        title: tr(locale, "Route crypto to HL, the rest to Ondo", "Крипту — на HL, остальное — на Ondo"),
         body: tr(
           locale,
-          "Hyperliquid for crypto, Ondo for stocks, indices, commodities and FX. The same trade counts on the agent and on the venue.",
-          "Hyperliquid — для крипты, Ondo — для акций, индексов, сырья и валют. Одна и та же сделка считается и у агента, и у площадки.",
+          "Hyperliquid's book is crypto only. Stocks, indices, commodities and FX exist on the Ondo side, so the asset you want decides which account the trade should use.",
+          "В стакане Hyperliquid только крипта. Акции, индексы, сырьё и валюты есть на стороне Ondo, поэтому нужный актив и определяет, через какой аккаунт вести сделку.",
         ),
       },
       {
-        title: tr(locale, "It takes no fee of its own", "Своей комиссии он не берёт"),
+        title: tr(locale, "Check the bill against the venue", "Сверяйте счёт с самой площадкой"),
         body: tr(
           locale,
-          "A zero builder fee is the pitch, so a route through TrueNorth costs exactly what the exchange costs — which is what the calculator above prices, with nothing hidden on top.",
-          "Нулевой builder fee — его главный аргумент, поэтому маршрут через TrueNorth стоит ровно столько, сколько стоит биржа: это и считает калькулятор выше, без скрытых надбавок.",
+          "A zero builder fee means a route should cost exactly what the exchange costs — the calculator above prices that, so a larger bill means something else changed.",
+          "Нулевой builder fee значит, что маршрут должен стоить ровно как биржа, — калькулятор выше это и считает, так что счёт больше означает, что изменилось что-то ещё.",
         ),
       },
       {
-        title: tr(locale, "Enter its own contests", "Участвуйте в его соревнованиях"),
+        title: tr(locale, "Enter the contests it runs", "Участвуйте в его соревнованиях"),
         body: tr(
           locale,
-          "TrueNorth runs trading competitions that pay in USDC, and in August handed out a raffle ticket per $50k of volume.",
-          "TrueNorth проводит торговые соревнования с выплатами в USDC, а в августе давал билет розыгрыша за каждые $50k объёма.",
+          "TrueNorth pays out its own trading competitions in USDC, and August's raffle handed a ticket per $50k of volume.",
+          "TrueNorth платит по своим торговым соревнованиям в USDC, а в августовском розыгрыше давал билет за каждые $50k объёма.",
         ),
       },
       {
-        title: tr(locale, "Writing about it is paid", "За тексты о нём платят"),
+        title: tr(locale, "Writing about it is paid too", "За тексты о нём тоже платят"),
         body: tr(
           locale,
-          "Through August it paid $500–1,000 a week for the best TrueNorth posts on X — the one activity on this page that costs nothing but time.",
-          "Весь август платили $500–1 000 в неделю за лучшие посты про TrueNorth в X — единственная активность на этой странице, которая не стоит ничего, кроме времени.",
+          "Through August it paid $500–1,000 a week for the best TrueNorth posts on X — the only line on this page that costs nothing but time.",
+          "Весь август платили $500–1 000 в неделю за лучшие посты про TrueNorth в X — единственный пункт на этой странице, который не стоит ничего, кроме времени.",
         ),
       },
     ],
