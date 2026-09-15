@@ -284,3 +284,26 @@ overrides:
   - venue: qfex
     symbol: USD-JPY
     symbol_canonical: USDJPY
+
+  # Checked 2026-09-15, the same three that the block above was written for --
+  # QFEX listed them after that pass, so nothing guarded them. Converted with
+  # our own USDJPY mark from the same hour (154.879): SOFTBANK-JPY 6,298.50 is
+  # $40.67 against xyz SOFTBANK 40.47, and KIOXIA-JPY 50,972.50 is $329.11
+  # against xyz KIOXIA 328.70 and polymarket KIOXIA 328.83 -- the same two
+  # companies quoted in yen, which had been matched against their dollar
+  # listings at 155x the scale.
+  - venue: qfex
+    symbol: SOFTBANK-JPY
+    symbol_canonical: SOFTBANK-JPY
+  - venue: qfex
+    symbol: KIOXIA-JPY
+    symbol_canonical: KIOXIA-JPY
+  # Not a currency scale: QFEX files PURR-USD as an EQUITY marking 11.1150
+  # while the Hyperliquid token trades at 0.1046 on both Hyperliquid and
+  # trade.xyz, and 106x apart is no clean unit multiple either. What QFEX
+  # lists under this ticker is not identified here -- only that it cannot be
+  # the token at the token's scale, so it is kept as its own market instead of
+  # hedging one against the other.
+  - venue: qfex
+    symbol: PURR-USD
+    symbol_canonical: PURR-USD
