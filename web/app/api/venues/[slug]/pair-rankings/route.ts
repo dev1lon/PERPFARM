@@ -212,18 +212,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const requested = request.nextUrl.searchParams.get("accountVolumeUsd");
-  // Snapped to the $100 grid, so two visitors asking near-identical questions
-  // share one cached answer instead of repricing every market twice. Both
-  // bounds are multiples of the step, so this cannot leave the allowed range.
-  const accountVolumeUsd = quantizeAccountVolumeUsd(
-    requested === null ? config.defaultAccountVolumeUsd : Number(requested),
-  );
-  if (!Number.isFinite(accountVolumeUsd) || accountVolumeUsd < MIN_ACCOUNT_VOLUME_USD || accountVolumeUsd > MAX_ACCOUNT_VOLUME_USD) {
+  // CHECKED BEFORE ROUNDING. Snapping first accepted $950 as $1,000 -- under
+  // the published minimum -- because the bound was tested on the rounded value.
+  // The $100 grid exists so two visitors asking near-identical questions share
+  // one cached answer instead of repricing every market twice; it must not
+  // widen the range. Both bounds are multiples of the step, so a valid input
+  // survives the snap.
+  const asked = requested === null ? config.defaultAccountVolumeUsd : Number(requested);
+  if (!Number.isFinite(asked) || asked < MIN_ACCOUNT_VOLUME_USD || asked > MAX_ACCOUNT_VOLUME_USD) {
     return NextResponse.json(
       { error: `Account volume must be between $${MIN_ACCOUNT_VOLUME_USD.toLocaleString("en-US")} and $${MAX_ACCOUNT_VOLUME_USD.toLocaleString("en-US")}` },
       { status: 400 },
     );
   }
+  const accountVolumeUsd = quantizeAccountVolumeUsd(asked);
 
   try {
     if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");

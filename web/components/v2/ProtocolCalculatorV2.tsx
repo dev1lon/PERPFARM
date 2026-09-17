@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { formatUsd, formatUtcDateTime, pluralEn, pluralRu } from "@/lib/format";
 import { tr, useLocale, type Locale } from "@/components/LocaleProvider";
 import { ProtocolMark } from "@/components/v2/ProtocolMark";
 import { RouteMap } from "@/components/v2/RouteMap";
 import { InfoTip } from "@/components/v2/InfoTip";
 import { protocolName, type ReadyVenueSlug } from "@/lib/venue-status";
-import { bandHasPairs, resolveBandFilter } from "@/lib/route-model";
+import { bandHasPairs, quantizeAccountVolumeUsd, resolveBandFilter } from "@/lib/route-model";
 import { CrossPairRankings } from "@/components/CrossPairRankings";
 import type { VenueSummary } from "@/lib/types";
 import { displayPair, isSwap, isTradfiMarket, type InstrumentClass } from "@/lib/tradfi";
@@ -664,6 +664,18 @@ function RecommendedRouteDiagram({ longName, shortName }: { longName: string; sh
   );
 }
 
+/**
+ * The book picker: a real listbox, operable from the keyboard.
+ *
+ * It used to mark its rows `role="option"` while their parent was a plain div,
+ * which leaves a screen reader announcing options that belong to no list, and
+ * it answered no keys at all -- arrows did not move the choice and Escape did
+ * not close it, so a keyboard user who opened it was stuck with the pointer.
+ *
+ * Focus stays on the list while it is open and the active row is named by
+ * `aria-activedescendant`; that is the pattern for a listbox whose rows are not
+ * themselves focusable.
+ */
 function HedgeDropdown({
   options,
   value,
@@ -675,7 +687,11 @@ function HedgeDropdown({
 }) {
   const locale = useLocale();
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -683,37 +699,96 @@ function HedgeDropdown({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.slug === value));
+  // The list takes focus when it opens, on the current choice, so the first
+  // arrow press moves from where the reader already is.
+  useEffect(() => {
+    if (!open) return;
+    setActiveIndex(selectedIndex);
+    listRef.current?.focus();
+  }, [open, selectedIndex]);
+
+  function close(returnFocus: boolean) {
+    setOpen(false);
+    if (returnFocus) buttonRef.current?.focus();
+  }
+
+  function commit(index: number) {
+    const picked = options[index];
+    if (picked) onChange(picked.slug);
+    close(true);
+  }
+
   const sel = options.find((o) => o.slug === value);
+  const optionId = (index: number) => `${listId}-option-${index}`;
   return (
     <div ref={ref} className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
         className="pf-transition flex h-[50px] w-full items-center gap-2.5 rounded-xl border border-border bg-surface-2 px-3.5 text-left hover:border-text-muted/40"
       >
         {sel && <ProtocolMark slug={sel.slug} name={sel.name} size={26} radius={0} />}
         <span className="text-[15px] font-semibold text-text-primary">{sel?.name ?? tr(locale, "Select", "Выбрать")}</span>
-        <span className="ml-auto text-[11px] text-text-muted">▾</span>
+        <span aria-hidden="true" className="ml-auto text-[11px] text-text-muted">▾</span>
       </button>
       {open && (
-        <div className="absolute z-30 mt-1.5 flex max-h-64 w-full flex-col gap-1 overflow-y-auto rounded-xl border border-border bg-surface-1 p-1.5 shadow-lg">
-          {options.map((o) => (
-            <button
+        <div
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          tabIndex={-1}
+          aria-activedescendant={optionId(activeIndex)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              close(true);
+              return;
+            }
+            if (event.key === "Tab") {
+              close(false);
+              return;
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              setActiveIndex((current) => {
+                if (event.key === "Home") return 0;
+                if (event.key === "End") return options.length - 1;
+                const step = event.key === "ArrowDown" ? 1 : -1;
+                return (current + step + options.length) % options.length;
+              });
+              return;
+            }
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              commit(activeIndex);
+            }
+          }}
+          className="absolute z-30 mt-1.5 flex max-h-64 w-full flex-col gap-1 overflow-y-auto rounded-xl border border-border bg-surface-1 p-1.5 shadow-lg outline-none"
+        >
+          {options.map((o, index) => (
+            <div
               key={o.slug}
-              type="button"
+              id={optionId(index)}
               role="option"
               aria-selected={o.slug === value}
-              onClick={() => {
-                onChange(o.slug);
-                setOpen(false);
-              }}
-              className={`pf-transition flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left hover:border-text-muted/35 hover:bg-surface-2 ${o.slug === value ? "border-accent/40 bg-accent/[0.09]" : "border-transparent"}`}
+              onClick={() => commit(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              className={`pf-transition flex w-full cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left ${index === activeIndex ? "border-text-muted/35 bg-surface-2" : "border-transparent"} ${o.slug === value ? "border-accent/40 bg-accent/[0.09]" : ""}`}
             >
               <ProtocolMark slug={o.slug} name={o.name} size={22} radius={0} />
               <span className={`text-[14px] ${o.slug === value ? "text-accent" : "text-text-primary"}`}>{o.name}</span>
-            </button>
+            </div>
           ))}
         </div>
       )}
@@ -858,6 +933,12 @@ export function ProtocolCalculatorV2({
       setStatus("error");
       return;
     }
+    // The field is set to the volume that will actually be priced. The API
+    // snaps the request to a $100 grid so near-identical questions share one
+    // cached answer, and a field left reading 1,001 above an answer computed
+    // for 1,000 states a volume nobody used.
+    const priced = quantizeAccountVolumeUsd(requested);
+    if (priced !== requested) setAccountVolumeInput(String(priced));
     setErrorMessage(null);
     setStatus("running");
     setExpanded(null);
@@ -870,7 +951,7 @@ export function ProtocolCalculatorV2({
       // Belt and braces with the cancels above: a run only ever applies the
       // parameters it was armed with, and only while they are still on screen.
       if (selection.current.venueSlug !== armedFor.venueSlug || selection.current.hedge !== armedFor.hedge) return;
-      setNotionalUsd(requested);
+      setNotionalUsd(priced);
       setRanHedge(armedFor.hedge);
       setStatus("loaded");
     }, 900);

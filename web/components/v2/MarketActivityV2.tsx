@@ -35,6 +35,10 @@ export function MarketActivityV2({
   const [fetchedData, setFetchedData] = useState<ActivityResponse | null>(null);
   const [fetchedVenue, setFetchedVenue] = useState<ReadyVenueSlug | null>(null);
   const [failedVenue, setFailedVenue] = useState<ReadyVenueSlug | null>(null);
+  /** Bumped to ask for the SAME venue again. Clearing the error on its own left
+   *  the effect with nothing changed to react to, so the chart hid the message
+   *  and then sat in its loading skeleton for good, never asking again. */
+  const [attempt, setAttempt] = useState(0);
   const [metric, setMetric] = useState<Metric>("volume");
   const [rangeDays, setRangeDays] = useState<Range>(30);
 
@@ -58,10 +62,17 @@ export function MarketActivityV2({
     return () => {
       active = false;
     };
-  }, [activityVenue, fetchedVenue, serverData]);
+  }, [activityVenue, fetchedVenue, serverData, attempt]);
 
   const data = serverData ?? (fetchedVenue === activityVenue ? fetchedData : null);
   const error = failedVenue === activityVenue;
+
+  /** Ask again for the venue on screen: a real request, not just a cleared
+   *  message. Picking a DIFFERENT venue changes the effect's input on its own. */
+  function retry() {
+    setFailedVenue(null);
+    setAttempt((count) => count + 1);
+  }
 
   const users = data?.uniqueTraders;
   // A protocol without a trader history must never be left showing that tab --
@@ -114,6 +125,11 @@ export function MarketActivityV2({
                     aria-label={venue.name}
                     title={venue.name}
                     onClick={() => {
+                      if (venue.slug === activityVenue) {
+                        // Same book: the only thing left to ask for is a retry.
+                        if (error) retry();
+                        return;
+                      }
                       setFailedVenue(null);
                       setActivityVenue(venue.slug);
                     }}
@@ -189,7 +205,20 @@ export function MarketActivityV2({
         </div>
 
         {!data && !error && <div className="pf-skeleton h-[260px] rounded-xl border border-border bg-surface-2" />}
-        {error && <p className="py-16 text-center text-[14px] text-negative">{tr(locale, "Couldn’t load market activity right now.", "Сейчас не удалось загрузить активность рынка.")}</p>}
+        {error && (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <p className="text-center text-[14px] text-negative">
+              {tr(locale, "Couldn’t load market activity right now.", "Сейчас не удалось загрузить активность рынка.")}
+            </p>
+            <button
+              type="button"
+              onClick={retry}
+              className="pf-transition inline-flex min-h-11 items-center border border-border bg-surface-1 px-4 text-[13px] font-semibold text-text-primary hover:border-text-dim"
+            >
+              {tr(locale, "Try again", "Повторить")}
+            </button>
+          </div>
+        )}
 
         {data && (series.length > 1 ? <Chart series={series} fmt={fmt} locale={locale} /> : series.length === 0 ? (
           <div className="flex h-[260px] items-center justify-center px-6 text-center text-[14px] text-text-muted">

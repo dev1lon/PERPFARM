@@ -19,8 +19,18 @@ export function SiteHeaderV2() {
     const onDoc = (e: globalThis.MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     };
+    // Escape closes it too. A pointer had a way out of this menu and a keyboard
+    // did not, which leaves a keyboard reader tabbing through a menu they
+    // cannot dismiss.
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   const items: [string, string][] = [
