@@ -141,6 +141,21 @@ export function quoteCurveImpactBps(
     : (impacts.buyImpactBps + impacts.sellImpactBps) / 2;
 }
 
+/**
+ * The largest size the stored curve actually measures, or null without a curve.
+ *
+ * This is what separates "this venue publishes no curve" from "the curve ends
+ * before the size asked for". Both used to arrive as a null impact, and the
+ * caller then fell back to the coarse anchors and CLAMPED to the last one --
+ * so a book measured to $25k answered a $100k question with its $10k reading
+ * and the route was priced as if it would fill. A depth shortfall is an
+ * unpriceable observation, not a cheap one.
+ */
+export function quoteCurveMaxNotionalUsd(value: unknown): number | null {
+  const curve = parseCurve(value);
+  return curve?.points[curve.points.length - 1]?.notionalUsd ?? null;
+}
+
 /** The venue's own reference (mark) price in a stored curve, when it has one.
  *  Comparing it across two venues at the same tick is what measures how far
  *  their prices have drifted apart -- the risk a hedge carries between legs. */

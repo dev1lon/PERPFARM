@@ -280,7 +280,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           // own listing is.
           assetClass: instrumentClass(market.pair, market.assetClass),
           competitionEligible: eligible,
-          firstLimitSide: market.firstLimitSide,
+          // From the same observation as the price below it. Reading the side
+          // off the newest book while the cost came from the median could
+          // print LIMIT on the leg the median had crossed.
+          firstLimitSide: quote.median.firstLimitSide ?? market.firstLimitSide,
           quoteAsOf: market.bookTs,
           cycleCostUsd,
           costRangeLowUsd: costOf(quote.low.legBps),

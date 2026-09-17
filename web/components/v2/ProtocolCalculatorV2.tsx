@@ -341,6 +341,10 @@ export interface PairRanking {
 type BandKey = "high" | "medium" | "low" | "all";
 interface Band {
   key: BandKey;
+  /** The OI span of every pair that qualified for this band, computed BEFORE
+   *  `pairs` was cut to its cheapest ten. It is what lets a client rebuild the
+   *  band's full membership out of the complete `pairs` array. */
+  oiRangeUsd?: [number, number];
   pairs: PairRanking[];
 }
 export interface RankingResponse {
@@ -773,12 +777,25 @@ export function ProtocolCalculatorV2({
   const [oiFilter, setOiFilter] = useState<BandKey>("all");
   const [crossLoading, setCrossLoading] = useState(false);
   const timer = useRef<number | null>(null);
+  /** The parameters the CURRENT selection holds, for the deferred run to check
+   *  itself against. Run arms a 900 ms timer; switching a dropdown inside that
+   *  window used to leave the timer armed with the OLD parameters, so it fired
+   *  afterwards and set `ranHedge` to a book the fields no longer showed --
+   *  HL x HL, Run, switch to Ondo, and the fields read Ondo x Ondo above a
+   *  result computed for Ondo x Hyperliquid. */
+  const selection = useRef({ venueSlug, hedge: venueSlug as string });
+  /** Cancels a deferred run: its parameters are no longer the ones on screen. */
+  function cancelPendingRun() {
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = null;
+  }
 
   const requested = Number(accountVolumeInput);
   const validVolume = Number.isFinite(requested) && requested >= 1_000 && requested <= 200_000;
   const hedgeName = hedgeOptions.find((o) => o.slug === hedge)?.name ?? hedge;
   const isTxFlow = venueSlug === "txflow";
 
+  useEffect(() => { selection.current = { venueSlug, hedge }; }, [venueSlug, hedge]);
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 
   // Same-venue run pulls the live pair-rankings; cross uses CrossPairRankings.
@@ -815,7 +832,9 @@ export function ProtocolCalculatorV2({
     const picked = (venueOptions ?? []).find((option) => option.slug === next);
     if (!picked || picked.slug === venueSlug) return;
     // A result belongs to the book it was priced on, so the previous run is
-    // dropped rather than left sitting under the new book's name.
+    // dropped rather than left sitting under the new book's name -- including
+    // one that has been armed but has not fired yet.
+    cancelPendingRun();
     setHedge((current) => (current === venueSlug ? picked.slug : current));
     setVenueSlug(picked.slug);
     setRanHedge(picked.slug);
@@ -824,6 +843,13 @@ export function ProtocolCalculatorV2({
     setExpanded(null);
     setErrorMessage(null);
     setStatus("idle");
+  }
+
+  /** Move the hedge. Same rule as the book: a pending run is not for this one. */
+  function pickHedge(next: string) {
+    if (next === hedge) return;
+    cancelPendingRun();
+    setHedge(next);
   }
 
   function run() {
@@ -837,10 +863,15 @@ export function ProtocolCalculatorV2({
     setExpanded(null);
     setData(null);
     setCrossLoading(hedge !== venueSlug);
-    if (timer.current) window.clearTimeout(timer.current);
+    cancelPendingRun();
+    const armedFor = { venueSlug, hedge };
     timer.current = window.setTimeout(() => {
+      timer.current = null;
+      // Belt and braces with the cancels above: a run only ever applies the
+      // parameters it was armed with, and only while they are still on screen.
+      if (selection.current.venueSlug !== armedFor.venueSlug || selection.current.hedge !== armedFor.hedge) return;
       setNotionalUsd(requested);
-      setRanHedge(hedge);
+      setRanHedge(armedFor.hedge);
       setStatus("loaded");
     }, 900);
   }
@@ -884,7 +915,7 @@ export function ProtocolCalculatorV2({
           </div>
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Hedge with", "Хедж с")}</div>
-            <HedgeDropdown options={hedgeOptions} value={hedge} onChange={setHedge} />
+            <HedgeDropdown options={hedgeOptions} value={hedge} onChange={pickHedge} />
           </div>
           <div className={field}>
             <div className="text-[12px] font-medium text-text-muted">{tr(locale, "Volume per account", "Объём на аккаунт")}</div>
@@ -1067,21 +1098,34 @@ export function selectRecommendedPair(
     allPairs = allPairs?.filter(isOpen);
   }
   const everything = bands.flatMap((band) => band.pairs);
+  // EVERY eligible pair, whenever the response carries them. A band publishes
+  // only its cheapest ten, so choosing out of the bands made the pick minimal
+  // within those ten rather than within the category it claims: Ondo x
+  // Variational recommended EWY at $7.05 while XAU, open and TradFi, sat at
+  // $5.09 in the very same answer, outside the band's ten.
+  const universe = allPairs ?? everything;
   // Swaps come first only where the home protocol's policy says so
   // (Variational). With five swap markets there is no cost race worth running,
   // so the pick is the one with the LEAST open interest; a tie goes to the
   // cheaper route. Every other page -- TxFlow included, even hedged on
   // Variational -- never picks a swap: the filter below keeps perps only.
-  const swaps = (allPairs ?? everything).filter((pair) => isSwap(pair.pair));
+  const swaps = universe.filter((pair) => isSwap(pair.pair));
   if (RECOMMENDATION_POLICY[homeSlug]?.preferLowOiSwap && swaps.length > 0) {
     const leastOi = [...swaps].sort(
       (a, b) => a.openInterestUsd - b.openInterestUsd || a.cycleCostUsd - b.cycleCostUsd,
     )[0];
     return [leastOi, "swap-low-oi"];
   }
-  const perps = everything.filter((pair) => !isSwap(pair.pair));
-  const all = perps.length > 0 ? perps : everything;
-  const medium = (bands.find((band) => band.key === "medium")?.pairs ?? []).filter((pair) => !isSwap(pair.pair));
+  const perps = universe.filter((pair) => !isSwap(pair.pair));
+  const all = perps.length > 0 ? perps : universe;
+  // The medium band rebuilt over the whole universe, from the OI span the API
+  // reports for it. Without that span (an older cached answer) its own ten are
+  // all there is to go on.
+  const mediumBand = bands.find((band) => band.key === "medium");
+  const mediumRange = mediumBand?.oiRangeUsd;
+  const medium = mediumRange
+    ? all.filter((pair) => pair.openInterestUsd >= mediumRange[0] && pair.openInterestUsd <= mediumRange[1])
+    : (mediumBand?.pairs ?? []).filter((pair) => !isSwap(pair.pair));
   const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
   const policy = RECOMMENDATION_POLICY[homeSlug] ?? DEFAULT_RECOMMENDATION_POLICY;
 

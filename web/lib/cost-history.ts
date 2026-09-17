@@ -17,7 +17,13 @@
  */
 import { secondsUntilNextCollection } from "@/lib/cache";
 import { getPool } from "@/lib/db";
-import { quoteCurveImpactBps, quoteCurveMarkPrice, quoteCurveMarketSide } from "@/lib/quote-curve";
+import {
+  quoteCurveImpactBps,
+  quoteCurveMarkPrice,
+  quoteCurveMarketSide,
+  quoteCurveMaxNotionalUsd,
+  type QuoteCurveImpactMode,
+} from "@/lib/quote-curve";
 
 /**
  * The rows behind a pricing run, kept in this server instance's memory until
@@ -84,9 +90,27 @@ export type CostSample = {
    *  gap a cross-protocol hedge has to live with. Null on older rows that
    *  predate stored quote curves. */
   markPrice: number | null;
+  /** WHEN this observation was taken, as stored (ISO-8601 UTC).
+   *
+   *  A cross route is the joint cost of two books AT ONE MOMENT, and the two
+   *  series used to be walked by position -- historyA[i] against historyB[i].
+   *  One venue missing a collection slid every later pair of readings onto a
+   *  different hour, silently, and the median was then taken over hours that
+   *  never coexisted. Null only on a sample that was synthesised rather than
+   *  read from a row. */
+  ts: string | null;
+  /** Which leg rested its limit orders IN THIS observation, when the stored
+   *  curve says. Same rule as the cross route's maker/taker assignment: the
+   *  orders a reader sees have to come from the observation the price came
+   *  from, and a same-venue hedge re-picks the cheaper direction every hour.
+   *  Null where the venue publishes no curve to read a side from. */
+  firstLimitSide: "long" | "short" | null;
 };
 
 export type ImpactSnapshot = {
+  /** `book_snapshots.ts`, as stored. Carried so an observation can be matched
+   *  to the same hour on the other venue instead of by row position. */
+  ts?: string | null;
   spread_bps?: string | number | null;
   impact_bps_10k?: string | number | null;
   impact_bps_50k?: string | number | null;
@@ -101,8 +125,13 @@ function asNumber(value: unknown): number | null {
 
 /**
  * Piecewise-linear impact at an arbitrary notional from the published buckets.
- * Impact is 0 at size 0; missing buckets are skipped; sizes past the last
- * anchor clamp to it.
+ * Impact is 0 at size 0 and missing buckets are skipped.
+ *
+ * A size PAST THE LAST ANCHOR returns null rather than the last anchor's
+ * reading. Clamping is what let a book measured only to $10k answer a $100k
+ * question at its $10k impact -- a route priced as executable on evidence that
+ * it would fill at a tenth of the size. There is no measurement out there, so
+ * there is no number to give; the caller drops the observation instead.
  */
 export function impactAtNotional(notional: number, anchors: Array<[number, number | null]>): number | null {
   const points: Array<[number, number]> = [[0, 0]];
@@ -117,19 +146,73 @@ export function impactAtNotional(notional: number, anchors: Array<[number, numbe
       return y0 + ((y1 - y0) * (notional - x0)) / (x1 - x0);
     }
   }
-  return points[points.length - 1][1];
+  return null;
 }
 
-/** One stored book snapshot, priced at the requested fill size. */
-export function sampleFromSnapshot(snapshot: ImpactSnapshot, fillNotionalUsd: number): CostSample | null {
+/**
+ * One stored book snapshot, priced at the requested fill size.
+ *
+ * `impactMode` is the venue's SIDE of the book and belongs to the route, not to
+ * this function's taste:
+ *
+ *   cheapest  a same-venue hedge, where the first passive order is placed on
+ *             the dearer side and leaves the cheaper direction to be crossed;
+ *   average   a cross-venue route, where one venue takes on the way IN and
+ *             takes back on the way OUT -- opposite directions, so neither
+ *             side can be chosen and the mean of the two is what is paid.
+ *
+ * It used to be hard-coded to `cheapest` for every caller, so a cross route's
+ * 24h history was built on one side of the book while its live reading used
+ * both. On an asymmetric book (10 bps one way, 100 the other) that understated
+ * the leg by an order of magnitude.
+ *
+ * A venue that publishes a quote curve is priced from the curve ALONE: when
+ * the curve stops short of the size asked for, the observation is dropped
+ * rather than answered from the coarse anchors, which only measure smaller
+ * sizes and would understate the fill.
+ */
+export function sampleFromSnapshot(
+  snapshot: ImpactSnapshot,
+  fillNotionalUsd: number,
+  impactMode: QuoteCurveImpactMode = "cheapest",
+): CostSample | null {
   const spreadBps = asNumber(snapshot.spread_bps);
-  const impactBps = quoteCurveImpactBps(snapshot.quote_curve_json, fillNotionalUsd, "cheapest") ?? impactAtNotional(fillNotionalUsd, [
+  const curveMaxUsd = quoteCurveMaxNotionalUsd(snapshot.quote_curve_json);
+  const impactBps = curveMaxUsd === null
+    ? impactAtNotional(fillNotionalUsd, [
+        [10_000, asNumber(snapshot.impact_bps_10k)],
+        [50_000, asNumber(snapshot.impact_bps_50k)],
+        [100_000, asNumber(snapshot.impact_bps_100k)],
+      ])
+    : quoteCurveImpactBps(snapshot.quote_curve_json, fillNotionalUsd, impactMode);
+  if (spreadBps === null || impactBps === null) return null;
+  return {
+    legBps: spreadBps / 2 + impactBps,
+    spreadBps,
+    impactBps,
+    markPrice: quoteCurveMarkPrice(snapshot.quote_curve_json),
+    ts: typeof snapshot.ts === "string" ? snapshot.ts : null,
+    firstLimitSide: quoteCurveMarketSide(snapshot.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? null,
+  };
+}
+
+/**
+ * The largest fill either measurement can speak for, or null when neither can.
+ *
+ * With a curve it is the curve's last point; without one it is the largest
+ * anchor that carries a reading. It is what the UI needs to say "these books
+ * are measured to $25,000" instead of quietly pricing $100,000.
+ */
+export function measuredDepthUsd(snapshot: ImpactSnapshot): number | null {
+  const curveMaxUsd = quoteCurveMaxNotionalUsd(snapshot.quote_curve_json);
+  if (curveMaxUsd !== null) return curveMaxUsd;
+  const anchors: Array<[number, number | null]> = [
     [10_000, asNumber(snapshot.impact_bps_10k)],
     [50_000, asNumber(snapshot.impact_bps_50k)],
     [100_000, asNumber(snapshot.impact_bps_100k)],
-  ]);
-  if (spreadBps === null || impactBps === null) return null;
-  return { legBps: spreadBps / 2 + impactBps, spreadBps, impactBps, markPrice: quoteCurveMarkPrice(snapshot.quote_curve_json) };
+  ];
+  const measured = anchors.filter(([, bps]) => bps !== null).map(([usd]) => usd);
+  return measured.length > 0 ? Math.max(...measured) : null;
 }
 
 /** Linear-interpolated percentile over `legBps`, carrying its components. */
@@ -146,7 +229,11 @@ export function percentileSample(samples: CostSample[], percentile: number): Cos
     legBps: lower.legBps + (upper.legBps - lower.legBps) * fraction,
     spreadBps: lower.spreadBps + (upper.spreadBps - lower.spreadBps) * fraction,
     impactBps: lower.impactBps + (upper.impactBps - lower.impactBps) * fraction,
-    // The mark belongs to a real observation, so it is taken rather than blended.
+    // The mark, the timestamp and the side belong to a real observation, so
+    // they are taken from one rather than blended into a moment that never
+    // happened -- and it is the same observation the parts above came from.
+    ts: lower.ts,
+    firstLimitSide: lower.firstLimitSide,
     markPrice: lower.markPrice,
   };
 }
@@ -160,13 +247,17 @@ type BookHistoryRow = ImpactSnapshot & { pair: string };
  * The worker snapshots every live protocol hourly, so this works for any of
  * them -- the caller passes a slug, not a hard-coded venue.
  */
-export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number): Promise<Map<string, CostSample[]>> {
+export async function loadCostHistory(
+  venueSlug: string,
+  fillNotionalUsd: number,
+  impactMode: QuoteCurveImpactMode = "cheapest",
+): Promise<Map<string, CostSample[]>> {
   const rows = await rowsFor<BookHistoryRow>(`history:${venueSlug}`, () =>
     getPool().query<BookHistoryRow>(
       `WITH v AS (SELECT id FROM venues WHERE slug = $3),
      ranked AS (
        SELECT m.symbol_canonical AS pair,
-              b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
+              b.ts, b.spread_bps, b.impact_bps_10k, b.impact_bps_50k, b.impact_bps_100k,
               to_jsonb(b) -> 'quote_curve_json' AS quote_curve_json,
               row_number() OVER (PARTITION BY b.market_id ORDER BY b.ts DESC) AS rn
        FROM book_snapshots b
@@ -174,16 +265,20 @@ export async function loadCostHistory(venueSlug: string, fillNotionalUsd: number
        WHERE m.venue_id = (SELECT id FROM v)
          AND b.ts >= now() - make_interval(hours => $4)
      )
-     SELECT pair, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
+     SELECT pair, ts, spread_bps, impact_bps_10k, impact_bps_50k, impact_bps_100k, quote_curve_json
      FROM ranked
-     WHERE rn <= $1 AND (rn - 1) % $2 = 0`,
+     WHERE rn <= $1 AND (rn - 1) % $2 = 0
+     -- Explicit, because the caller reads these as a SERIES. Without it the
+     -- order is whatever the plan produced, and a hash aggregate or a parallel
+     -- scan may hand back the same rows shuffled between two runs.
+     ORDER BY pair, ts DESC`,
       [HISTORY_MAX_SNAPSHOTS, HISTORY_SAMPLE_STRIDE, venueSlug, HISTORY_WINDOW_HOURS],
     ),
   );
 
   const byPair = new Map<string, CostSample[]>();
   for (const row of rows) {
-    const sample = sampleFromSnapshot(row, fillNotionalUsd);
+    const sample = sampleFromSnapshot(row, fillNotionalUsd, impactMode);
     if (sample === null) continue;
     const existing = byPair.get(row.pair);
     if (existing) existing.push(sample);
@@ -206,6 +301,9 @@ export type VenueMarket = {
   assetClass: string | null;
   /** Which leg rests its limit orders: the side that is cheaper to cross. */
   firstLimitSide: "long" | "short";
+  /** The largest fill this market's newest book is measured to, so a size past
+   *  it can be named as unmeasured instead of priced from a smaller reading. */
+  depthUsd: number | null;
   /** The 24h window, newest first, already priced at the fill size. */
   samples: CostSample[];
 };
@@ -265,13 +363,17 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
   const byPair = new Map<string, VenueMarket>();
   for (const row of rows) {
     const sample = sampleFromSnapshot(row, fillNotionalUsd);
-    if (sample === null) continue;
     const existing = byPair.get(row.pair);
     if (existing) {
-      existing.samples.push(sample);
+      if (sample !== null) existing.samples.push(sample);
       continue;
     }
     // rn = 1 sorts first, so the first row seen for a pair is its newest.
+    //
+    // The entry is created even when that newest book cannot price the size
+    // asked for -- `samples` is then empty and `depthUsd` says how deep the
+    // book IS measured. A market dropped for want of depth can therefore be
+    // named as unmeasured at this size rather than vanishing without a word.
     // The stored quote curve carries bid AND ask per size, so the cheaper
     // side to cross is derivable from it -- no live book required.
     byPair.set(row.pair, {
@@ -282,7 +384,8 @@ export async function loadVenueMarkets(venueSlug: string, fillNotionalUsd: numbe
       openInterestUsd: asNumber(row.open_interest_usd),
       assetClass: row.asset_class,
       firstLimitSide: quoteCurveMarketSide(row.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? "long",
-      samples: [sample],
+      depthUsd: measuredDepthUsd(row),
+      samples: sample === null ? [] : [sample],
     });
   }
   return byPair;

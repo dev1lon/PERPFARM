@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { impactAtNotional, percentileSample, quoteFromSamples, sampleFromSnapshot, type CostSample } from "./cost-history";
+import {
+  impactAtNotional,
+  measuredDepthUsd,
+  percentileSample,
+  quoteFromSamples,
+  sampleFromSnapshot,
+  type CostSample,
+} from "./cost-history";
 
-const sample = (legBps: number): CostSample => ({ legBps, spreadBps: legBps, impactBps: 0, markPrice: null });
+const sample = (legBps: number): CostSample => ({ legBps, spreadBps: legBps, impactBps: 0, markPrice: null, ts: null, firstLimitSide: null });
 
 /**
  * The calculator is a REFERENCE: every protocol prices a route the same way and
@@ -33,8 +40,91 @@ describe("cost model", () => {
     expect(impactAtNotional(30_000, [[10_000, 4], [50_000, 12]])).toBeCloseTo(8, 6);
   });
 
-  it("clamps past the deepest anchor rather than extrapolating", () => {
-    expect(impactAtNotional(1_000_000, [[10_000, 4], [50_000, 12]])).toBeCloseTo(12, 6);
+  it("refuses a size past the deepest anchor instead of clamping to it", () => {
+    // Clamping answered a $1m question with the $50k reading, so a route was
+    // priced as executable on evidence that it would fill twenty times smaller.
+    expect(impactAtNotional(1_000_000, [[10_000, 4], [50_000, 12]])).toBeNull();
+  });
+});
+
+/**
+ * Depth is EVIDENCE, and the model may not spend evidence it does not have.
+ * Every case here produced a confident price before: the venue publishes a
+ * quote curve, the curve stops short of the fill, and the coarse anchors --
+ * which only measure smaller sizes -- answered in its place.
+ */
+describe("measured depth", () => {
+  const shallowCurve = {
+    reference_price: 100,
+    points: [
+      { notional_usd: 0, bid: 99.9, ask: 100.1 },
+      { notional_usd: 10_000, bid: 99.8, ask: 100.2 },
+    ],
+  };
+
+  it("prices a fill the curve covers", () => {
+    const s = sampleFromSnapshot({ spread_bps: 2, quote_curve_json: shallowCurve }, 10_000);
+    expect(s?.impactBps).toBeCloseTo(10, 6);
+  });
+
+  it("drops an observation whose curve stops short of the fill", () => {
+    expect(sampleFromSnapshot({ spread_bps: 2, quote_curve_json: shallowCurve }, 100_000)).toBeNull();
+  });
+
+  it("does not answer a deep fill from the shallower anchors when a curve exists", () => {
+    // The anchors would have said 4 bps -- the reading for a tenth of the size.
+    const snapshot = { spread_bps: 2, impact_bps_10k: 4, quote_curve_json: shallowCurve };
+    expect(sampleFromSnapshot(snapshot, 100_000)).toBeNull();
+    expect(measuredDepthUsd(snapshot)).toBe(10_000);
+  });
+
+  it("reports how deep the readings actually go", () => {
+    expect(measuredDepthUsd({ quote_curve_json: shallowCurve })).toBe(10_000);
+    expect(measuredDepthUsd({ impact_bps_10k: 4, impact_bps_50k: 9 })).toBe(50_000);
+    expect(measuredDepthUsd({ spread_bps: 2 })).toBeNull();
+  });
+});
+
+/**
+ * WHICH SIDE of the book a leg crosses belongs to the route, not to the
+ * function. A same-venue hedge rests its first order on the dearer side and
+ * crosses the cheaper one; a cross-venue leg is crossed IN and crossed back
+ * OUT, so it pays both sides. Reading a cross route's history the same way as
+ * a same-venue one understated an asymmetric book by the whole difference.
+ */
+describe("side of the book", () => {
+  const asymmetric = {
+    reference_price: 100,
+    points: [
+      { notional_usd: 0, bid: 100, ask: 100 },
+      // 10 bps to sell into, 100 bps to buy from.
+      { notional_usd: 10_000, bid: 99.9, ask: 101 },
+    ],
+  };
+
+  it("crosses the cheaper side on a same-venue hedge", () => {
+    expect(sampleFromSnapshot({ spread_bps: 0, quote_curve_json: asymmetric }, 10_000, "cheapest")?.impactBps)
+      .toBeCloseTo(10, 6);
+  });
+
+  it("pays the mean of both sides on a cross-venue leg", () => {
+    expect(sampleFromSnapshot({ spread_bps: 0, quote_curve_json: asymmetric }, 10_000, "average")?.impactBps)
+      .toBeCloseTo(55, 6);
+  });
+
+  it("carries the moment it was read, so two venues can be matched on it", () => {
+    const s = sampleFromSnapshot({ ts: "2026-09-15T21:05:00.000Z", spread_bps: 2, impact_bps_10k: 1 }, 10_000);
+    expect(s?.ts).toBe("2026-09-15T21:05:00.000Z");
+  });
+
+  it("keeps a percentile on a real observation's timestamp", () => {
+    const at = (legBps: number, ts: string): CostSample =>
+      ({ legBps, spreadBps: 0, impactBps: legBps, markPrice: null, ts, firstLimitSide: null });
+    const median = percentileSample(
+      [at(1, "2026-09-15T19:05:00.000Z"), at(2, "2026-09-15T20:05:00.000Z"), at(3, "2026-09-15T21:05:00.000Z")],
+      0.5,
+    );
+    expect(median?.ts).toBe("2026-09-15T20:05:00.000Z");
   });
 });
 

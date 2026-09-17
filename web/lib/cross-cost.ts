@@ -9,8 +9,9 @@
  */
 
 import { getPool } from "@/lib/db";
-import { impactAtNotional, loadCostHistory, rowsFor, type CostSample } from "@/lib/cost-history";
-import { quoteCurveImpactBps } from "@/lib/quote-curve";
+import { impactAtNotional, loadCostHistory, rowsFor } from "@/lib/cost-history";
+import { cheaperAssignment, matchByTick, type RouteSample, type TakerBook } from "@/lib/route-samples";
+import { quoteCurveImpactBps, quoteCurveMaxNotionalUsd } from "@/lib/quote-curve";
 import {
   FUNDING_HOLD_HOURS,
   snapshotsAreFresh,
@@ -20,6 +21,7 @@ import {
   MIN_PAIRS_FOR_BANDS,
   QUOTE_CLOSED_AFTER_MS,
   QUOTE_GONE_AFTER_MS,
+  TICK_MATCH_TOLERANCE_MS,
   displayedOpenInterestUsd,
   isDeadMarket,
   oiBandsFor,
@@ -143,11 +145,18 @@ function venueBps(
   impactMode: "average" | "cheapest" = "average",
 ): { maker: number; taker: number; spreadBps: number; impactBps: number; makerFee: number; takerFee: number } | null {
   const spread = asNumber(row.spread_bps);
-  const impact = quoteCurveImpactBps(row.quote_curve_json, fillNotionalUsd, impactMode) ?? impactAtNotional(fillNotionalUsd, [
-    [10_000, asNumber(row.impact_bps_10k)],
-    [50_000, asNumber(row.impact_bps_50k)],
-    [100_000, asNumber(row.impact_bps_100k)],
-  ]);
+  // A venue that publishes a curve is priced from the curve ALONE. Falling back
+  // to the coarse anchors when the curve stopped short handed back the impact
+  // of a SMALLER fill (they clamped to their last reading), so a book measured
+  // to $25k priced a $100k leg as if it would fill. Same rule as
+  // sampleFromSnapshot, so the live reading and the 24h history agree.
+  const impact = quoteCurveMaxNotionalUsd(row.quote_curve_json) === null
+    ? impactAtNotional(fillNotionalUsd, [
+        [10_000, asNumber(row.impact_bps_10k)],
+        [50_000, asNumber(row.impact_bps_50k)],
+        [100_000, asNumber(row.impact_bps_100k)],
+      ])
+    : quoteCurveImpactBps(row.quote_curve_json, fillNotionalUsd, impactMode);
   // THIS MARKET'S CLASS schedule wins, then the stored venue row, then the
   // venue's published headline rate. The stored row is one venue-wide rate
   // (QFEX's single-stock 5/10, trade.xyz's Standard Mode 3/9), so letting it
@@ -398,8 +407,14 @@ export async function computeCrossRankings(
   // same total time -- they were serialized regardless -- and none of them can
   // time out waiting for a connection the previous one has already released.
   const rows = await loadVenueMarkets([slugA, slugB]);
-  const histA = await loadCostHistory(slugA, accountVolumeUsd / 2);
-  const histB = await loadCostHistory(slugB, accountVolumeUsd / 2);
+  // "average", not "cheapest": on a cross route one venue is crossed on the way
+  // IN and crossed back on the way OUT, which are opposite sides of its book,
+  // so neither side can be picked. The default is the same-venue rule, where
+  // the first passive order does leave the cheaper direction to be crossed --
+  // reading the history that way here understated an asymmetric book (10 bps
+  // one way against 100 the other) by the whole of the difference.
+  const histA = await loadCostHistory(slugA, accountVolumeUsd / 2, "average");
+  const histB = await loadCostHistory(slugB, accountVolumeUsd / 2, "average");
   let observations = 0;
   const byVenue = new Map<string, Map<string, VenueMarketRow>>([
     [slugA, new Map()],
@@ -515,7 +530,10 @@ export async function computeCrossRankings(
     // side (fee + half-spread + impact) would have cost.
     const restOnA = costA.maker + costB.taker;
     const restOnB = costB.maker + costA.taker;
-    const [makerVenue, takerVenue, makerSide, takerSide] =
+    // This is the assignment of the LATEST books, and it prices execCostUsd
+    // below -- the live figure. The orders the route DISPLAYS come from the
+    // observation the headline was taken from instead, further down.
+    const [, , makerSide, takerSide] =
       restOnA <= restOnB ? [slugA, slugB, costA, costB] : [slugB, slugA, costB, costA];
 
     // Each venue turns over `accountVolumeUsd` across its open and close.
@@ -562,34 +580,46 @@ export async function computeCrossRankings(
     // newest snapshot while the headline came from the median made them
     // disagree: XRP read spread $4.41 + slippage $0.23 + fees $2.85 = $7.49
     // under a headline of $5.28, because its book had just widened.
-    type RouteSample = { totalUsd: number; spreadUsd: number; slippageUsd: number; feeUsd: number };
-    const usd = (bps: number) => (accountVolumeUsd * bps) / 10_000;
-    const routeOf = (maker: typeof costA, taker: typeof costB, takerBook: CostSample): RouteSample => {
-      const feeBps = maker.makerFee + taker.takerFee;
-      return {
-        totalUsd: usd(feeBps + takerBook.legBps),
-        spreadUsd: usd(takerBook.spreadBps / 2),
-        slippageUsd: usd(takerBook.impactBps),
-        feeUsd: usd(feeBps),
-      };
-    };
-    const latest: RouteSample = restOnA <= restOnB
-      ? routeOf(costA, costB, { legBps: costB.taker - costB.takerFee, spreadBps: costB.spreadBps * 2, impactBps: costB.impactBps, markPrice: null })
-      : routeOf(costB, costA, { legBps: costA.taker - costA.takerFee, spreadBps: costA.spreadBps * 2, impactBps: costA.impactBps, markPrice: null });
+    //
+    // The ASSIGNMENT travels with the observation, and the two venues' series
+    // are lined up BY TIME. Both rules live in lib/route-samples.ts, where they
+    // can be tested: this function reads Postgres through Next's request cache
+    // and cannot run outside a request, which is how both defects survived.
+    const bookOf = (cost: typeof costA, at: string): TakerBook & { ts: string } => ({
+      // `taker` carries the fee; the book alone is what a route sample prices.
+      legBps: cost.taker - cost.takerFee,
+      spreadBps: cost.spreadBps * 2,
+      impactBps: cost.impactBps,
+      ts: at,
+    });
+    const latest: RouteSample = cheaperAssignment({
+      accountVolumeUsd,
+      venueA: slugA,
+      costA,
+      bookA: bookOf(costA, ra.book_ts),
+      venueB: slugB,
+      costB,
+      bookB: bookOf(costB, rb.book_ts),
+      ts: [ra.book_ts, rb.book_ts].sort().at(-1) ?? null,
+    });
 
     // Each leg's own history: a swap leg and a perp leg are different tickers.
     const historyA = histA.get(symA) ?? [];
     const historyB = histB.get(symB) ?? [];
-    const routeSamples: RouteSample[] = [];
-    for (let i = 0; i < Math.min(historyA.length, historyB.length); i++) {
-      const a = historyA[i]!;
-      const b = historyB[i]!;
-      // The maker side is re-decided at every tick: which venue is cheaper to
-      // rest on can change as the two books move against each other.
-      const onA = routeOf(costA, costB, b);
-      const onB = routeOf(costB, costA, a);
-      routeSamples.push(onA.totalUsd <= onB.totalUsd ? onA : onB);
-    }
+    const routeSamples: RouteSample[] = matchByTick(historyA, historyB, TICK_MATCH_TOLERANCE_MS).map(
+      ({ a, b }) => cheaperAssignment({
+        accountVolumeUsd,
+        venueA: slugA,
+        costA,
+        bookA: a,
+        venueB: slugB,
+        costB,
+        bookB: b,
+        // The older of the two readings, so a route never claims to be fresher
+        // than the leg that has not been quoted since.
+        ts: [a.ts, b.ts].filter((value): value is string => value !== null).sort().at(0) ?? null,
+      }),
+    );
     const sorted = [...routeSamples].sort((left, right) => left.totalUsd - right.totalUsd);
     // Nearest-rank, so the parts belong to a real observation and still add up.
     const at = (q: number): RouteSample =>
@@ -601,6 +631,8 @@ export async function computeCrossRankings(
     const spreadCostUsd = median.spreadUsd;
     const slippageCostUsd = median.slippageUsd;
     const feeCostUsd = median.feeUsd;
+    // Only ticks that MATCHED on both venues count. Reporting the longer of
+    // the two series described observations that were never made jointly.
     observations = Math.max(observations, sorted.length);
 
     // Ratings are stored under the row's own key: the shared ticker, or the
@@ -621,8 +653,11 @@ export async function computeCrossRankings(
       assetClass: instrumentClass(sym, ra.asset_class ?? rb.asset_class),
       spreadBreakoutShare: rating?.share ?? null,
       spreadRisk: rating?.risk ?? "unknown",
-      makerVenue,
-      takerVenue,
+      // From the SAME observation as cycleCostUsd and the breakdown above it,
+      // so the order types a reader sees are the ones those dollars were
+      // priced on.
+      makerVenue: median.makerVenue,
+      takerVenue: median.takerVenue,
       spreadCostUsd,
       slippageCostUsd,
       oiAUsd: displayedOiA,

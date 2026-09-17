@@ -47,6 +47,19 @@ export const QUOTE_CLOSED_AFTER_MS = 30 * 60_000;
 export const QUOTE_GONE_AFTER_MS = 24 * 60 * 60_000;
 
 /**
+ * How far apart two venues' readings may be and still count as ONE moment.
+ *
+ * A cross route's 24h band prices both books at the same tick, so the two
+ * series have to be matched by time. They are never stamped identically: every
+ * book carries its own venue's run start, and those starts differ by minutes
+ * (21:05 against trade.xyz's 21:16 on 2026-09-15). Half an hour is the same
+ * figure QUOTE_CLOSED_AFTER_MS uses for "inside the latest run", and it stays
+ * well under the hourly cadence -- so a venue that missed a collection finds no
+ * partner for that hour instead of silently pairing with the hour next door.
+ */
+export const TICK_MATCH_TOLERANCE_MS = 30 * 60_000;
+
+/**
  * How long a run takes to finish landing. Every book in a run carries the
  * run's START time, but the rows arrive over the next few minutes (Variational's
  * 552 took about four), so while a run is still landing half a venue looks a
