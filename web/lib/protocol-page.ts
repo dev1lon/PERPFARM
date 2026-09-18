@@ -673,7 +673,18 @@ function qfex(locale: Locale): ProtocolPageConfig {
       // app.qfex.com does not resolve; qfex.com does.
       tradeUrl: "https://qfex.com", // TODO(manual): referral link
       season: "0",
-      farmEstimate: { value: tr(locale, "Retro points", "Ретро-поинты"), positive: true, tip: retroExpectedTip("QFEX", locale) },
+      farmEstimate: {
+        value: tr(locale, "Retro points", "Ретро-поинты"),
+        positive: true,
+        // Not the shared "nothing announced" note: QFEX's team has said it is
+        // recording activity, which is a different claim from ours about when
+        // it pays out. The two are kept apart in one sentence each.
+        tip: tr(
+          locale,
+          "The team has confirmed it records activity for a retroactive award. No formula is published; PerpFarm expects the programme in October or November — our view, not an official claim.",
+          "Команда подтвердила, что записывает активность под ретро-начисление. Формулы нет; программу PerpFarm ожидает в октябре-ноябре — это наше мнение, а не заявление протокола.",
+        ),
+      },
       otcPointPrice: "TBA",
       hedgePartnerSlug: "variational",
     },
@@ -682,24 +693,24 @@ function qfex(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "Nothing is awarded yet: the programme is promised for autumn or winter, and everything until then counts retroactively.",
-      "Пока не начисляют ничего: программу обещают осенью-зимой, а всё до неё зачтут ретроспективно.",
+      "The team has confirmed it is recording activity for a retroactive award. Nothing is paid out yet; PerpFarm expects the programme in October or November.",
+      "Команда подтвердила, что активность записывается под ретро-начисление. Выплат пока нет; программу PerpFarm ожидает в октябре-ноябре.",
     ),
     priorities: [
       {
-        title: tr(locale, "$100k+, spread over weeks", "$100k+, растянутые на недели"),
+        title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "The asset is the record itself — $100k or more of it, built while the book is still invite-only and the field is small. Spread it across weeks: one burst of turnover reads as a farm, a habit reads as a user.",
-          "Ценность — сама история: $100k и больше, набранные пока вход по инвайтам и участников мало. Растягивайте это на недели: один залп оборота читается как ферма, привычка — как пользователь.",
+          "PerpFarm's view is to favour TradFi, where the protocol itself is focused, and to build the volume on its top markets: $100k and up, spread over weeks while the book is still invite-only. One burst of turnover reads as a farm, a habit reads as a user.",
+          "Позиция PerpFarm — держаться TradFi, на нём сам протокол и сфокусирован, и набирать объём на его топовых рынках: $100k и больше, растянутые на недели, пока вход по инвайтам. Один залп оборота читается как ферма, привычка — как пользователь.",
         ),
       },
       {
-        title: tr(locale, "Growth Mode markets", "Рынки Growth Mode"),
+        title: tr(locale, "Organic volume, no wash trades", "Органичный объём, без wash trading"),
         body: tr(
           locale,
-          "Growth Mode charges 0 bps maker and 0.6–1.5 bps taker where an ordinary equity costs 5/10, and an account funded before the 24 August snapshot keeps all 19 of its markets. What the rest of us get moves: QFEX published SNDK, ANTHROPIC and crude at the discount on 15 September and at the standard 5/10 again on 18 September. So every route below is priced from the schedule the venue was publishing in the hour it was read, and the rate it was charged at is printed on the route itself.",
-          "В Growth Mode берут 0 bps maker и 0.6–1.5 bps taker там, где обычная акция стоит 5/10, а аккаунт, пополненный до снепшота 24 августа, сохраняет все 19 рынков. Для остальных состав меняется: 15 сентября QFEX отдавала SNDK, ANTHROPIC и нефть со скидкой, 18 сентября — снова по 5/10. Поэтому каждый маршрут ниже посчитан по тому тарифу, который площадка публиковала в час снятия, а сама ставка напечатана на маршруте.",
+          "With no formula published, turnover is the whole record — so volume is the criterion, and how it was made counts as much as how much of it there is. Trading against yourself to print it is wash trading and is what gets a farm struck out; a delta-neutral pair held across two venues is a position, and the table below prices exactly that.",
+          "Формулы нет, записывается только оборот — значит критерий это объём, и важно не только сколько его, но и как он сделан. Торговля с самим собой ради цифры — это wash trading, именно за него ферму вычёркивают; дельта-нейтральная пара на двух площадках — это позиция, и таблица ниже считает именно её.",
         ),
       },
     ],
@@ -713,27 +724,27 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
       {
-        title: tr(locale, "Fund it through Connect Wallet", "Заносите через Connect Wallet"),
+        title: tr(locale, "Trade the pairs in Growth Mode", "Торгуйте пары в Growth Mode"),
         body: tr(
           locale,
-          "USDC on Arbitrum from your own wallet, $10 and up. A transfer straight from an exchange address comes back as “Deposit blocked”.",
-          "USDC в сети Arbitrum со своего кошелька, от $10. Перевод прямо с биржевого адреса возвращается как «Deposit blocked».",
+          "A market QFEX puts in Growth Mode is charged at tier 1 — 0 bps maker and 0.6–1.5 taker — against 5/10 on an ordinary equity. Which markets are in it changes, so the rate printed on each route below is the one that route was actually charged.",
+          "Рынок, который QFEX ставит в Growth Mode, идёт по тиру 1 — 0 bps maker и 0.6–1.5 taker — против 5/10 на обычной акции. Состав меняется, поэтому на каждом маршруте ниже напечатана та ставка, по которой он и посчитан.",
         ),
       },
       {
-        title: tr(locale, "Work the 24/7 RWA book", "Работайте по RWA, который открыт 24/7"),
+        title: tr(locale, "Leave feedback", "Оставляйте фидбек"),
         body: tr(
           locale,
-          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and the table below prices each market on the schedule it is actually charged — read from QFEX itself each hour, with the rate printed on every route.",
-          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а таблица ниже считает каждый рынок по тому тарифу, по которому его и берут: тариф читается с QFEX каждый час и напечатан на каждом маршруте.",
+          "The team follows feedback closely and pays for it. The chat on the site and the Discord are where it lands.",
+          "Команда внимательно следит за фидбеком и вознаграждает за него. Писать — в чат на сайте и в Discord.",
         ),
       },
       {
-        title: tr(locale, "Pre-IPO opened on 10 September", "Pre-IPO открылись 10 сентября"),
+        title: tr(locale, "Earlier volume is worth more", "Ранний объём стоит дороже"),
         body: tr(
           locale,
-          "OPENAI and ANTHROPIC list at 10x — the newest books on the venue and the least crowded ones.",
-          "OPENAI и ANTHROPIC идут с плечом 10x — самые свежие стаканы площадки и самые незаполненные.",
+          "Do the organic volume before the programme starts. Activity from before the points has been credited better than the same turnover once they are running, which is what makes a field this small the opportunity.",
+          "Набирайте органичный объём до старта программы. Активность до поинтов засчитывалась лучше, чем тот же оборот после их запуска, — именно поэтому малое число участников и есть возможность.",
         ),
       },
     ],
@@ -1276,7 +1287,7 @@ function truenorth(locale: Locale): ProtocolPageConfig {
       season: "0",
       // The same status the home card publishes, so the two cannot disagree.
       farmEstimate: {
-        value: tr(locale, "Retro activity", "Ретро-активность"),
+        value: tr(locale, "Retro points", "Ретро-поинты"),
         positive: true,
         tip: tr(
           locale,

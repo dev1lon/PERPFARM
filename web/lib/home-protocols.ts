@@ -36,7 +36,9 @@ export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$6–15/pt", otc: "$24", status: "live" },
   { slug: "tradexyz", name: "TradeXYZ", season: "Season 0", farmEstimate: "from $6/100k volume", status: "records" },
   { slug: "txflow", name: "TxFlow", season: "Season 0", farmEstimate: "from $29/100k volume", status: "retro" },
-  { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro-activity" },
+  // Retro POINTS, not merely recorded activity: the badge is green because
+  // what is being counted is expected to be paid in points.
+  { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro" },
   { slug: "qfex", name: "QFEX", season: "Season 0", farmEstimate: "from $43/100k volume", status: "retro" },
 ];
 
