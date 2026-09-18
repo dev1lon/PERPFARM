@@ -701,16 +701,16 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "PerpFarm's view is to favour TradFi, where the protocol itself is focused, and to build the volume on its top markets: $100k and up, spread over weeks while the book is still invite-only. One burst of turnover reads as a farm, a habit reads as a user.",
-          "Позиция PerpFarm — держаться TradFi, на нём сам протокол и сфокусирован, и набирать объём на его топовых рынках: $100k и больше, растянутые на недели, пока вход по инвайтам. Один залп оборота читается как ферма, привычка — как пользователь.",
+          "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
+          "Позиция PerpFarm — держаться TradFi, на нём протокол и сфокусирован, и набирать естественный объём на топовых рынках.",
         ),
       },
       {
         title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, активность органичная"),
         body: tr(
           locale,
-          "With no formula published, turnover is the whole record — so volume is the criterion, and how it was made counts as much as how much of it there is. Hold a position two to four hours instead of round-tripping it in minutes, and never print volume against yourself: a delta-neutral pair across two venues is a position, and wash trading is what gets a farm struck out.",
-          "Формулы нет, записывается только оборот — значит критерий это объём, и важно не только сколько его, но и как он сделан. Держите позицию два-четыре часа, а не прогоняйте туда-обратно за минуты, и никогда не набивайте объём против себя: дельта-нейтральная пара на двух площадках — это позиция, а за wash trading ферму вычёркивают.",
+          "There is no points programme yet, so the criterion is volume — and it has to be organic, without wash trading.",
+          "Поинт-программы ещё нет, поэтому главный критерий — объём. Но объём должен быть органичным, без wash trading.",
         ),
       },
     ],
@@ -743,8 +743,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Earlier volume is worth more", "Ранний объём стоит дороже"),
         body: tr(
           locale,
-          "Do the organic volume before the programme starts. Activity from before the points has been credited better than the same turnover once they are running, which is what makes a field this small the opportunity.",
-          "Набирайте органичный объём до старта программы. Активность до поинтов засчитывалась лучше, чем тот же оборот после их запуска, — именно поэтому малое число участников и есть возможность.",
+          "Do the maximum organic activity before the points programme starts: early activity has always been rewarded better than the same volume once the points are running.",
+          "Сделайте максимальную органическую активность до начала поинт-программы: ранняя активность всегда награждалась лучше, чем тот же объём, когда поинты уже активны.",
         ),
       },
     ],
