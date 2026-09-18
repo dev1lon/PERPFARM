@@ -698,8 +698,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Growth Mode markets", "Рынки Growth Mode"),
         body: tr(
           locale,
-          "Growth Mode charges 0 bps maker and 0.6–1.5 bps taker where an ordinary equity costs 5/10. Since 14 September SNDK, ANTHROPIC and crude are in it for everyone, an account funded before the 24 August snapshot keeps all 19, and the discount now lands at the time of trade instead of arriving later as a rebate.",
-          "В Growth Mode берут 0 bps maker и 0.6–1.5 bps taker там, где обычная акция стоит 5/10. С 14 сентября в нём для всех SNDK, ANTHROPIC и нефть, аккаунт, пополненный до снепшота 24 августа, сохраняет все 19 рынков, а скидка теперь применяется прямо в сделке, а не возвращается ребейтом позже.",
+          "Growth Mode charges 0 bps maker and 0.6–1.5 bps taker where an ordinary equity costs 5/10, and an account funded before the 24 August snapshot keeps all 19 of its markets. What the rest of us get moves: QFEX published SNDK, ANTHROPIC and crude at the discount on 15 September and at the standard 5/10 again on 18 September. So every route below is priced from the schedule the venue was publishing in the hour it was read, and the rate it was charged at is printed on the route itself.",
+          "В Growth Mode берут 0 bps maker и 0.6–1.5 bps taker там, где обычная акция стоит 5/10, а аккаунт, пополненный до снепшота 24 августа, сохраняет все 19 рынков. Для остальных состав меняется: 15 сентября QFEX отдавала SNDK, ANTHROPIC и нефть со скидкой, 18 сентября — снова по 5/10. Поэтому каждый маршрут ниже посчитан по тому тарифу, который площадка публиковала в час снятия, а сама ставка напечатана на маршруте.",
         ),
       },
     ],
@@ -724,8 +724,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Work the 24/7 RWA book", "Работайте по RWA, который открыт 24/7"),
         body: tr(
           locale,
-          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and the table below prices each market on the schedule it is actually charged — including the Growth Mode ones at 0 bps maker.",
-          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а таблица ниже считает каждый рынок по тому тарифу, по которому его и берут, — включая Growth Mode с 0 bps maker.",
+          "US stocks, indices, metals and FX trade round the clock here with up to 50x, and the table below prices each market on the schedule it is actually charged — read from QFEX itself each hour, with the rate printed on every route.",
+          "Акции США, индексы, металлы и валюты торгуются здесь круглосуточно с плечом до 50x, а таблица ниже считает каждый рынок по тому тарифу, по которому его и берут: тариф читается с QFEX каждый час и напечатан на каждом маршруте.",
         ),
       },
       {
