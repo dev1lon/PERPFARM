@@ -1175,6 +1175,10 @@ const RECOMMENDATION_POLICY: Record<string, RecommendationPolicy> = {
 const RECOMMENDED_HOLD: Record<string, { en: string; ru: string }> = {
   variational: { en: "12–24h", ru: "12–24 ч" },
   txflow: { en: "2–4h", ru: "2–4 ч" },
+  // QFEX's own guidance card asks for two to four hours, so the Hold field has
+  // to say the same. It read "—" while the priority beside it named a holding
+  // time, which is the page disagreeing with itself.
+  qfex: { en: "2–4h", ru: "2–4 ч" },
 };
 
 function recommendedHold(homeSlug: string, locale: Locale): string {

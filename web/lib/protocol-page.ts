@@ -706,11 +706,11 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
       {
-        title: tr(locale, "Organic volume, no wash trades", "Органичный объём, без wash trading"),
+        title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, активность органичная"),
         body: tr(
           locale,
-          "With no formula published, turnover is the whole record — so volume is the criterion, and how it was made counts as much as how much of it there is. Trading against yourself to print it is wash trading and is what gets a farm struck out; a delta-neutral pair held across two venues is a position, and the table below prices exactly that.",
-          "Формулы нет, записывается только оборот — значит критерий это объём, и важно не только сколько его, но и как он сделан. Торговля с самим собой ради цифры — это wash trading, именно за него ферму вычёркивают; дельта-нейтральная пара на двух площадках — это позиция, и таблица ниже считает именно её.",
+          "With no formula published, turnover is the whole record — so volume is the criterion, and how it was made counts as much as how much of it there is. Hold a position two to four hours instead of round-tripping it in minutes, and never print volume against yourself: a delta-neutral pair across two venues is a position, and wash trading is what gets a farm struck out.",
+          "Формулы нет, записывается только оборот — значит критерий это объём, и важно не только сколько его, но и как он сделан. Держите позицию два-четыре часа, а не прогоняйте туда-обратно за минуты, и никогда не набивайте объём против себя: дельта-нейтральная пара на двух площадках — это позиция, а за wash trading ферму вычёркивают.",
         ),
       },
     ],
