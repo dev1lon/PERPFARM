@@ -61,6 +61,23 @@ describe("selectRecommendedPair", () => {
     expect(rule).toBe("medium-tradfi");
   });
 
+  it("recommends a swap when the swap is the cheapest thing in the answer", () => {
+    // A swap is another way to hold the same exposure. Filtering swaps out of
+    // the pick meant a cheaper swap route sat in the table under a dearer perp
+    // recommendation; forcing one on Variational's page picked by open
+    // interest instead of by cost. Both exceptions are gone.
+    const swap = pair({ pair: "XAUS", cycleCostUsd: 22.65, openInterestUsd: 40_000_000 });
+    const perp = pair({ pair: "XAU", cycleCostUsd: 35.97 });
+    expect(selectRecommendedPair(bandsOf([perp]), "qfex", [perp, swap])[0]?.pair).toBe("XAUS");
+  });
+
+  it("does not prefer a swap that costs more", () => {
+    const swap = pair({ pair: "XAUS", cycleCostUsd: 40.0, openInterestUsd: 1_000 });
+    const perp = pair({ pair: "XAU", cycleCostUsd: 30.0 });
+    // Least open interest used to win this on Variational's page.
+    expect(selectRecommendedPair(bandsOf([perp, swap]), "variational", [perp, swap])[0]?.pair).toBe("XAU");
+  });
+
   it("never recommends a market that is not quoting while an open one exists", () => {
     const closed = pair({ pair: "XAU", cycleCostUsd: 1.0, closedVenues: ["ondo"] });
     const [best] = selectRecommendedPair(bandsOf([dearInsideTheBand]), "ondo", [closed, dearInsideTheBand]);

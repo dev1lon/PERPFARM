@@ -1141,13 +1141,11 @@ export function ProtocolCalculatorV2({
 }
 
 /** Which criteria actually selected the recommended pair. */
-export type BestRule = "swap-low-oi" | "medium-tradfi" | "medium" | "tradfi" | "cheapest";
+export type BestRule = "medium-tradfi" | "medium" | "tradfi" | "cheapest";
 
 type RecommendationPolicy = {
   preferMediumOi: boolean;
   preferTradfi: boolean;
-  /** Recommend the swap with the least open interest whenever the answer holds one. */
-  preferLowOiSwap?: boolean;
 };
 
 // This is intentionally a protocol-owned policy, not a hedge-venue setting.
@@ -1161,7 +1159,7 @@ const DEFAULT_RECOMMENDATION_POLICY: RecommendationPolicy = { preferMediumOi: fa
 const RECOMMENDATION_POLICY: Record<string, RecommendationPolicy> = {
   // The Swaps Trading Competition counts swap volume only, so Variational's
   // page recommends a swap first -- on its own and on its cross routes.
-  variational: { preferMediumOi: true, preferTradfi: true, preferLowOiSwap: true },
+  variational: { preferMediumOi: true, preferTradfi: true },
   // TxFlow has not announced points mechanics. Its current guidance is
   // therefore eligible trading volume on the venue it focuses on (TradFi),
   // rather than importing Variational's Medium-OI points rule.
@@ -1211,21 +1209,15 @@ export function selectRecommendedPair(
   // within those ten rather than within the category it claims: Ondo x
   // Variational recommended EWY at $7.05 while XAU, open and TradFi, sat at
   // $5.09 in the very same answer, outside the band's ten.
-  const universe = allPairs ?? everything;
-  // Swaps come first only where the home protocol's policy says so
-  // (Variational). With five swap markets there is no cost race worth running,
-  // so the pick is the one with the LEAST open interest; a tie goes to the
-  // cheaper route. Every other page -- TxFlow included, even hedged on
-  // Variational -- never picks a swap: the filter below keeps perps only.
-  const swaps = universe.filter((pair) => isSwap(pair.pair));
-  if (RECOMMENDATION_POLICY[homeSlug]?.preferLowOiSwap && swaps.length > 0) {
-    const leastOi = [...swaps].sort(
-      (a, b) => a.openInterestUsd - b.openInterestUsd || a.cycleCostUsd - b.cycleCostUsd,
-    )[0];
-    return [leastOi, "swap-low-oi"];
-  }
-  const perps = universe.filter((pair) => !isSwap(pair.pair));
-  const all = perps.length > 0 ? perps : universe;
+  // A SWAP IS AN ORDINARY PAIR HERE. It is another way to hold the same
+  // exposure -- Variational's XAUS is gold, hedged against another venue's XAU
+  // perp -- so it is priced by the same formula and ranked on the same number.
+  // Two exceptions used to sit in this function and they pulled opposite ways:
+  // Variational's page forced a swap and picked it by LEAST open interest
+  // rather than by cost, and every other page filtered swaps out entirely, so
+  // a cheaper swap route could sit in the table under a dearer perp
+  // recommendation. Cheapest is cheapest.
+  const all = allPairs ?? everything;
   // The medium band rebuilt over the whole universe, from the OI span the API
   // reports for it. Without that span (an older cached answer) its own ten are
   // all there is to go on.
@@ -1233,7 +1225,7 @@ export function selectRecommendedPair(
   const mediumRange = mediumBand?.oiRangeUsd;
   const medium = mediumRange
     ? all.filter((pair) => pair.openInterestUsd >= mediumRange[0] && pair.openInterestUsd <= mediumRange[1])
-    : (mediumBand?.pairs ?? []).filter((pair) => !isSwap(pair.pair));
+    : mediumBand?.pairs ?? [];
   const cheapestOf = (pairs: PairRanking[]) => [...pairs].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd)[0];
   const policy = RECOMMENDATION_POLICY[homeSlug] ?? DEFAULT_RECOMMENDATION_POLICY;
 
@@ -1442,9 +1434,7 @@ export function RouteResults({
     ? data.costBasis === "24h-median"
     : best.costRangeLowUsd !== best.costRangeHighUsd;
   const hold = recommendedHold(homeSlug, locale);
-  const bestRuleLabel = bestRule === "swap-low-oi"
-    ? tr(locale, "Lowest-OI swap", "Своп с наименьшим OI")
-    : bestRule === "medium-tradfi"
+  const bestRuleLabel = bestRule === "medium-tradfi"
     ? tr(locale, "Cheapest medium-OI TradFi pair", "Самая дешёвая TradFi-пара со средним OI")
     : bestRule === "medium"
       ? tr(locale, "Cheapest medium-OI pair", "Самая дешёвая пара со средним OI")

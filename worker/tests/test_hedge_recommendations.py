@@ -149,3 +149,38 @@ def test_recommendation_query_excludes_fixture_venues_and_stale_snapshots():
     # Both snapshot CTEs must be time-bounded: `DISTINCT ON ... ORDER BY ts
     # DESC` alone returns the newest row that exists, however old it is.
     assert len(re.findall(r"ts >= now\(\) - interval '2 days'", text)) == 2
+
+
+def test_a_swap_hedges_the_underlying_like_any_other_pair():
+    """A swap is another way to hold the same exposure, not a special case.
+
+    Matching hedge legs on the ticker alone made every swap route invisible to
+    this job while the table on the page priced it: QFEX was recommended
+    TradeXYZ at $30.32 with a cheaper Variational swap route in the very same
+    answer. The gold swap below is the only thing on venue 2 that can hedge
+    venue 1's XAU perp, and its zero fees make it the cheapest route there is.
+    """
+
+    recommendations = _compute(
+        [
+            market(venue_id=1, slug="qfex", symbol="XAU", maker=2, taker=5),
+            market(venue_id=2, slug="variational", symbol="XAUS", maker=0, taker=0),
+        ]
+    )
+
+    # QFEX's cheapest route is the swap on venue 2: rest the limit on QFEX
+    # (2 bps) and cross Variational's free book (0 bps + half a bp of spread +
+    # 1 bp of impact) = 3.5 bps of $100,000. Its own book costs 8.5 bps.
+    assert recommendations[1][0] == 2
+    assert recommendations[1][1] == pytest.approx(35.0)
+    # Variational still keeps its own book: zero fees both sides beat crossing
+    # to QFEX. A swap being ordinary does not make it preferable.
+    assert recommendations[2][0] == 2
+
+
+def test_swap_legs_are_found_in_both_directions():
+    from perpfarm.swaps import hedge_symbols
+
+    assert hedge_symbols("XAU") == ("XAU", "XAUS")
+    assert hedge_symbols("XAUS") == ("XAUS", "XAU")
+    assert hedge_symbols("BTC") == ("BTC",)

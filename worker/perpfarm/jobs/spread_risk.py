@@ -23,6 +23,7 @@ from datetime import datetime
 
 from sqlalchemy import Engine, text
 
+from perpfarm.swaps import SWAP_UNDERLYING as _SWAP_UNDERLYING
 from perpfarm.adapters.registry import FIXTURE_SLUGS
 
 #: A reading counts as "come apart" past this distance from the pair's own
@@ -37,20 +38,12 @@ MIN_TICKS_FOR_RISK = 12
 #: The window the badge reads. A week is what the pruner keeps hourly.
 SPREAD_WINDOW_DAYS = 7
 
-#: Swap ticker -> the pair it stands in for. A swap is listed on one venue only
-#: (Variational), so no other venue shares its ticker, and a swap route -- a
-#: gold swap hedged with another venue's XAU perp -- was never rated: the badge
-#: read "unknown" on every swap, which is every route Variational recommends.
-#: Keep in lockstep with SWAP_UNDERLYING in web/lib/tradfi.ts
-#: (tests/test_website_parity.py compares the two).
-SWAP_UNDERLYING: dict[str, str] = {
-    "XAUS": "XAU",
-    "XAGS": "XAG",
-    "US100S": "US100",
-    "US500S": "SP500",
-    "USOILP": "CL",
-    "UKOILP": "BZ",
-}
+#: Re-exported from perpfarm.swaps, which two jobs now share: route
+#: recommendations pair a swap against another venue's perp exactly as the
+#: website does. Imported here under the old name so nothing that reads
+#: `spread_risk.SWAP_UNDERLYING` -- the website parity test included -- has to
+#: learn a new one.
+SWAP_UNDERLYING = _SWAP_UNDERLYING
 
 #: Marks for every venue over the window, for the instruments listed on more
 #: than one venue, plus every swap and its underlying. Pulled once and paired

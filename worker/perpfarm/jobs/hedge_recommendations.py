@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from perpfarm.adapters.registry import FIXTURE_SLUGS
 from perpfarm.schema import hedge_route_recommendations
+from perpfarm.swaps import hedge_symbols
 
 
 REFERENCE_VOLUME_USD = 100_000.0
@@ -280,20 +281,29 @@ def _cross_cost(home: list[Market], partner: list[Market]) -> float | None:
     partner_by_symbol = {market.symbol: market for market in partner}
     costs = []
     for main in home:
-        hedge = partner_by_symbol.get(main.symbol)
-        if hedge is None:
-            continue
-        # Both legs follow the one rule the website applies: only a dead
-        # listing is skipped.
-        if not _is_eligible(main) or not _is_eligible(hedge):
-            continue
-        main_bps = _venue_bps(main, fill, cheapest=False)
-        hedge_bps = _venue_bps(hedge, fill, cheapest=False)
-        if main_bps is None or hedge_bps is None:
-            continue
-        main_maker, main_taker = main_bps
-        hedge_maker, hedge_taker = hedge_bps
-        costs.append(REFERENCE_VOLUME_USD * min(main_maker + hedge_taker, hedge_maker + main_taker) / 10_000)
+        # Every leg on the other venue that holds this exposure, the same set
+        # the website builds: the same ticker, the underlying when this market
+        # is itself a swap, and any swap listed on this pair. Matching on the
+        # ticker alone made every swap route invisible HERE while the table on
+        # the page priced it -- so the card recommended TradeXYZ at $30.32 for
+        # QFEX while a Variational swap route sat in the same answer at $22.65.
+        for symbol in hedge_symbols(main.symbol):
+            hedge = partner_by_symbol.get(symbol)
+            if hedge is None:
+                continue
+            # Both legs follow the one rule the website applies: only a dead
+            # listing is skipped.
+            if not _is_eligible(main) or not _is_eligible(hedge):
+                continue
+            main_bps = _venue_bps(main, fill, cheapest=False)
+            hedge_bps = _venue_bps(hedge, fill, cheapest=False)
+            if main_bps is None or hedge_bps is None:
+                continue
+            main_maker, main_taker = main_bps
+            hedge_maker, hedge_taker = hedge_bps
+            costs.append(
+                REFERENCE_VOLUME_USD * min(main_maker + hedge_taker, hedge_maker + main_taker) / 10_000
+            )
     return min(costs) if costs else None
 
 
