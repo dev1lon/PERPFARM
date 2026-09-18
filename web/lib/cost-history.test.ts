@@ -117,6 +117,22 @@ describe("side of the book", () => {
     expect(s?.ts).toBe("2026-09-15T21:05:00.000Z");
   });
 
+  it("accepts the Date node-postgres actually hands over for a timestamptz", () => {
+    // Read as a string test, this dropped every observation's time, and the
+    // cross table then found no joint observations at all: every route's 24h
+    // band collapsed onto a single snapshot. Caught on production.
+    const s = sampleFromSnapshot(
+      { ts: new Date("2026-09-15T21:05:00.000Z"), spread_bps: 2, impact_bps_10k: 1 },
+      10_000,
+    );
+    expect(s?.ts).toBe("2026-09-15T21:05:00.000Z");
+  });
+
+  it("leaves an unreadable time null rather than inventing one", () => {
+    expect(sampleFromSnapshot({ ts: new Date("nonsense"), spread_bps: 2, impact_bps_10k: 1 }, 10_000)?.ts).toBeNull();
+    expect(sampleFromSnapshot({ ts: "", spread_bps: 2, impact_bps_10k: 1 }, 10_000)?.ts).toBeNull();
+  });
+
   it("keeps a percentile on a real observation's timestamp", () => {
     const at = (legBps: number, ts: string): CostSample =>
       ({ legBps, spreadBps: 0, impactBps: legBps, markPrice: null, ts, firstLimitSide: null });

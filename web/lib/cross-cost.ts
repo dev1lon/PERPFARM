@@ -9,7 +9,7 @@
  */
 
 import { getPool } from "@/lib/db";
-import { impactAtNotional, loadCostHistory, rowsFor } from "@/lib/cost-history";
+import { asIsoTs, impactAtNotional, loadCostHistory, rowsFor } from "@/lib/cost-history";
 import { cheaperAssignment, matchByTick, type RouteSample, type TakerBook } from "@/lib/route-samples";
 import { quoteCurveImpactBps, quoteCurveMaxNotionalUsd } from "@/lib/quote-curve";
 import {
@@ -36,7 +36,8 @@ type VenueMarketRow = {
   pair: string;
   /** The venue's own ticker (`xyz:GOLD`), before canonical renaming. */
   symbol: string;
-  book_ts: string;
+  /** As the driver hands it over: node-postgres decodes timestamptz to Date. */
+  book_ts: string | Date;
   spread_bps: string | number | null;
   impact_bps_10k: string | number | null;
   impact_bps_50k: string | number | null;
@@ -430,10 +431,11 @@ export async function computeCrossRankings(
   // a hedge needs both legs, so a pair on one venue alone can never be rated.
   // Newest book each venue actually supplied, for the freshness line.
   const newestOf = (venue: Map<string, VenueMarketRow>) =>
-    [...venue.values()].reduce<string | null>(
-      (newest, row) => (newest === null || row.book_ts > newest ? row.book_ts : newest),
-      null,
-    );
+    [...venue.values()].reduce<string | null>((newest, row) => {
+      const ts = asIsoTs(row.book_ts);
+      if (ts === null) return newest;
+      return newest === null || Date.parse(ts) > Date.parse(newest) ? ts : newest;
+    }, null);
   const newestA = newestOf(A);
   const newestB = newestOf(B);
   // The run each venue's legs are judged against for "closed now": the newest
@@ -587,12 +589,12 @@ export async function computeCrossRankings(
     // are lined up BY TIME. Both rules live in lib/route-samples.ts, where they
     // can be tested: this function reads Postgres through Next's request cache
     // and cannot run outside a request, which is how both defects survived.
-    const bookOf = (cost: typeof costA, at: string): TakerBook & { ts: string } => ({
+    const bookOf = (cost: typeof costA, at: string | Date): TakerBook & { ts: string | null } => ({
       // `taker` carries the fee; the book alone is what a route sample prices.
       legBps: cost.taker - cost.takerFee,
       spreadBps: cost.spreadBps * 2,
       impactBps: cost.impactBps,
-      ts: at,
+      ts: asIsoTs(at),
     });
     const latest: RouteSample = cheaperAssignment({
       accountVolumeUsd,
@@ -602,7 +604,12 @@ export async function computeCrossRankings(
       venueB: slugB,
       costB,
       bookB: bookOf(costB, rb.book_ts),
-      ts: [ra.book_ts, rb.book_ts].sort().at(-1) ?? null,
+      // The NEWER of the two reads, compared as instants: sorting Dates as
+      // strings would order them by weekday name.
+      ts: [asIsoTs(ra.book_ts), asIsoTs(rb.book_ts)]
+        .filter((value): value is string => value !== null)
+        .sort((left, right) => Date.parse(left) - Date.parse(right))
+        .at(-1) ?? null,
     });
 
     // Each leg's own history: a swap leg and a perp leg are different tickers.
@@ -711,7 +718,10 @@ export async function computeCrossRankings(
       { venue: slugA, live: snapshotsAreFresh(newestA) },
       { venue: slugB, live: snapshotsAreFresh(newestB) },
     ],
-    asOf: [newestA, newestB].filter((ts): ts is string => ts !== null).sort().at(-1) ?? null,
+    asOf: [newestA, newestB]
+      .filter((ts): ts is string => ts !== null)
+      .sort((left, right) => Date.parse(left) - Date.parse(right))
+      .at(-1) ?? null,
     bands,
     pairs: [...candidates].sort((a, b) => a.cycleCostUsd - b.cycleCostUsd).map(round),
     feeSchedule: [

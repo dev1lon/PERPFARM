@@ -108,9 +108,11 @@ export type CostSample = {
 };
 
 export type ImpactSnapshot = {
-  /** `book_snapshots.ts`, as stored. Carried so an observation can be matched
-   *  to the same hour on the other venue instead of by row position. */
-  ts?: string | null;
+  /** `book_snapshots.ts`, as the driver hands it over: node-postgres decodes a
+   *  `timestamptz` into a Date, and a literal from a test is a string. Carried
+   *  so an observation can be matched to the same hour on the other venue
+   *  instead of by row position. */
+  ts?: string | Date | null;
   spread_bps?: string | number | null;
   impact_bps_10k?: string | number | null;
   impact_bps_50k?: string | number | null;
@@ -121,6 +123,20 @@ export type ImpactSnapshot = {
 function asNumber(value: unknown): number | null {
   const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+/**
+ * A stored timestamp as an ISO string, whatever the driver handed over.
+ *
+ * node-postgres decodes `timestamptz` into a Date, so a `typeof === "string"`
+ * test dropped EVERY observation's time on the floor -- and with no times to
+ * match on, the cross table found no joint observations at all and fell back
+ * to pricing from the latest snapshot alone. Caught on production: every
+ * route's 24h band collapsed onto its headline.
+ */
+export function asIsoTs(value: unknown): string | null {
+  if (value instanceof Date) return Number.isFinite(value.valueOf()) ? value.toISOString() : null;
+  return typeof value === "string" && value !== "" ? value : null;
 }
 
 /**
@@ -191,7 +207,7 @@ export function sampleFromSnapshot(
     spreadBps,
     impactBps,
     markPrice: quoteCurveMarkPrice(snapshot.quote_curve_json),
-    ts: typeof snapshot.ts === "string" ? snapshot.ts : null,
+    ts: asIsoTs(snapshot.ts),
     firstLimitSide: quoteCurveMarketSide(snapshot.quote_curve_json, fillNotionalUsd)?.firstLimitSide ?? null,
   };
 }
