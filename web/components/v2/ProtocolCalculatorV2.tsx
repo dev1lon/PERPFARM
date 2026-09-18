@@ -620,7 +620,27 @@ function headlineTiles(
  * value is a payment, while a negative value is a credit. The UI reverses
  * that into the familiar −cost / +credit presentation.
  */
-function CostTile({ label, value, tip, signed = false }: { label: string; value: number | null; tip?: string; signed?: boolean }) {
+/**
+ * The fee rate a row was actually charged, in bps, read back out of its own
+ * numbers: every calculator computes fees as accountVolume x bps / 10,000, so
+ * the division is exact and no new field has to travel through the API.
+ *
+ * Returns null where there is nothing to state -- no volume, or a route that
+ * pays no fee at all.
+ */
+export function appliedFeeBps(feeCostUsd: number | null | undefined, accountVolumeUsd: number | null | undefined): number | null {
+  if (!feeCostUsd || !accountVolumeUsd) return null;
+  const bps = (feeCostUsd / accountVolumeUsd) * 10_000;
+  return Number.isFinite(bps) && bps > 0 ? Math.round(bps * 100) / 100 : null;
+}
+
+/** "13 bps", "4.5 bps" -- no trailing zeros on a whole rate. */
+export function feeBpsLabel(feeCostUsd: number | null | undefined, accountVolumeUsd: number | null | undefined): string | undefined {
+  const bps = appliedFeeBps(feeCostUsd, accountVolumeUsd);
+  return bps === null ? undefined : `${bps} bps`;
+}
+
+function CostTile({ label, value, tip, note, signed = false }: { label: string; value: number | null; tip?: string; note?: string; signed?: boolean }) {
   const fundingState = signed && value !== null
     ? value < 0
       ? { amount: `+${formatUsd(Math.abs(value))}`, tone: "text-positive" }
@@ -637,6 +657,13 @@ function CostTile({ label, value, tip, signed = false }: { label: string; value:
       <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-text-muted sm:whitespace-nowrap">
         {label}
         {tip ? <InfoTip text={tip} /> : null}
+        {/* The RATE this row was charged at, next to the money it produced.
+            Two pairs on the same two venues can pay different fees -- a venue
+            that prices by instrument class charges an index a fifth of a single
+            stock, and a discounted market a fraction again -- and without the
+            rate on the row the difference reads as an error. The tooltip keeps
+            the full schedule; this is the one number that explains THIS row. */}
+        {note ? <span className="shrink-0 font-mono-num text-[11px] text-text-dim">{note}</span> : null}
       </span>
       <span className={`shrink-0 whitespace-nowrap font-mono-num text-[13px] ${fundingState?.tone ?? (value !== null && value < 0 ? "text-positive" : "text-text-primary")}`}>
         {fundingState?.amount ?? formatUsd(value)}
@@ -1524,6 +1551,7 @@ export function RouteResults({
               <CostTile
                 label={tr(locale, "Fees", "Комиссии")}
                 value={best.feeCostUsd ?? 0}
+                note={feeBpsLabel(best.feeCostUsd, data?.accountVolumeUsd)}
                 tip={(best.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined}
               />
             </div>
@@ -1849,10 +1877,15 @@ export function RouteResults({
                               // is out of sight once a reader opens a row.
                               isSwap(p.pair) ? swapFundingTip(locale) : fundingTip(locale),
                             ],
-                            [tr(locale, "Fees", "Комиссии"), p.feeCostUsd ?? 0, (p.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined],
-                          ] as [string, number | null, string | undefined][]
-                        ).map(([k, v, tip]) => (
-                          <CostTile key={k} label={k} value={v} tip={tip} signed={k.startsWith(tr(locale, "Funding", "Фандинг"))} />
+                            [
+                              tr(locale, "Fees", "Комиссии"),
+                              p.feeCostUsd ?? 0,
+                              (p.feeCostUsd ?? 0) > 0 ? feeTip(locale, data) : undefined,
+                              feeBpsLabel(p.feeCostUsd, data?.accountVolumeUsd),
+                            ],
+                          ] as [string, number | null, string | undefined, string | undefined][]
+                        ).map(([k, v, tip, note]) => (
+                          <CostTile key={k} label={k} value={v} tip={tip} note={note} signed={k.startsWith(tr(locale, "Funding", "Фандинг"))} />
                         ))}
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectRecommendedPair, type PairRanking, type RankingResponse } from "./ProtocolCalculatorV2";
+import { feeBpsLabel, selectRecommendedPair, type PairRanking, type RankingResponse } from "./ProtocolCalculatorV2";
 
 /**
  * The recommendation must be minimal inside the category it claims.
@@ -65,5 +65,32 @@ describe("selectRecommendedPair", () => {
     const closed = pair({ pair: "XAU", cycleCostUsd: 1.0, closedVenues: ["ondo"] });
     const [best] = selectRecommendedPair(bandsOf([dearInsideTheBand]), "ondo", [closed, dearInsideTheBand]);
     expect(best?.pair).toBe("EWY");
+  });
+});
+
+/**
+ * The rate each row was charged at, read back out of its own money. Two pairs
+ * on the same two venues pay different fees whenever a venue prices by
+ * instrument class, and the row has to be able to say so.
+ */
+describe("feeBpsLabel", () => {
+  it("reads the rate back out of the fee and the volume", () => {
+    // Entropy maker 3 + QFEX single-stock taker 10 = 13 bps of $20,000.
+    expect(feeBpsLabel(26, 20_000)).toBe("13 bps");
+    // The same route at ten times the size is the same rate.
+    expect(feeBpsLabel(260, 200_000)).toBe("13 bps");
+  });
+
+  it("keeps a fractional rate, and drops a trailing zero", () => {
+    // Entropy maker 3 + a discounted 1.5 bps taker.
+    expect(feeBpsLabel(9, 20_000)).toBe("4.5 bps");
+    expect(feeBpsLabel(16, 20_000)).toBe("8 bps");
+  });
+
+  it("says nothing where there is nothing to state", () => {
+    expect(feeBpsLabel(0, 20_000)).toBeUndefined();
+    expect(feeBpsLabel(26, 0)).toBeUndefined();
+    expect(feeBpsLabel(null, 20_000)).toBeUndefined();
+    expect(feeBpsLabel(26, undefined)).toBeUndefined();
   });
 });
