@@ -208,3 +208,20 @@ def test_only_dead_markets_are_skipped():
     assert job._is_eligible(market(5_000.0, 0.0))
     assert not job._is_eligible(market(0.0, 0.0))
     assert not job._is_eligible(market(None, 55_000.0))
+
+
+def test_recommendation_reference_volume_matches_the_website() -> None:
+    """The card names the size the worker compared at, so it has to be that size.
+
+    The protocol page prints "compared at $100,000 per account" from its own
+    constant. If the job ever moves its reference volume, the label beside the
+    recommendation would keep quoting the old one -- an unverifiable claim
+    about how the number was produced.
+    """
+
+    from perpfarm.jobs.hedge_recommendations import REFERENCE_VOLUME_USD
+
+    source = _source("route-model.ts")
+    match = re.search(r"RECOMMENDATION_REFERENCE_VOLUME_USD\s*=\s*([\d_.]+)", source)
+    assert match is not None, "route-model.ts no longer names the recommendation reference volume"
+    assert _evaluate(match.group(1), {}) == REFERENCE_VOLUME_USD

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetClassLabel, classFees, feesVaryByAssetClass, publishedFees } from "./venue-fees";
+import { assetClassLabel, classFees, feesVaryByAssetClass, publishedFees, resolveFees } from "./venue-fees";
 
 /**
  * QFEX charges by instrument class: 0.05%/0.10% on a single stock, 0.02%/0.05%
@@ -51,5 +51,35 @@ describe("publishedFees", () => {
     expect(assetClassLabel("EQUITY")).toBe("stocks");
     expect(assetClassLabel("fx")).toBe("FX");
     expect(assetClassLabel(null)).toBeNull();
+  });
+});
+
+/**
+ * One order of sources, for every page and for the worker.
+ *
+ * The cross table read the stored row; the same-protocol table never did. The
+ * day the fee watcher writes one, those two pages priced the same venue
+ * differently -- so the order lives in resolveFees() alone now, and it is the
+ * order hedge_recommendations.py already used.
+ */
+describe("resolveFees", () => {
+  it("lets THIS market's class beat a stored venue-wide rate", () => {
+    // QFEX's stored row is its single-stock 5/10; an index costs 2/5.
+    const stored = { makerBps: 5, takerBps: 10 };
+    expect(resolveFees("qfex", "INDEX", stored)).toEqual({ makerBps: 2, takerBps: 5 });
+  });
+
+  it("uses the stored row where the venue has one rate for everything", () => {
+    expect(resolveFees("hibachi", null, { makerBps: 0.5, takerBps: 4 })).toEqual({ makerBps: 0.5, takerBps: 4 });
+  });
+
+  it("falls back to the published headline with no stored row", () => {
+    expect(resolveFees("hibachi", null, null)).toEqual(publishedFees("hibachi"));
+    expect(resolveFees("hibachi", null)).toEqual(publishedFees("hibachi"));
+  });
+
+  it("treats a venue with neither as unknown, never as free", () => {
+    expect(resolveFees("not-a-venue", null, null)).toBeNull();
+    expect(resolveFees("not-a-venue", null, { makerBps: null, takerBps: null })).toBeNull();
   });
 });

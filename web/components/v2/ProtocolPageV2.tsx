@@ -14,6 +14,8 @@ import type { ActivityResponse } from "@/lib/activity/types";
 import type { CheapestRoute } from "@/lib/cheapest-route";
 import type { FdvMarketResponse } from "@/lib/fdv-market";
 import { hasProtocolPage, protocolPageConfig, type ActivityConfig, type PointsConfig, type ProtocolPageConfig, type ProtocolSlug } from "@/lib/protocol-page";
+import { formatUsd, formatUtcDateTime } from "@/lib/format";
+import { RECOMMENDATION_REFERENCE_VOLUME_USD, snapshotsAreFresh } from "@/lib/route-model";
 import type { VenueSummary } from "@/lib/types";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
@@ -268,12 +270,14 @@ function HedgeCard({
 }
 
 /** A stored route the server already read, in the shape this card uses. */
-function acceptedRoute(route: CheapestRoute | null | undefined): { partnerSlug: string; cycleCostUsd: number } | null {
+function acceptedRoute(
+  route: CheapestRoute | null | undefined,
+): { partnerSlug: string; cycleCostUsd: number; snapshotAt: string | null } | null {
   // A partner is accepted only if it resolves to a listed protocol. Anything
   // else -- a fixture venue, a retired slug -- is treated as no answer rather
   // than printing a raw database slug.
   return route?.partnerSlug && protocolName(route.partnerSlug) && typeof route.cycleCostUsd === "number" && Number.isFinite(route.cycleCostUsd)
-    ? { partnerSlug: route.partnerSlug, cycleCostUsd: route.cycleCostUsd }
+    ? { partnerSlug: route.partnerSlug, cycleCostUsd: route.cycleCostUsd, snapshotAt: route.snapshotAt ?? null }
     : null;
 }
 
@@ -302,11 +306,13 @@ function CheapestRouteCard({
   // arrives with that stored result. The fetch below is the fallback for when
   // the server could not read it.
   const server = acceptedRoute(initialRoute);
-  const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number } | null>(server);
+  const [cheapest, setCheapest] = useState<{ partnerSlug: string; cycleCostUsd: number; snapshotAt: string | null } | null>(server);
   // "Lowest cost" is a claim about a computed comparison. Until one has been
-  // loaded the card must not make it, on any protocol.
-  const [routeStatus, setRouteStatus] = useState<"loading" | "ready" | "unavailable">(
-    server ? "ready" : initialRoute ? "unavailable" : "loading",
+  // loaded the card must not make it, on any protocol -- and neither may it
+  // make it from a comparison the collector stopped updating hours ago, which
+  // it used to do without limit because nothing looked at `snapshotAt`.
+  const [routeStatus, setRouteStatus] = useState<"loading" | "ready" | "stale" | "unavailable">(
+    server ? (snapshotsAreFresh(server.snapshotAt) ? "ready" : "stale") : initialRoute ? "unavailable" : "loading",
   );
   useEffect(() => {
     if (initialRoute) return;
@@ -321,7 +327,7 @@ function CheapestRouteCard({
           return;
         }
         setCheapest(accepted);
-        setRouteStatus("ready");
+        setRouteStatus(snapshotsAreFresh(accepted.snapshotAt) ? "ready" : "stale");
       })
       .catch(() => {
         if (active) setRouteStatus("unavailable");
@@ -338,17 +344,35 @@ function CheapestRouteCard({
       homeName={homeName}
       partnerSlug={cheapestSlug}
       linked={cheapestSlug !== homeSlug}
-      tip={tr(locale, "Updates hourly.", "Обновляется раз в час.")}
+      // The BASIS of the comparison, stated where the claim is made: this card
+      // is a fixed hourly comparison at one size, while the calculator below it
+      // answers whatever size the reader types. Unlabelled, the two figures
+      // read as one number that disagrees with itself.
+      tip={tr(
+        locale,
+        `Hourly comparison at ${formatUsd(RECOMMENDATION_REFERENCE_VOLUME_USD)} per account.`,
+        `Часовое сравнение при ${formatUsd(RECOMMENDATION_REFERENCE_VOLUME_USD)} на аккаунт.`,
+      )}
       body={
         routeStatus === "ready"
-          ? tr(locale, "Approved delta-neutral setup with two accounts — the lowest-cost route.", "Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью.")
+          ? tr(
+              locale,
+              `Approved delta-neutral setup with two accounts — the lowest-cost route, compared at ${formatUsd(RECOMMENDATION_REFERENCE_VOLUME_USD)} per account.`,
+              `Одобренный дельта-нейтральный сетап с двумя аккаунтами — маршрут с минимальной стоимостью при ${formatUsd(RECOMMENDATION_REFERENCE_VOLUME_USD)} на аккаунт.`,
+            )
           : routeStatus === "loading"
             ? tr(locale, "Comparing routes…", "Сравниваем маршруты…")
-            : tr(
-                locale,
-                "Approved delta-neutral setup with two accounts. The hourly route comparison is unavailable right now, so no cheapest route is claimed.",
-                "Одобренный дельта-нейтральный сетап с двумя аккаунтами. Часовое сравнение маршрутов сейчас недоступно, поэтому самый дешёвый маршрут не заявляется.",
-              )
+            : routeStatus === "stale"
+              ? tr(
+                  locale,
+                  `Approved delta-neutral setup with two accounts. The last route comparison is from ${formatUtcDateTime(cheapest?.snapshotAt)}, so no cheapest route is claimed.`,
+                  `Одобренный дельта-нейтральный сетап с двумя аккаунтами. Последнее сравнение маршрутов — ${formatUtcDateTime(cheapest?.snapshotAt)}, поэтому самый дешёвый маршрут не заявляется.`,
+                )
+              : tr(
+                  locale,
+                  "Approved delta-neutral setup with two accounts. The hourly route comparison is unavailable right now, so no cheapest route is claimed.",
+                  "Одобренный дельта-нейтральный сетап с двумя аккаунтами. Часовое сравнение маршрутов сейчас недоступно, поэтому самый дешёвый маршрут не заявляется.",
+                )
       }
       tags={
         routeStatus === "ready"

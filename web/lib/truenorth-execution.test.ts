@@ -3,6 +3,7 @@ import { findProtocol } from "./home-protocols";
 import { hasProtocolPage } from "./protocol-page";
 import {
   BUILDER_FEE_CAP_BPS,
+  TRUE_NORTH_BUILDER_FEE,
   TRUE_NORTH_EXECUTION_VENUES,
   isExecutionOnlyVenue,
   trueNorthExecutionVenues,
@@ -37,5 +38,25 @@ describe("TrueNorth execution venues", () => {
       expect(hasProtocolPage(venue.slug)).toBe(false);
     }
     expect(isExecutionOnlyVenue("variational")).toBe(false);
+  });
+});
+
+/**
+ * A ceiling must never be read as a rate. The only source for what TrueNorth
+ * charges is TrueNorth (a builder code's rate is set per order, so no exchange
+ * publishes it), so the reading is pinned with its date and its books.
+ */
+describe("the builder fee that is actually charged", () => {
+  it("is not the maximum the exchanges allow", () => {
+    expect(TRUE_NORTH_BUILDER_FEE.bps).toBe(0);
+    expect(TRUE_NORTH_BUILDER_FEE.bps).not.toBe(BUILDER_FEE_CAP_BPS);
+  });
+
+  it("carries the date it was read and the books it was read for", () => {
+    expect(TRUE_NORTH_BUILDER_FEE.checkedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(TRUE_NORTH_BUILDER_FEE.source.length).toBeGreaterThan(20);
+    expect([...TRUE_NORTH_BUILDER_FEE.appliesTo].sort()).toEqual(
+      TRUE_NORTH_EXECUTION_VENUES.map((venue) => venue.slug).slice().sort(),
+    );
   });
 });

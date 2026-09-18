@@ -126,6 +126,18 @@ export function quantizeAccountVolumeUsd(accountVolumeUsd: number): number {
  */
 export const STALE_SNAPSHOT_MS = 3 * 60 * 60 * 1_000;
 
+/**
+ * The size the WORKER compares hedge routes at, mirrored here so the card can
+ * say what its recommendation was computed on.
+ *
+ * Keep in lockstep with REFERENCE_VOLUME_USD in
+ * worker/perpfarm/jobs/hedge_recommendations.py -- the parity test asserts it.
+ * The calculator on the same page defaults to a different size, which is fine
+ * (one is a fixed comparison, the other is the reader's own question), but an
+ * unlabelled figure invited the two to be read as the same number.
+ */
+export const RECOMMENDATION_REFERENCE_VOLUME_USD = 100_000;
+
 /** Whether the newest snapshot in a set is recent enough to price from. */
 export function snapshotsAreFresh(newestBookTs: string | null, now = Date.now()): boolean {
   if (newestBookTs === null) return false;

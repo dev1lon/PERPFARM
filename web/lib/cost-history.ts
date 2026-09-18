@@ -418,3 +418,26 @@ export function quoteFromSamples(live: CostSample | null, history: CostSample[])
     observations: samples.length,
   };
 }
+
+/**
+ * The venue-wide schedule the fee watcher stored, or null when it has written
+ * none. Same row, same precedence rule and same date test the cross table
+ * uses, so one venue cannot be priced two ways depending on which page asked.
+ */
+export async function loadStoredFees(venueSlug: string): Promise<{ makerBps: number | null; takerBps: number | null } | null> {
+  const rows = await rowsFor<{ maker_bps: string | number | null; taker_bps: string | number | null }>(
+    `fees:${venueSlug}`,
+    () =>
+      getPool().query(
+        `SELECT DISTINCT ON (f.venue_id) f.maker_bps, f.taker_bps
+           FROM fee_schedules f
+           JOIN venues v ON v.id = f.venue_id
+          WHERE v.slug = $1 AND f.effective_from <= CURRENT_DATE
+          ORDER BY f.venue_id, f.effective_from DESC, f.created_at DESC`,
+        [venueSlug],
+      ),
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return { makerBps: asNumber(row.maker_bps), takerBps: asNumber(row.taker_bps) };
+}

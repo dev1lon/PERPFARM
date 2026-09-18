@@ -18,18 +18,40 @@ export type TrueNorthExecutionVenue = (typeof TRUE_NORTH_EXECUTION_VENUES)[numbe
 export const TRUE_NORTH_DEFAULT_EXECUTION_VENUE: TrueNorthExecutionVenue = "hyperliquid";
 
 /**
- * The most a builder can add on top of the exchange's own maker/taker fee, on
- * either book: "an incremental fee up to 10 bps, added on top of the base
- * maker/taker fee and paid to the builder" (docs.ondoperps.xyz/fees), and the
- * same 10 bps ceiling on Hyperliquid perps (hyperliquid.gitbook.io, "Builder
- * codes").
+ * The most a builder is ALLOWED to add on top of the exchange's own
+ * maker/taker fee, on either book: "an incremental fee up to 10 bps, added on
+ * top of the base maker/taker fee and paid to the builder"
+ * (docs.ondoperps.xyz/fees), and the same 10 bps ceiling on Hyperliquid perps
+ * (hyperliquid.gitbook.io, "Builder codes").
  *
- * TrueNorth charges NONE of it, and says so as a selling point: "builder fee
- * the whole way: zero" (its own post, June 2026), and "$0 builder fee" with
- * "executes at 0%" in September 2026. So a route through it costs what the
- * exchange costs, and this ceiling is kept only to say what it is NOT charging.
+ * A CEILING IS NOT A RATE. This exists only to say what is not being charged;
+ * nothing prices with it. What is actually charged is the constant below,
+ * which carries its own source and the date it was read.
  */
 export const BUILDER_FEE_CAP_BPS = 10;
+
+/**
+ * What TrueNorth actually adds, per book -- with where that was read and when,
+ * so the claim can be re-checked rather than taken on trust.
+ *
+ * It is zero, and TrueNorth says so as a selling point. An independent
+ * confirmation from the exchanges themselves is not available: a builder code's
+ * rate is set per order by the builder, so neither Hyperliquid nor Ondo
+ * publishes what a given builder charges. That makes the venue's own statement
+ * the only source there is -- which is exactly why it is pinned here with a
+ * date instead of being folded into prose, and why the ceiling above must
+ * never stand in for it.
+ */
+export const TRUE_NORTH_BUILDER_FEE = {
+  /** Charged on top of the exchange's rate, in bps. */
+  bps: 0,
+  source:
+    'TrueNorth own posts: "Builder fee the whole way: zero" (June 2026), and "$0 builder fee" with "executes at 0%" (September 2026)',
+  /** When those were read (ISO date, UTC). */
+  checkedOn: "2026-09-15",
+  /** The books the reading was verified for -- both of its execution venues. */
+  appliesTo: ["hyperliquid", "ondo"],
+} as const;
 
 /** The execution books of a broker page; empty for a venue with its own book. */
 export function trueNorthExecutionVenues(

@@ -29,7 +29,7 @@ import {
   referenceRunMs,
 } from "@/lib/route-model";
 import { instrumentClass, isSwap, isTradfiMarket, swapUnderlying, venueTicker, type InstrumentClass } from "@/lib/tradfi";
-import { assetClassLabel, classFees, publishedFees } from "@/lib/venue-fees";
+import { assetClassLabel, classFees, publishedFees, resolveFees } from "@/lib/venue-fees";
 
 type VenueMarketRow = {
   slug: string;
@@ -165,10 +165,12 @@ function venueBps(
   // cost, the day the fee watcher writes a row. schedulesOf() below and the
   // worker already read them in this order. Only a venue we have neither for
   // is treated as unknown.
-  const byClass = classFees(row.slug, row.asset_class);
-  const published = publishedFees(row.slug, row.asset_class);
-  const takerFee = byClass?.takerBps ?? asNumber(row.taker_bps) ?? published?.takerBps ?? null;
-  const makerFee = byClass?.makerBps ?? asNumber(row.maker_bps) ?? published?.makerBps ?? null;
+  const resolved = resolveFees(row.slug, row.asset_class, {
+    makerBps: asNumber(row.maker_bps),
+    takerBps: asNumber(row.taker_bps),
+  });
+  const takerFee = resolved?.takerBps ?? null;
+  const makerFee = resolved?.makerBps ?? null;
   if (spread === null || impact === null || takerFee === null || makerFee === null) return null;
   return {
     maker: makerFee,

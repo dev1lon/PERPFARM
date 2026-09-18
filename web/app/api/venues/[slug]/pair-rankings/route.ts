@@ -1,7 +1,7 @@
 import { snapshotCacheControl } from "@/lib/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { UserFacingError, publicMessage } from "@/lib/api-error";
-import { loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
+import { loadStoredFees, loadVenueMarkets, quoteFromSamples } from "@/lib/cost-history";
 import {
   FUNDING_HOLD_HOURS,
   DEAD_MARKET_OI_USD,
@@ -17,7 +17,7 @@ import {
   snapshotsAreFresh,
 } from "@/lib/route-model";
 import { instrumentClass, isSwap, isTradfiMarket, venueTicker, type InstrumentClass } from "@/lib/tradfi";
-import { assetClassLabel, publishedFees } from "@/lib/venue-fees";
+import { assetClassLabel, publishedFees, resolveFees } from "@/lib/venue-fees";
 import { isReadyVenue, protocolName } from "@/lib/venue-status";
 
 /**
@@ -232,6 +232,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const tradfiOnly = request.nextUrl.searchParams.get("tradfiOnly") === "true";
     const fillNotionalUsd = accountVolumeUsd / 2;
     const markets = await loadVenueMarkets(slug, fillNotionalUsd);
+    // The row the fee watcher wrote, read here for the same reason the cross
+    // table reads it: a venue whose published rate has moved is priced from
+    // what was observed, not from what is typed in. resolveFees() owns the
+    // order (class schedule, then this row, then the published headline), so
+    // the two tables cannot disagree about one venue any more.
+    const storedFees = await loadStoredFees(slug);
 
     let newestBookTs: string | null = null;
     let observations = 0;
@@ -261,7 +267,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // read once per venue would be wrong on every market outside the
         // majority class. Venues with one venue-wide rate are unaffected: they
         // hand back the same numbers whatever the class is.
-        const marketFees = publishedFees(slug, market.assetClass) ?? fees;
+        const marketFees = resolveFees(slug, market.assetClass, storedFees) ?? fees;
         const feeBps = marketFees.makerBps + marketFees.takerBps;
         appliedFees.set(market.assetClass ?? "", marketFees);
         const costOf = (legBps: number) => (2 * fillNotionalUsd * (legBps + feeBps)) / 10_000;

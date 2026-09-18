@@ -64,8 +64,10 @@ const PUBLISHED_FEES: Record<string, VenueFees> = {
   // market's own fee fields report. Premium accounts pay for lower latency;
   // they are not the account a farmer opens by default.
   lighterrh: { makerBps: 0.0, takerBps: 0.0 },
-  // Hyperliquid core, tier 0 (0.015% maker / 0.045% taker). TrueNorth's
-  // builder fee is 0 bps, so its route uses these exchange rates unchanged.
+  // Hyperliquid core, tier 0 (0.015% maker / 0.045% taker). TrueNorth adds no
+  // builder fee, so its route uses these exchange rates unchanged -- the rate,
+  // its source and the date it was read live in TRUE_NORTH_BUILDER_FEE
+  // (lib/truenorth-execution.ts), never as the 10 bps ceiling beside it.
   hyperliquid: { makerBps: 1.5, takerBps: 4.5 },
   // Ondo's live enabled-contract schedule (0.01% maker / 0.025% taker).
   ondo: { makerBps: 1.0, takerBps: 2.5 },
@@ -165,4 +167,32 @@ export function publishedFees(slug: string, assetClass?: string | null): VenueFe
     if (forClass) return forClass;
   }
   return PUBLISHED_FEES[slug] ?? null;
+}
+
+/**
+ * THE order of fee sources, for every caller.
+ *
+ *   1. this market's CLASS schedule -- a venue that prices by instrument class
+ *      (QFEX) or by fee mode (trade.xyz, Hyperliquid) charges an index a fifth
+ *      of a single stock, so one venue-wide rate is wrong on most of its list;
+ *   2. the STORED row the fee watcher wrote, which is one venue-wide rate;
+ *   3. the published headline above, so a venue is never priced as free.
+ *
+ * It lived in three places and one of them was different: the cross table read
+ * the stored row, the same-protocol table never did. The day the fee watcher
+ * writes a row, those two answers part company for the same venue -- and the
+ * worker (hedge_recommendations.py, `by_class` then `market.maker_bps` then
+ * PUBLISHED_FEES) already read them in this order.
+ */
+export function resolveFees(
+  slug: string,
+  assetClass: string | null | undefined,
+  stored?: { makerBps: number | null; takerBps: number | null } | null,
+): VenueFees | null {
+  const byClass = classFees(slug, assetClass);
+  if (byClass) return byClass;
+  const published = publishedFees(slug, assetClass);
+  const makerBps = stored?.makerBps ?? published?.makerBps ?? null;
+  const takerBps = stored?.takerBps ?? published?.takerBps ?? null;
+  return makerBps === null || takerBps === null ? null : { makerBps, takerBps };
 }
