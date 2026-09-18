@@ -698,11 +698,11 @@ function qfex(locale: Locale): ProtocolPageConfig {
     ),
     priorities: [
       {
-        title: tr(locale, "Eligible volume", "Подходящий объём"),
+        title: tr(locale, "$100k+, spread over weeks", "$100k+, растянутые на недели"),
         body: tr(
           locale,
-          "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
-          "Позиция PerpFarm — держаться TradFi, на нём протокол и сфокусирован, и набирать естественный объём на топовых рынках.",
+          "The asset is the record itself — $100k or more of it, built while the book is still invite-only and the field is small. Spread it across weeks: one burst of turnover reads as a farm, a habit reads as a user.",
+          "Ценность — сама история: $100k и больше, набранные пока вход по инвайтам и участников мало. Растягивайте это на недели: один залп оборота читается как ферма, привычка — как пользователь.",
         ),
       },
       {
