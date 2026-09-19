@@ -408,10 +408,10 @@ function HedgeRecommendations({
     : isReadyVenue(config.slug)
       ? [{ slug: config.slug as string, name: config.name, route: initialRoute ?? undefined }]
       : [];
-  const partner = config.hedge.partner;
-  // The hand-placed partner card always shows; the computed ones only where a
+  const partners = config.hedge.partners;
+  // The hand-placed cards always show; the computed ones only where a
   // comparison exists, so the grid is sized from what is actually rendered.
-  const columns = books.length + 1;
+  const columns = books.length + partners.length;
   return (
     <div className="mt-11">
       <H2>{tr(locale, "Hedge-route recommendations", "Рекомендации по хедж-маршрутам")}</H2>
@@ -426,14 +426,17 @@ function HedgeRecommendations({
             initialRoute={book.route}
           />
         ))}
-        <HedgeCard
-          homeSlug={config.slug}
-          homeName={config.name}
-          partnerSlug={partner.slug}
-          linked
-          body={partner.body}
-          tags={partner.tags}
-        />
+        {partners.map((partner) => (
+          <HedgeCard
+            key={partner.slug}
+            homeSlug={config.slug}
+            homeName={config.name}
+            partnerSlug={partner.slug}
+            linked
+            body={partner.body}
+            tags={partner.tags}
+          />
+        ))}
       </div>
     </div>
   );

@@ -116,7 +116,8 @@ export type ProtocolPageConfig = {
     docsUrl: string;
     docsLabel: string;
   };
-  hedge: { intro: string; partner: HedgePartnerCard };
+  /** One card per hand-placed hedge, in the order they should be read. */
+  hedge: { intro: string; partners: HedgePartnerCard[] };
   activity: ActivityConfig;
   points: PointsConfig;
   /** Present when the page is a broker, not an order book of its own. */
@@ -260,7 +261,7 @@ function variational(locale: Locale): ProtocolPageConfig {
         "General guidance for Variational, independent of the calculation below.",
         "Общие рекомендации по Variational, независимо от расчёта ниже.",
       ),
-      partner: {
+      partners: [{
         slug: "txflow",
         body: tr(
           locale,
@@ -271,7 +272,7 @@ function variational(locale: Locale): ProtocolPageConfig {
           [tr(locale, "Farm retro points", "Фарм ретро-поинтов"), "ok"],
           [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
         ],
-      },
+      }],
     },
     activity: {
       kind: "campaign",
@@ -419,7 +420,7 @@ function txflow(locale: Locale): ProtocolPageConfig {
       // commodities and FX" -- the same RWA ground TxFlow trades. Their own
       // docs say nothing about points or retroactive credit, so that part is
       // worded as an expectation, not as their claim.
-      partner: {
+      partners: [{
         slug: "qfex",
         body: tr(
           locale,
@@ -430,7 +431,7 @@ function txflow(locale: Locale): ProtocolPageConfig {
           [tr(locale, "Retro activity", "Ретро-активность"), "ok"],
           [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
         ],
-      },
+      }],
     },
     activity: {
       kind: "campaign",
@@ -522,7 +523,7 @@ type WrittenGuidance = {
   /** The hand-placed hedge card, once someone has written it. Without it the
    *  page keeps the pending default, which names Variational and carries a
    *  TODO -- a placeholder, not a judgement about this protocol's partner. */
-  partner?: HedgePartnerCard;
+  partners?: HedgePartnerCard[];
 };
 
 /**
@@ -560,7 +561,7 @@ function withGuidance(base: ProtocolPageConfig, locale: Locale, written: Written
         body: tip.body,
       })),
     },
-    hedge: written.partner ? { ...base.hedge, partner: written.partner } : base.hedge,
+    hedge: written.partners ? { ...base.hedge, partners: written.partners } : base.hedge,
   };
 }
 
@@ -635,7 +636,7 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
         `General guidance for ${protocol.name}, independent of the calculation below.`,
         `Общие рекомендации по ${protocol.name}, независимо от расчёта ниже.`,
       ),
-      partner: {
+      partners: [{
         slug: protocol.hedgePartnerSlug,
         // TODO(manual): why this partner, in one sentence.
         body: tr(
@@ -645,7 +646,7 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
         ),
         // TODO(manual): the real reason for this partner, and its tags.
         tags: [[tr(locale, "Deepest book", "Самый глубокий стакан"), "neutral"]],
-      },
+      }],
     },
     activity: { kind: "none" },
     points: { kind: "none" },
@@ -753,7 +754,7 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
     ],
-    partner: {
+    partners: [{
       slug: "txflow",
       body: tr(
         locale,
@@ -764,7 +765,18 @@ function qfex(locale: Locale): ProtocolPageConfig {
         [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
         [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
       ],
-    },
+    }, {
+      slug: "entropy",
+      body: tr(
+        locale,
+        "Early stage with no points either: US equities and pre-IPO names, the same ground QFEX trades.",
+        "Тоже ранняя стадия и без поинтов: акции США и pre-IPO, те же рынки, что у QFEX.",
+      ),
+      tags: [
+        [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
+        [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
+      ],
+    }],
   });
 }
 
@@ -1380,7 +1392,7 @@ function truenorth(locale: Locale): ProtocolPageConfig {
     ...written,
     hedge: {
       ...written.hedge,
-      partner: {
+      partners: [{
         slug: "txflow",
         body: tr(
           locale,
@@ -1391,7 +1403,7 @@ function truenorth(locale: Locale): ProtocolPageConfig {
           [tr(locale, "Farm retro points", "Ретро-активность"), "ok"],
           [tr(locale, "Manual execution", "Ручное исполнение"), "neutral"],
         ],
-      },
+      }],
     },
     execution: {
       venues: TRUE_NORTH_EXECUTION_VENUES,

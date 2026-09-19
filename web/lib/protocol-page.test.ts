@@ -66,8 +66,8 @@ describe("protocol page reference", () => {
       config.guidance.tips.map((_, index) => String(index + 1).padStart(2, "0")),
     );
     expect(config.guidance.docsUrl).toMatch(/^https:\/\//);
-    expect(config.hedge.partner.slug).not.toBe(slug);
-    expect(config.hedge.partner.tags.length).toBeGreaterThan(0);
+    expect(config.hedge.partners[0]!.slug).not.toBe(slug);
+    expect(config.hedge.partners[0]!.tags.length).toBeGreaterThan(0);
   });
 
   it.each(WRITTEN_GUIDANCE)("%s states its priorities and practical tips", (slug) => {
@@ -111,7 +111,7 @@ describe("protocol page reference", () => {
       expect(execution?.feeNote).toMatch(/10 bps/);
       expect(execution?.venues.map((venue) => venue.short)).toEqual(["HL", "Ondo"]);
       expect(protocolPageConfig(slug, "en").tradeUrl).toBe("https://truenorth.xyz/ref/C7T2BX");
-      expect(protocolPageConfig(slug, "en").hedge.partner.slug).toBe("txflow");
+      expect(protocolPageConfig(slug, "en").hedge.partners[0]!.slug).toBe("txflow");
     }
     // A catalogued protocol with no data path is still never ready.
     expect(isReadyVenue("hotstuff")).toBe(false);
