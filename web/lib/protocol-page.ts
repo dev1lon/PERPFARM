@@ -758,8 +758,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
       slug: "txflow",
       body: tr(
         locale,
-        "Two early-stage perp venues with no points yet, both focused on TradFi.",
-        "Два перпа на ранней стадии без поинтов, оба с фокусом на TradFi.",
+        "A perp dex leaning TradFi, no points yet, with retroactivity confirmed.",
+        "Perp dex с уклоном в TradFi, без поинтов, ретроактивность подтверждена.",
       ),
       tags: [
         [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
@@ -769,8 +769,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
       slug: "entropy",
       body: tr(
         locale,
-        "Early stage with no points either: US equities and pre-IPO names, the same ground QFEX trades.",
-        "Тоже ранняя стадия и без поинтов: акции США и pre-IPO, те же рынки, что у QFEX.",
+        "A HIP-3 perp dex with no points, its own mechanics, and retroactivity.",
+        "HIP-3 perp dex без поинтов, с уникальной механикой и ретроактивностью.",
       ),
       tags: [
         [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
