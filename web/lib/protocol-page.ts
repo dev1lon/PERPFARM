@@ -519,6 +519,10 @@ type WrittenGuidance = {
   priorities: [{ title: string; body: string }, { title: string; body: string }];
   /** Four, in the order a farmer would do them. */
   tips: Array<{ title: string; body: string }>;
+  /** The hand-placed hedge card, once someone has written it. Without it the
+   *  page keeps the pending default, which names Variational and carries a
+   *  TODO -- a placeholder, not a judgement about this protocol's partner. */
+  partner?: HedgePartnerCard;
 };
 
 /**
@@ -556,6 +560,7 @@ function withGuidance(base: ProtocolPageConfig, locale: Locale, written: Written
         body: tip.body,
       })),
     },
+    hedge: written.partner ? { ...base.hedge, partner: written.partner } : base.hedge,
   };
 }
 
@@ -748,6 +753,18 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
     ],
+    partner: {
+      slug: "txflow",
+      body: tr(
+        locale,
+        "Two early-stage perp venues with no points yet, both focused on TradFi.",
+        "Два перпа на ранней стадии без поинтов, оба с фокусом на TradFi.",
+      ),
+      tags: [
+        [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
+        [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
+      ],
+    },
   });
 }
 
