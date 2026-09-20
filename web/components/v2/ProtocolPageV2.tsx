@@ -376,7 +376,9 @@ function CheapestRouteCard({
       }
       tags={
         routeStatus === "ready"
-          ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"], [tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
+          // One badge, not two saying the same thing: "Lowest cost" and
+          // "Cheapest route" were the same claim printed twice.
+          ? [[tr(locale, "Lowest cost", "Дешевле всего"), "ok"]]
           : [[tr(locale, "Cheapest route", "Самый дешёвый маршрут"), "neutral"]]
       }
     />

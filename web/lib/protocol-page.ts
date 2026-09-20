@@ -424,11 +424,22 @@ function txflow(locale: Locale): ProtocolPageConfig {
         slug: "qfex",
         body: tr(
           locale,
-          "RWA perps on the same ground as TxFlow — US equities, commodities and FX, around the clock. Early stage with no announced points, so activity here may be counted later.",
-          "RWA-перпы на том же поле, что и TxFlow — акции США, сырьё и FX, круглосуточно. Ранняя стадия, поинты не анонсированы, поэтому активность может быть зачтена позже.",
+          "TradFi only, no crypto at all. Early stage, no points yet.",
+          "Только TradFi, крипты нет вовсе. Ранняя стадия, поинтов пока нет.",
         ),
         tags: [
-          [tr(locale, "Retro activity", "Ретро-активность"), "ok"],
+          [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
+          [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
+        ],
+      }, {
+        slug: "entropy",
+        body: tr(
+          locale,
+          "A HIP-3 perp dex with no points, its own mechanics, and retroactivity.",
+          "HIP-3 perp dex без поинтов, с уникальной механикой и ретроактивностью.",
+        ),
+        tags: [
+          [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
           [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
         ],
       }],
@@ -858,6 +869,32 @@ function entropy(locale: Locale): ProtocolPageConfig {
           "EU and US addresses were refused in August; farmers registered and deposited through Asian exits instead.",
           "В августе адреса из ЕС и США не пускали; регистрировались и заносили депозит через азиатские выходы.",
         ),
+      },
+    ],
+    partners: [
+      {
+        slug: "qfex",
+        body: tr(
+          locale,
+          "TradFi only, no crypto at all. Early stage, no points yet.",
+          "Только TradFi, крипты нет вовсе. Ранняя стадия, поинтов пока нет.",
+        ),
+        tags: [
+          [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
+          [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
+        ],
+      },
+      {
+        slug: "txflow",
+        body: tr(
+          locale,
+          "A perp dex leaning TradFi, no points yet, with retroactivity confirmed.",
+          "Perp dex с уклоном в TradFi, без поинтов, ретроактивность подтверждена.",
+        ),
+        tags: [
+          [tr(locale, "Retro points", "Ретро-поинты"), "ok"],
+          [tr(locale, "Higher cost", "Дороже исполнение"), "warn"],
+        ],
       },
     ],
   });

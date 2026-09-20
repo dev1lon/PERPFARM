@@ -34,24 +34,24 @@ export interface HomeProtocol {
 /** Tier S — what is worth farming now. */
 export const TIER_S: HomeProtocol[] = [
   { slug: "variational", name: "Variational", season: "Season 1", farmEstimate: "$6–15/pt", otc: "$24", status: "live" },
-  { slug: "tradexyz", name: "TradeXYZ", season: "Season 0", farmEstimate: "from $6/100k volume", status: "records" },
   { slug: "txflow", name: "TxFlow", season: "Season 0", farmEstimate: "from $29/100k volume", status: "retro" },
   // Retro POINTS, not merely recorded activity: the badge is green because
   // what is being counted is expected to be paid in points.
   { slug: "truenorth", name: "TrueNorth", season: "Season 0", status: "retro" },
   { slug: "qfex", name: "QFEX", season: "Season 0", farmEstimate: "from $43/100k volume", status: "retro" },
+  { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k volume", status: "retro" },
 ];
 
 /** Tier A — worth farming, one rung down. Same card as Tier S: a protocol
  *  without a points programme yet still has to say so in the same words, and a
  *  smaller card could not. */
 export const EARLY: HomeProtocol[] = [
+  { slug: "tradexyz", name: "TradeXYZ", season: "Season 0", farmEstimate: "from $6/100k volume", status: "records" },
   // September weeks 6-7: $0.43 a point at the best, $0.70-1.00 typical.
   { slug: "risex", name: "RiseX", season: "Season 1", farmEstimate: "$0.4–1/pt", status: "live" },
   { slug: "polymarket", name: "Polymarket", season: "Season 0", farmEstimate: "from $28/100k volume", status: "retro-activity" },
   // Perps on private-market assets (pre-IPO names), not the crypto majors.
   // Carded like QFEX: a season, retro points expected.
-  { slug: "entropy", name: "Entropy", season: "Season 0", farmEstimate: "from $78/100k volume", status: "retro" },
   // Priced since 2026-09-10; Hibachi runs a points programme
   // (docs.hibachi.xyz/hibachi-rewards/hibachi-points).
   // Farmers' own reading: about $0.03 a point on 9 September (about $0.10
