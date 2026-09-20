@@ -814,60 +814,66 @@ function entropy(locale: Locale): ProtocolPageConfig {
     locale,
   );
   return withGuidance(base, locale, {
+    // PLACEHOLDER, copied from the QFEX page on request as a starting
+    // point to edit. Several lines are QFEX's alone and are NOT true of
+    // Entropy -- the invite code, the Growth Mode rates, the feedback
+    // channels. Entropy's own guidance (io: pairs only, a one-to-two-day
+    // hold, 0.003% maker, the 20-50% rebate, the regional block) is in git
+    // history at commit 993e327 if any of it should come back.
     intro: tr(
       locale,
-      "Points are not live yet, so what matters is which markets will count when they are.",
-      "Поинтов пока нет, поэтому важно другое — какие рынки зачтут, когда они появятся.",
+      "The team has confirmed it is recording activity for a retroactive award. Nothing is paid out yet; PerpFarm expects the programme in October or November.",
+      "Команда подтвердила, что активность записывается под ретро-начисление. Выплат пока нет; программу PerpFarm ожидает в октябре-ноябре.",
     ),
     priorities: [
       {
-        title: tr(locale, "Only the io: pairs", "Только пары io:"),
+        title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "Retroactive credit is for Entropy's own contracts — io:ANTH, io:OAI, io:SNDK. Hyperliquid's native pairs sit on the same screen and do not count as Entropy activity, which is the one mistake that wastes a whole month here.",
-          "Ретро-зачёт идёт за собственные контракты Entropy — io:ANTH, io:OAI, io:SNDK. Нативные пары Hyperliquid лежат в том же окне и активностью Entropy не считаются: именно эта ошибка стоит впустую потраченного месяца.",
+          "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
+          "По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
         ),
       },
       {
-        title: tr(locale, "Hold 1–2 days, by report", "Удержание 1–2 дня, по слухам"),
+        title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, активность органичная"),
         body: tr(
           locale,
-          "No formula is published. Farmers who asked in September were told open interest will count beside volume, so the field's answer is a pre-IPO position left open a day or two rather than turnover.",
-          "Формулы нет. Тем, кто спрашивал в сентябре, отвечали, что вместе с объёмом будет считаться открытый интерес, — поэтому общий ответ такой: позиция по pre-IPO на сутки-двое, а не оборот.",
+          "There is no points programme yet, so the criterion is volume — and it has to be organic, without wash trading.",
+          "Поинт-программы ещё нет, поэтому главный критерий — объём. Но объём должен быть органичным, без wash trading.",
         ),
       },
     ],
     tips: [
       {
-        title: tr(locale, "Rest maker orders at 0.003%", "Стойте мейкером под 0.003%"),
+        title: tr(locale, "Register with an invite code", "Регистрируйтесь по инвайт-коду"),
         body: tr(
           locale,
-          "Maker is 0.003% against 0.009% taker — about $3 per $100k on the passive side, before the rebate below.",
-          "Мейкер — 0.003% против 0.009% тейкера: около $3 на $100k пассивной стороной, ещё до ребейта ниже.",
+          "The book is invite-only, and a code takes another 10% off trading fees.",
+          "Вход только по приглашению, а код снимает ещё 10% с торговых комиссий.",
         ),
       },
       {
-        title: tr(locale, "Anthropic is the deepest book", "Самый глубокий стакан — Anthropic"),
+        title: tr(locale, "Trade the pairs in Growth Mode", "Торгуйте пары в Growth Mode"),
         body: tr(
           locale,
-          "It held $19–25M of open interest in September, more than anywhere else for that asset, which is why size fills there without moving the price.",
-          "В сентябре в нём было $19–25M открытого интереса — больше, чем где-либо ещё по этому активу, поэтому крупный размер входит без сдвига цены.",
+          "A market QFEX puts in Growth Mode is charged at tier 1 — 0 bps maker and 0.6–1.5 taker — against 5/10 on an ordinary equity. Which markets are in it changes, so the rate printed on each route below is the one that route was actually charged.",
+          "Рынок, который QFEX ставит в Growth Mode, идёт по тиру 1 — 0 bps maker и 0.6–1.5 taker — против 5/10 на обычной акции. Состав меняется, поэтому на каждом маршруте ниже напечатана та ставка, по которой он и посчитан.",
         ),
       },
       {
-        title: tr(locale, "Claim the 20–50% fee rebate", "Заберите возврат комиссий 20–50%"),
+        title: tr(locale, "Leave feedback", "Оставляйте фидбек"),
         body: tr(
           locale,
-          "The referral programme returns a fifth to a half of Entropy's share of your fees — on a venue with no points yet, that is the only certain payout.",
-          "Реферальная программа возвращает от пятой части до половины платформенной доли ваших комиссий — на площадке без поинтов это единственная гарантированная выплата.",
+          "The team follows feedback closely and pays for it. The chat on the site and the Discord are where it lands.",
+          "Команда внимательно следит за фидбеком и вознаграждает за него. Писать — в чат на сайте и в Discord.",
         ),
       },
       {
-        title: tr(locale, "Expect a regional block", "Ждите региональной блокировки"),
+        title: tr(locale, "Earlier volume is worth more", "Ранний объём стоит дороже"),
         body: tr(
           locale,
-          "EU and US addresses were refused in August; farmers registered and deposited through Asian exits instead.",
-          "В августе адреса из ЕС и США не пускали; регистрировались и заносили депозит через азиатские выходы.",
+          "Do the maximum organic activity before the points programme starts: early activity has always been rewarded better than the same volume once the points are running.",
+          "Сделайте максимальную органическую активность до начала поинт-программы: ранняя активность всегда награждалась лучше, чем тот же объём, когда поинты уже активны.",
         ),
       },
     ],
