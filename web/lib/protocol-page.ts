@@ -721,8 +721,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "Build the volume with maker orders, organically.",
-          "Набивайте объём maker-ордерами, органично.",
+          "With no points programme yet, volume is the main criterion for retroactivity.",
+          "Так как пока нет поинт-программы, главным критерием ретроактивности будет объём.",
         ),
       },
       {
@@ -744,7 +744,7 @@ function qfex(locale: Locale): ProtocolPageConfig {
         ),
       },
       {
-        title: tr(locale, "Trade the pairs in Growth Mode", "Торгуйте пары в Growth Mode"),
+        title: tr(locale, "Trade the Growth Mode pairs with maker orders", "Торгуйте пары в Growth Mode maker-ордерами"),
         body: tr(
           locale,
           "A market QFEX puts in Growth Mode is charged at tier 1 — 0 bps maker and 0.6–1.5 taker — against 5/10 on an ordinary equity. Which markets are in it changes, so the rate printed on each route below is the one that route was actually charged.",
@@ -834,8 +834,8 @@ function entropy(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "With no points programme yet, total volume is what retroactivity will be judged on.",
-          "Поинт-программы пока нет, поэтому главным критерием ретроактивности будет total volume.",
+          "With no points programme yet, volume is the main criterion for retroactivity.",
+          "Так как пока нет поинт-программы, главным критерием ретроактивности будет объём.",
         ),
       },
       {
