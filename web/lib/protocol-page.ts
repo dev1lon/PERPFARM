@@ -860,8 +860,8 @@ function entropy(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Trade on Entropy markets", "Торгуйте рынки Entropy"),
         body: tr(
           locale,
-          "Trade inside the Entropy tab: it is the protocol's own mechanics that it is watching.",
-          "Торгуйте рынки именно во вкладке Entropy — сам протокол смотрит на активность в своей механике.",
+          "Trade the markets inside the Entropy tab: that is what earns the most retro points.",
+          "Торгуйте рынки во вкладке Entropy: так за это дадут больше всего ретро-поинтов.",
         ),
       },
       {
