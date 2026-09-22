@@ -511,6 +511,8 @@ type PendingProtocol = {
   docsUrl: string;
   /** TODO(manual): replace with the referral link. */
   tradeUrl: string;
+  /** What that referral link is worth, printed beside the Trade button. */
+  tradePerk?: { en: string; ru: string };
   season: string;
   /** What the home card already claims, so both say the same thing. */
   farmEstimate: { value: string; positive?: boolean; tip?: string };
@@ -583,6 +585,7 @@ function pendingProtocol(protocol: PendingProtocol, locale: Locale): ProtocolPag
     twitterUrl: protocol.twitterUrl,
     docsUrl: protocol.docsUrl,
     tradeUrl: protocol.tradeUrl,
+    tradePerk: protocol.tradePerk,
     heroMetrics: [
       { label: tr(locale, "Season", "Сезон"), value: protocol.season },
       {
@@ -718,8 +721,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
         title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
-          "По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
+          "Build the volume with maker orders, organically.",
+          "Набивайте объём maker-ордерами, органично.",
         ),
       },
       {
@@ -805,7 +808,8 @@ function entropy(locale: Locale): ProtocolPageConfig {
       name: "Entropy",
       twitterUrl: "https://x.com/entropyIO",
       docsUrl: "https://docs.entropy.io/",
-      tradeUrl: "https://entropy.io", // TODO(manual): referral link
+      tradeUrl: "https://entropy.io/?r=devilon",
+      tradePerk: { en: "25% fee discount", ru: "−25% к комиссии" },
       season: "0",
       farmEstimate: { value: tr(locale, "Retro points", "Ретро-поинты"), positive: true, tip: retroExpectedTip("Entropy", locale) },
       otcPointPrice: "TBA",
@@ -822,16 +826,16 @@ function entropy(locale: Locale): ProtocolPageConfig {
     // history at commit 993e327 if any of it should come back.
     intro: tr(
       locale,
-      "The team has confirmed it is recording activity for a retroactive award. Nothing is paid out yet; PerpFarm expects the programme in October or November.",
-      "Команда подтвердила, что активность записывается под ретро-начисление. Выплат пока нет; программу PerpFarm ожидает в октябре-ноябре.",
+      "A HIP-3 perp dex. Retroactivity is what is being farmed for now; PerpFarm expects the points programme in November.",
+      "HIP-3 перп-декс. Пока идёт фарм ретроактивности, а поинт-программу PerpFarm ожидает в ноябре.",
     ),
     priorities: [
       {
         title: tr(locale, "Eligible volume", "Подходящий объём"),
         body: tr(
           locale,
-          "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
-          "По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
+          "With no points programme yet, total volume is what retroactivity will be judged on.",
+          "Поинт-программы пока нет, поэтому главным критерием ретроактивности будет total volume.",
         ),
       },
       {
@@ -845,27 +849,27 @@ function entropy(locale: Locale): ProtocolPageConfig {
     ],
     tips: [
       {
-        title: tr(locale, "Register with an invite code", "Регистрируйтесь по инвайт-коду"),
+        title: tr(locale, "Register through the referral link", "Регистрируйтесь по реф-ссылке с 25% fee discount"),
         body: tr(
           locale,
-          "The book is invite-only, and a code takes another 10% off trading fees.",
-          "Вход только по приглашению, а код снимает ещё 10% с торговых комиссий.",
+          "The link carries a 25% fee discount, which makes the whole farm materially cheaper.",
+          "Ссылка даёт 25% fee discount — так ваши затраты будут сильно меньше.",
         ),
       },
       {
-        title: tr(locale, "Trade the pairs in Growth Mode", "Торгуйте пары в Growth Mode"),
+        title: tr(locale, "Trade on Entropy markets", "Торгуйте рынки Entropy"),
         body: tr(
           locale,
-          "A market QFEX puts in Growth Mode is charged at tier 1 — 0 bps maker and 0.6–1.5 taker — against 5/10 on an ordinary equity. Which markets are in it changes, so the rate printed on each route below is the one that route was actually charged.",
-          "Рынок, который QFEX ставит в Growth Mode, идёт по тиру 1 — 0 bps maker и 0.6–1.5 taker — против 5/10 на обычной акции. Состав меняется, поэтому на каждом маршруте ниже напечатана та ставка, по которой он и посчитан.",
+          "Trade inside the Entropy tab: it is the protocol's own mechanics that it is watching.",
+          "Торгуйте рынки именно во вкладке Entropy — сам протокол смотрит на активность в своей механике.",
         ),
       },
       {
-        title: tr(locale, "Leave feedback", "Оставляйте фидбек"),
+        title: tr(locale, "Use limit orders", "Используйте лимитные ордера"),
         body: tr(
           locale,
-          "The team follows feedback closely and pays for it. The chat on the site and the Discord are where it lands.",
-          "Команда внимательно следит за фидбеком и вознаграждает за него. Писать — в чат на сайте и в Discord.",
+          "Trade with limit orders wherever you can: it is the cheaper side of every route.",
+          "Торгуйте лимитными ордерами по возможности — так вы уменьшите свои затраты.",
         ),
       },
       {
