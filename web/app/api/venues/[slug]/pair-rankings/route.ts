@@ -144,6 +144,9 @@ const PROTOCOLS: Record<string, ProtocolConfig> = {
 type PairRanking = {
   pair: string;
   openInterestUsd: number;
+  /** The market's own 24h turnover. The table sorts on it, so it travels with
+   *  the row rather than being fetched a second time. */
+  volume24hUsd: number;
   /**
    * What the instrument is -- equity, index, commodity, fx, prelisting, crypto.
    *
@@ -180,6 +183,7 @@ function round(value: PairRanking): PairRanking {
   return {
     ...value,
     openInterestUsd: Math.round(value.openInterestUsd),
+    volume24hUsd: Math.round(value.volume24hUsd),
     cycleCostUsd: usd(value.cycleCostUsd),
     costRangeLowUsd: usd(value.costRangeLowUsd),
     costRangeHighUsd: usd(value.costRangeHighUsd),
@@ -283,6 +287,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return {
           pair: market.pair,
           openInterestUsd,
+          volume24hUsd: Math.round(market.volume24hUsd),
           // The venue's own class first, our curated map second -- the same rule
           // the fee lookup above follows: the venue is the authority on what its
           // own listing is.

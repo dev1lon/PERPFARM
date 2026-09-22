@@ -312,6 +312,12 @@ export interface PairRanking {
    *  mislabelled crypto. */
   assetClass?: InstrumentClass;
   openInterestUsd: number;
+  /** 24h turnover: the market's own on a same-protocol route, and the THINNER
+   *  of the two legs on a cross route -- a hedge can only do the volume both
+   *  books can carry. Optional because an answer cached before this shipped
+   *  carries neither; such a row shows a dash and sorts last. */
+  volume24hUsd?: number;
+  volume24hMinUsd?: number;
   competitionEligible: boolean;
   firstLimitSide: "long" | "short";
   cycleCostUsd: number;
@@ -447,7 +453,20 @@ function orders(firstLimitSide: "long" | "short") {
 
 // The pair cell holds the ticker plus up to three marks (class, Swap, CE);
 // at 130px "USOILP Commodity Swap CE" ran over the open-interest column.
-const GRID = "grid-cols-[40px_280px_104px_minmax(110px,1fr)_minmax(110px,1fr)_110px_110px_104px_28px]";
+// #, pair, 24h volume, open interest, long, short, cycle cost, chevron. The
+// entry/exit order columns moved into the expanded row: they repeat what the
+// two leg cards there already say, and they cost the width the legs needed.
+const GRID = "grid-cols-[40px_260px_104px_104px_minmax(120px,1fr)_minmax(120px,1fr)_104px_28px]";
+
+/** What the table is ordered by. Cost ascending is the default: the question
+ *  the page answers is which pair is cheapest. */
+export type SortKey = "cost" | "volume" | "oi";
+
+/** A row's 24h turnover, whichever API answered, or null when neither did. */
+export function volumeOf(pair: { volume24hUsd?: number; volume24hMinUsd?: number }): number | null {
+  const value = pair.volume24hUsd ?? pair.volume24hMinUsd;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
 
 
 const SPREAD_RISK_TONE: Record<Exclude<SpreadRisk, "unknown">, string> = {
@@ -1249,6 +1268,37 @@ export function selectRecommendedPair(
   return [cheapestOf(all), "cheapest"];
 }
 
+/** A column header that orders the table. */
+function SortHeader({
+  label,
+  column,
+  sort,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  column: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" };
+  onSort: (key: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sort.key === column;
+  return (
+    <div className={align === "right" ? "translate-x-2 text-right" : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`pf-transition inline-flex items-center gap-1 ${active ? "text-text-primary" : "hover:text-text-primary"}`}
+      >
+        {label}
+        <span aria-hidden="true" className={`text-[9px] ${active ? "text-accent" : "text-text-dim"}`}>
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : "▾"}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function RouteResults({
   data,
   top,
@@ -1322,6 +1372,19 @@ export function RouteResults({
   };
 
   const PAGE_SIZE = 10;
+  // Cheapest first until the reader says otherwise.
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "cost", dir: "asc" });
+  function sortBy(key: SortKey) {
+    setExpanded(null);
+    setPage(0);
+    // A second click on the same column reverses it; a new column starts the
+    // way that column is usually read -- cheapest cost, biggest volume and OI.
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: key === "cost" ? "asc" : "desc" },
+    );
+  }
   // Which classes this answer contains, and how many rows each holds. Counted
   // over the whole answer, never the current page: the strip has to say what
   // choosing a class would give you, not what is on screen now.
@@ -1360,10 +1423,24 @@ export function RouteResults({
           name.toUpperCase().includes(needle),
         ),
       );
+  // A row with no reading for the sorted column goes last in either
+  // direction: "unknown" is not "zero", and it must not win a sort.
+  const ordered = [...matches].sort((left, right) => {
+    const valueOf = (pair: PairRanking) =>
+      sort.key === "cost" ? pair.cycleCostUsd : sort.key === "oi" ? pair.openInterestUsd : volumeOf(pair);
+    const a = valueOf(left);
+    const b = valueOf(right);
+    if (a === null || !Number.isFinite(a)) return b === null || !Number.isFinite(b) ? 0 : 1;
+    if (b === null || !Number.isFinite(b)) return -1;
+    return sort.dir === "asc" ? a - b : b - a;
+  });
+  // The cheapest row is marked wherever it lands, so ordering by volume does
+  // not paint an expensive pair green just for being first.
+  const cheapestCostUsd = matches.length > 0 ? Math.min(...matches.map((pair) => pair.cycleCostUsd)) : null;
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   // A filter or a search can shorten the list under the current page.
   const safePage = Math.min(page, pageCount - 1);
-  const visible = matches.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const visible = ordered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
   const goToPage = (next: number) => {
     setExpanded(null);
     setPage(Math.max(0, Math.min(next, pageCount - 1)));
@@ -1721,12 +1798,11 @@ export function RouteResults({
             <div className={`hidden lg:grid ${GRID} items-center gap-3 rounded-xl border border-border bg-surface-1 px-[18px] py-3.5 text-[12px] font-medium text-text-muted`}>
               <div>#</div>
               <div>{tr(locale, "Pair", "Пара")}</div>
-              <div>{tr(locale, "Open interest", "Открытый интерес")}</div>
+              <SortHeader label={tr(locale, "24h volume", "Объём 24ч")} column="volume" sort={sort} onSort={sortBy} />
+              <SortHeader label={tr(locale, "Open interest", "Открытый интерес")} column="oi" sort={sort} onSort={sortBy} />
               <div>{tr(locale, "Long", "Лонг")}</div>
               <div>{tr(locale, "Short", "Шорт")}</div>
-              <div>{tr(locale, "Entry orders", "Вход")}</div>
-              <div>{tr(locale, "Exit orders", "Выход")}</div>
-              <div className="translate-x-2 text-right">{tr(locale, "Cycle cost", "Стоимость цикла")}</div>
+              <SortHeader label={tr(locale, "Cycle cost", "Стоимость цикла")} column="cost" sort={sort} onSort={sortBy} align="right" />
               <div />
             </div>
             {visible.map((p, index) => {
@@ -1755,6 +1831,7 @@ export function RouteResults({
                           <span title="Competition eligible" className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
                       </div>
+                      <div className="font-mono-num text-[13px] text-text-muted">{volumeOf(p) === null ? "—" : compactUsd(volumeOf(p)!)}</div>
                       <div className="font-mono-num text-[13px] text-text-muted">{compactUsd(p.openInterestUsd)}</div>
                       {/* Each venue's own ticker under its name, on every row and
                           in the expanded card alike: Variational's SPY route is
@@ -1770,9 +1847,7 @@ export function RouteResults({
                           </span>
                         </div>
                       ))}
-                      <div className="font-mono-num text-[12px] text-text-muted">{o.entry}</div>
-                      <div className="font-mono-num text-[12px] text-text-muted">{o.exit}</div>
-                      <div className={`text-right font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</div>
+                      <div className={`text-right font-mono-num text-[16px] ${p.cycleCostUsd === cheapestCostUsd ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</div>
                       <div className="text-right text-[11px] text-text-dim">{open ? "▲" : "▼"}</div>
                     </div>
 
@@ -1788,7 +1863,7 @@ export function RouteResults({
                         {showEligible && p.competitionEligible && (
                           <span className="rounded-sm border border-accent/40 px-1.5 py-0.5 font-mono-num text-[10px] text-accent">CE</span>
                         )}
-                        <span className={`ml-auto font-mono-num text-[16px] ${i === 0 ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
+                        <span className={`ml-auto font-mono-num text-[16px] ${p.cycleCostUsd === cheapestCostUsd ? "text-positive" : "text-text-primary"}`}>{formatUsd(p.cycleCostUsd)}</span>
                         <span className="text-[11px] text-text-dim">{open ? "▲" : "▼"}</span>
                       </div>
                       <div className="flex min-w-0 items-center gap-1.5 pl-[26px] font-mono-num text-[10px] text-text-muted">
