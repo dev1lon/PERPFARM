@@ -13,6 +13,9 @@ type CrossPair = {
    *  row then prints no class rather than guessing one. */
   assetClass?: InstrumentClass;
   oiAUsd: number; oiBUsd: number; mainOiUsd: number; volume24hMinUsd: number;
+  /** Optional so an answer cached before it shipped still parses: the row then
+   *  shows a dash for volume rather than the wrong venue's figure. */
+  mainVolume24hUsd?: number;
   longVenue: string; shortVenue: string; makerVenue: string; takerVenue: string;
   execCostUsd: number; feeCostUsd: number; spreadCostUsd: number; slippageCostUsd: number;
   fundingUsd: number | null; cycleCostUsd: number;
@@ -85,10 +88,12 @@ export function CrossPairRankings({
     return {
       pair: pair.pair,
       openInterestUsd: pair.mainOiUsd,
-      // The thinner leg's turnover: a hedge can only do the volume both books
-      // carry. Rebuilding the row field by field is why the table's volume
-      // column read as a dash on every cross route while the API had it.
-      volume24hMinUsd: pair.volume24hMinUsd,
+      // Both figures describe the venue whose page this is -- the same one
+      // `mainOiUsd` reports. They belong to a book, so mixing the home venue's
+      // open interest with the thinner leg's volume put two different venues
+      // in neighbouring columns. (Rebuilding the row field by field is also
+      // why the volume column read as a dash here at first.)
+      volume24hUsd: pair.mainVolume24hUsd,
       // Classified server-side, where the venue's own `asset_class` is in hand.
       // Recomputing it here from the ticker alone would silently disagree with
       // the same-venue table for any market a venue classifies itself.

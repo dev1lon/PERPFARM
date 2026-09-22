@@ -61,7 +61,14 @@ export type CrossPair = {
   oiBUsd: number;
   /** Gross OI of the protocol the user started the calculator on. */
   mainOiUsd: number;
+  /** The THINNER leg's 24h turnover: a hedge can only do the volume both books
+   *  carry. Kept because the listing rule reads it. */
   volume24hMinUsd: number;
+  /** 24h turnover ON THE PROTOCOL BEING FARMED, the same venue `mainOiUsd`
+   *  reports. Volume and open interest each belong to one book, so a row that
+   *  mixed the home venue's OI with the thinner leg's volume described two
+   *  different venues in neighbouring columns. */
+  mainVolume24hUsd: number;
   longVenue: string;
   shortVenue: string;
   /** Venue the resting LIMIT orders sit on (the cheaper side to be passive). */
@@ -356,6 +363,7 @@ function round(p: CrossPair): CrossPair {
     oiAUsd: Math.round(p.oiAUsd),
     oiBUsd: Math.round(p.oiBUsd),
     volume24hMinUsd: Math.round(p.volume24hMinUsd),
+    mainVolume24hUsd: Math.round(p.mainVolume24hUsd),
     execCostUsd: Number(p.execCostUsd.toFixed(2)),
     feeCostUsd: Number(p.feeCostUsd.toFixed(2)),
     fundingUsd: p.fundingUsd === null ? null : Number(p.fundingUsd.toFixed(2)),
@@ -673,6 +681,7 @@ export async function computeCrossRankings(
       oiBUsd: displayedOiB,
       mainOiUsd: displayedOiA,
       volume24hMinUsd: Math.min(volA, volB),
+      mainVolume24hUsd: volA,
       longVenue,
       shortVenue,
       execCostUsd,
