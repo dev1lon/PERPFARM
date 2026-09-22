@@ -85,6 +85,10 @@ export function CrossPairRankings({
     return {
       pair: pair.pair,
       openInterestUsd: pair.mainOiUsd,
+      // The thinner leg's turnover: a hedge can only do the volume both books
+      // carry. Rebuilding the row field by field is why the table's volume
+      // column read as a dash on every cross route while the API had it.
+      volume24hMinUsd: pair.volume24hMinUsd,
       // Classified server-side, where the venue's own `asset_class` is in hand.
       // Recomputing it here from the ticker alone would silently disagree with
       // the same-venue table for any market a venue classifies itself.
