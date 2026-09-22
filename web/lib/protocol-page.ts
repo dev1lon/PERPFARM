@@ -338,8 +338,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
       kicker: tr(locale, "How TxFlow awards points", "Как TxFlow начисляет поинты"),
       intro: tr(
         locale,
-        "No points programme is announced yet, so this is PerpFarm's opinion.",
-        "Программа поинтов пока не анонсирована, так что это наше мнение.",
+        "The team has confirmed it is recording activity for a retroactive award. PerpFarm expects the programme in October.",
+        "Команда подтвердила, что активность записывается под ретро-начисление. Программу PerpFarm ожидает в октябре.",
       ),
       priorities: [
         {
@@ -348,8 +348,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
           title: tr(locale, "Eligible volume", "Подходящий объём"),
           body: tr(
             locale,
-            "PerpFarm's view is to favour TradFi, where the protocol is focused, while building natural volume on the top markets.",
-            "По мнению PerpFarm, стоит делать упор на TradFi — это фокус протокола — и набирать естественный объём в топовых рынках.",
+            "With no points programme yet, volume is the main criterion for retroactivity. Trade the TradFi markets — that is where the protocol is focused.",
+            "Так как пока нет поинт-программы, главным критерием ретроактивности будет объём. Торгуйте на TradFi-рынках — протокол сфокусирован на TradFi.",
           ),
           primary: true,
         },
@@ -359,8 +359,8 @@ function txflow(locale: Locale): ProtocolPageConfig {
           title: tr(locale, "Hold 2–4 hours, keep activity organic", "Держите 2–4 часа, торгуйте органично"),
           body: tr(
             locale,
-            "Hold a position for 2–4 hours rather than closing it straight away. TxFlow runs on its own L1, so every action a trader takes is written on chain — use TP/SL and stay clear of wash trading. With no public points criteria, spot activity may also be worth considering; the pair calculator prices Perps only and does not estimate spot execution.",
-            "Держите позицию 2–4 часа, а не закрывайте сразу. TxFlow работает на собственном L1-чейне, поэтому все действия трейдера записываются в блокчейн — используйте TP/SL и не занимайтесь wash-трейдингом. Пока нет публичных критериев поинтов, можно также рассмотреть активность на споте; калькулятор пар считает только Perps и не оценивает исполнение на споте.",
+            "There is no points programme yet, so the criterion is volume — and it has to be organic, without wash trading. Do some activity on spot as well.",
+            "Поинт-программы ещё нет, поэтому критерий — объём, и он должен быть органичным, без wash trading. Также сделайте активность на споте.",
           ),
           primary: false,
         },
@@ -713,8 +713,8 @@ function qfex(locale: Locale): ProtocolPageConfig {
   return withGuidance(base, locale, {
     intro: tr(
       locale,
-      "The team has confirmed it is recording activity for a retroactive award. Nothing is paid out yet; PerpFarm expects the programme in October or November.",
-      "Команда подтвердила, что активность записывается под ретро-начисление. Выплат пока нет; программу PerpFarm ожидает в октябре-ноябре.",
+      "The team has confirmed it is recording activity for a retroactive award. PerpFarm expects the programme in October or November.",
+      "Команда подтвердила, что активность записывается под ретро-начисление. Программу PerpFarm ожидает в октябре-ноябре.",
     ),
     priorities: [
       {
