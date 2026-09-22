@@ -164,8 +164,8 @@ function LegTicker({ ticker, compact = false }: { ticker?: string; compact?: boo
 function swapFundingTip(locale: Locale): string {
   return tr(
     locale,
-    "Swaps accrue financing once a day at the 17:00 ET close instead of funding, triple once a week to cover the weekend. Variational's public feed does not publish the rate.",
-    "Своп начисляет финансирование раз в день на закрытии в 17:00 ET вместо фандинга, раз в неделю — тройное за выходные. Публичный фид Variational ставку не публикует.",
+    "Instead of funding, a swap accrues financing once a day at the 17:00 ET close, and only a position held through it pays — triple once a week to cover the weekend. Variational's public feed does not publish the rate.",
+    "Вместо фандинга своп начисляет финансирование раз в день на закрытии в 17:00 ET, и платит только позиция, дожившая до среза; раз в неделю оно тройное за выходные. Публичный фид Variational ставку не публикует.",
   );
 }
 
