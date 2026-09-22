@@ -205,12 +205,13 @@ const OI_BANDS_BY_VENUE: Record<string, OiBands> = {
   //   QFEX  162 markets, $0-13.7M (p33 $665k, p66 $1.28M) -> 56 / 54 / 41
   //   RiseX  26 markets, $109k-11.2M (p33 $447k, p66 $2.0M)
   //   Entropy 3 markets, $504k-6.0M -- too few to band.
-  // Set by hand on 2026-09-22, over the terciles below: QFEX's High starts at
-  // $3M and its Medium at $1.2M, Entropy's Medium at $500k with its High left
-  // where it was.
+  // Set by hand on 2026-09-22, over the terciles below: QFEX High above $3M
+  // and Medium from $1.2M, Entropy High above $2M and Medium $500k-$2M. The
+  // top of Medium IS the bottom of High -- there are two cutoffs, not three,
+  // so every market lands in exactly one band.
   qfex: { high: 3_000_000, medium: 1_200_000 },
   risex: { high: 2_000_000, medium: 450_000 },
-  entropy: { high: 3_000_000, medium: 500_000 },
+  entropy: { high: 2_000_000, medium: 500_000 },
   // Polymarket Perps is deliberately NOT listed: its book (p33 $62k, p66
   // $265k) sits almost exactly on the default cutoffs, and all three of its
   // bands fill.
