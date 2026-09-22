@@ -217,11 +217,11 @@ function variational(locale: Locale): ProtocolPageConfig {
       tips: [
         {
           n: "01",
-          title: tr(locale, "Farm TradFi markets first", "В первую очередь фармите TradFi-рынки"),
+          title: tr(locale, "Farm SWAPS markets", "Фармите рынки SWAPS"),
           body: tr(
             locale,
-            "They execute cheaper than crypto pairs and award more points for the same volume.",
-            "Их исполнение дешевле, чем у крипто-пар, а поинтов за тот же объём они дают больше.",
+            "Trade the swap markets — they carry a 2x boost to points.",
+            "Торгуйте рынки swap — они дают 2x boost к поинтам.",
           ),
         },
         {
