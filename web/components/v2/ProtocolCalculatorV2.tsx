@@ -1275,12 +1275,15 @@ function SortHeader({
   sort,
   onSort,
   align = "left",
+  note,
 }: {
   label: string;
   column: SortKey;
   sort: { key: SortKey; dir: "asc" | "desc" };
   onSort: (key: SortKey) => void;
   align?: "left" | "right";
+  /** Whose book the column reports, where two venues are on screen. */
+  note?: string;
 }) {
   const active = sort.key === column;
   return (
@@ -1295,6 +1298,7 @@ function SortHeader({
           {active ? (sort.dir === "asc" ? "▲" : "▼") : "▾"}
         </span>
       </button>
+      {note ? <div className="truncate text-[10px] font-normal text-text-dim">{note}</div> : null}
     </div>
   );
 }
@@ -1437,6 +1441,9 @@ export function RouteResults({
   // The cheapest row is marked wherever it lands, so ordering by volume does
   // not paint an expensive pair green just for being first.
   const cheapestCostUsd = matches.length > 0 ? Math.min(...matches.map((pair) => pair.cycleCostUsd)) : null;
+  // Named only where it could be mistaken: with a hedge on another venue, both
+  // columns still report the protocol being farmed, never the hedge leg.
+  const bookNote = hedgeSlug && hedgeSlug !== homeSlug ? tr(locale, `on ${homeName}`, `на ${homeName}`) : undefined;
   const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
   // A filter or a search can shorten the list under the current page.
   const safePage = Math.min(page, pageCount - 1);
@@ -1798,8 +1805,10 @@ export function RouteResults({
             <div className={`hidden lg:grid ${GRID} items-center gap-3 rounded-xl border border-border bg-surface-1 px-[18px] py-3.5 text-[12px] font-medium text-text-muted`}>
               <div>#</div>
               <div>{tr(locale, "Pair", "Пара")}</div>
-              <SortHeader label={tr(locale, "24h volume", "Объём 24ч")} column="volume" sort={sort} onSort={sortBy} />
-              <SortHeader label={tr(locale, "Open interest", "Открытый интерес")} column="oi" sort={sort} onSort={sortBy} />
+              {/* Both figures belong to ONE book, and on a cross route two
+                  venues are on screen -- so the column says whose they are. */}
+              <SortHeader label={tr(locale, "24h volume", "Объём 24ч")} column="volume" sort={sort} onSort={sortBy} note={bookNote} />
+              <SortHeader label={tr(locale, "Open interest", "Открытый интерес")} column="oi" sort={sort} onSort={sortBy} note={bookNote} />
               <div>{tr(locale, "Long", "Лонг")}</div>
               <div>{tr(locale, "Short", "Шорт")}</div>
               <SortHeader label={tr(locale, "Cycle cost", "Стоимость цикла")} column="cost" sort={sort} onSort={sortBy} align="right" />
