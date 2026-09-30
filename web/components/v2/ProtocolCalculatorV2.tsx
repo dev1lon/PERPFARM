@@ -667,10 +667,10 @@ function CostTile({ label, value, tip, note, signed = false }: { label: string; 
         ? { amount: `−${formatUsd(value)}`, tone: "text-negative" }
         : { amount: formatUsd(0), tone: "text-text-primary" }
     : null;
+  // `sm:gap-3` is load-bearing: justify-between alone leaves NO minimum gap, so
+  // once the label carried a rate as well ("Fees ⓘ 13 bps") it ran straight
+  // into the figure beside it.
   return (
-    {/* `sm:gap-3` is load-bearing: justify-between alone leaves NO minimum gap,
-        so once the label carried a rate as well ("Fees ⓘ 13 bps") it ran
-        straight into the figure beside it. */}
     <div className="flex min-w-0 flex-col gap-1.5 rounded-none border border-border/80 bg-surface-2 px-3 py-2.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
       {/* One line on desktop, always. A label that wrapped made its tile two
           lines tall and the grid stretched the other three to match, so a
