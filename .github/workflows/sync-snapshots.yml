@@ -1,0 +1,63 @@
+name: sync-snapshots
+
+# The hourly market-data collector (worker/perpfarm/jobs/sync_snapshots.py),
+# moved here from Render. Each run refreshes the market catalog, snapshots every
+# live market, writes the hedge recommendations and, on Mondays, diffs the fee
+# pages -- exactly what `perpfarm job sync-snapshots` did there.
+#
+# Secrets, set under Settings -> Secrets and variables -> Actions:
+#   DATABASE_URL  the PROD Supabase session-pooler URL with ?sslmode=require
+#   DUNE_API_KEY  optional; without it the run skips the Dune copy, as before
+#
+# Only schedule and manual triggers: nothing here runs on a pull request, so a
+# fork can never reach these secrets.
+
+on:
+  schedule:
+    # Five past, not on the hour. GitHub starts scheduled runs best-effort and
+    # :00 is when most of them fire, so runs queue there. The site holds its
+    # cache to :25 (COLLECTION_LAG_MINUTES in web/lib/cache.ts), which leaves a
+    # late start room to land before the next answer is cached.
+    - cron: "5 * * * *"
+  workflow_dispatch: {}
+
+# One collector at a time. A slow hour -- a venue retried for up to about half
+# an hour -- must not overlap the next run and write the same hour twice.
+concurrency:
+  group: sync-snapshots
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # A normal run takes about eleven minutes; a run with retries, up to ~40.
+    # Past this it is stuck, not slow, and would collide with the next hour.
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: worker/pyproject.toml
+
+      - name: Install the worker
+        run: pip install -e .
+
+      - name: Collect
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set -- add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          perpfarm job sync-snapshots

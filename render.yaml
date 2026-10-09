@@ -1,3 +1,8 @@
+# RETIRED 2026-10-09. The hourly collector now runs on GitHub Actions
+# (.github/workflows/sync-snapshots.yml). Suspend or delete the Render service
+# below: if both run, the same hour is written twice. Kept only as a record of
+# how the cron was configured there.
+#
 # Render Blueprint (Infrastructure as Code) for perpfarm.
 #
 # Scope: the Python worker CRONS only. The web app runs on Vercel (main =

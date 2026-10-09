@@ -13,13 +13,17 @@
  * everyone in between is served without touching the database.
  */
 
-/** The collector is scheduled on the hour and takes a few minutes over several
- *  hundred markets, so the cache is held a little past the boundary rather than
- *  expiring into the middle of a run. A venue that was down at :00 is retried
- *  for up to half an hour (worker/perpfarm/jobs/sync_snapshots.py) and so lands
- *  after this window -- deliberately: the rest of the site should not wait for
- *  one venue's second chance, and that venue is picked up an hour later. */
-const COLLECTION_LAG_MINUTES = 10;
+/** The collector runs on GitHub Actions at five past the hour
+ *  (.github/workflows/sync-snapshots.yml), and GitHub starts a scheduled run
+ *  best-effort -- often several minutes late. The books land within about five
+ *  minutes of the start, so the cache is held to :25: that clears an on-time run
+ *  with room for a late one, instead of expiring into the middle of it and
+ *  caching the previous hour for another hour. (It was :10 while Render started
+ *  the run on the hour, to the minute.) A venue retried for up to half an hour
+ *  (worker/perpfarm/jobs/sync_snapshots.py) still lands after this window --
+ *  deliberately: the rest of the site should not wait for one venue's second
+ *  chance, and that venue is picked up an hour later. */
+const COLLECTION_LAG_MINUTES = 25;
 /** Never hold longer than this, so a stalled collector cannot freeze the page
  *  on one answer for an hour. */
 const MAX_SECONDS = 3_600;
