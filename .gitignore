@@ -33,3 +33,12 @@ Thumbs.db
 .playwright-mcp/
 .codex/
 .impeccable/
+
+# AI agents and their skills: local tooling, never part of the product.
+# Each developer keeps their own; nothing here is needed to build or run the site.
+.agents/
+.claude/
+.mcp.json
+skills-lock.json
+CLAUDE.md
+AGENTS.md
