@@ -27,3 +27,9 @@ Thumbs.db
 
 # Claude Code local settings (per-machine, not shared)
 .claude/settings.local.json
+
+# Local tool state: browser snapshots, design-review logs and hook configs.
+# Never part of the product, and the review logs can quote conversations.
+.playwright-mcp/
+.codex/
+.impeccable/
